@@ -372,51 +372,47 @@ const LIBRARY_FILES = new Set([
   'tooling/walk.js',
 ]);
 
-tap.test(
-  'tooling/walk',
-  async t => {
-    let count = 0;
+tap.test('tooling/walk', async t => {
+  let count = 0;
 
-    for await (const entry of walk(LIBRARY_PATH)) {
-      t.strictEqual(entry.type, 'file');
-      const path = relative(LIBRARY_PATH, entry.path);
-      t.ok(
-        LIBRARY_FILES.has(path),
-        `walk() encounters only site:forge's own modules in "lib"`
-      );
-      count++;
-    }
+  for await (const entry of walk(LIBRARY_PATH)) {
+    t.strictEqual(entry.type, 'file');
+    const path = relative(LIBRARY_PATH, entry.path);
+    t.ok(
+      LIBRARY_FILES.has(path),
+      `walk() encounters only site:forge's own modules in "lib"`
+    );
+    count++;
+  }
 
-    t.strictEqual(count, LIBRARY_FILES.size);
+  t.strictEqual(count, LIBRARY_FILES.size);
 
-    const root = t.testdir({
-      file: 'file',
+  const root = t.testdir({
+    file: 'file',
+    dir: {
+      file: 'nested file',
       dir: {
-        file: 'nested file',
-        dir: {
-          file: 'deeply nested file',
-          //backToRoot: t.fixture('symlink', '../..'),
-          file2: t.fixture('symlink', '../../file'),
-        },
+        file: 'deeply nested file',
+        backToTheTop: t.fixture('symlink', '../..'),
+        backToTheFirstFile: t.fixture('symlink', '../../file'),
       },
-    });
+    },
+  });
 
-    count = 0;
-    let expected = 'file';
-    for await (const { type, path } of walk(root)) {
-      t.strictEqual(type, 'file');
+  count = 0;
+  let expected = 'file';
+  for await (const { type, path } of walk(root)) {
+    t.strictEqual(type, 'file');
 
-      let actual = relative(root, path);
-      if (actual.endsWith('2')) actual = actual.slice(0, -1);
-      t.strictEqual(actual, expected);
+    let actual = relative(root, path);
+    if (actual.endsWith('2')) actual = actual.slice(0, -1);
+    t.strictEqual(actual, expected);
 
-      if (count <= 1) {
-        expected = 'dir/' + expected;
-      }
-      count++;
+    if (count <= 1) {
+      expected = 'dir/' + expected;
     }
+    count++;
+  }
 
-    t.end();
-  },
-  { saveFixture: true }
-);
+  t.end();
+});

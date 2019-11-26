@@ -1,0 +1,10 @@
+{
+  "name": "@grr/reloader",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "hook.js",
+  "description": "Module loader hook to reload ES6 modules",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT"
+}

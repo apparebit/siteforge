@@ -1,0 +1,43 @@
+> site:forge (<option> | <task>)*
+
+Run this static website generator. It supports the following tasks:
+
+  build                      Build the website.
+  validate                   Validate the website.
+  deploy                     Deploy the website.
+
+
+It supports the following task-independent options:
+
+  -V, --version              Print tool version, exit before running tasks
+  -h, --help                 Print tool help, exit before running tasks
+  -v, --verbose              Increase the volume by one level
+  -q, --quiet                Decrease the volume by one level
+
+If the only argument is "-v", "-vh", or "-hv", site:forge treats the "-v"
+as a "-V".
+
+
+The following options apply to the build task:
+
+  --content-dir <path>       Read content from directory (default: "./content")
+  --build-dir <path>         Write build to directory (default: "./build")
+  --clean-build              Delete previous build instead of overwriting files
+  --do-not-build <glob>      Exclude matching files from build
+  --rights-notice <notice>   Prepend rights notice to scripts and styles
+
+
+The following options apply to the validate task:
+
+  --do-not-validate <glob>   Exclude matching files from validation
+
+
+The following options apply to the deploy task:
+
+  --build-dir <path>         Read build from directory (default: "./build)
+  --deployment-dir <remote>  Deploy build to rsync host and directory
+  --dry-deploy               Run rsync without actually making changes
+
+The default volume is 0. At that level, the output of error(), warning(), and
+notice() is visible, though info() and debug() are suppressed.
+

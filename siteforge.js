@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * @module siteforge
  * @copyright (C) 2019 Robert Grimm

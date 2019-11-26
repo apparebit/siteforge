@@ -1,0 +1,60 @@
+module.exports = {
+  root: true,
+  parser: 'babel-eslint',
+  parserOptions: {
+    ecmaVersion: 2020,
+    sourceType: 'module',
+  },
+  env: {
+    es2020: true,
+    node: true,
+  },
+  extends: ['eslint:recommended', 'prettier'],
+  rules: {
+    'consistent-return': 'error',
+    eqeqeq: [
+      'error',
+      'always',
+      {
+        null: 'ignore',
+      },
+    ],
+    'no-alert': 'error',
+    'no-constant-condition': 'off',
+    'no-buffer-constructor': 'error',
+    'no-caller': 'error',
+    'no-duplicate-imports': [
+      'error',
+      {
+        includeExports: true,
+      },
+    ],
+    'no-extra-bind': 'error',
+    'no-extra-label': 'error',
+    'no-label-var': 'error',
+    'no-new-func': 'error',
+    'no-new-wrappers': 'error',
+    'no-octal-escape': 'error',
+    'no-return-await': 'error',
+    'no-sync': 'error',
+    'no-unused-expressions': 'error',
+    'no-unused-vars': [
+      'error',
+      {
+        argsIgnorePattern: '^_+$',
+        varsIgnorePattern: '^_+$',
+      },
+    ],
+    'no-useless-call': 'error',
+    'no-useless-computed-key': 'error',
+    'no-useless-constructor': 'error',
+    'no-useless-rename': 'error',
+    'no-useless-return': 'error',
+    'no-var': 'error',
+    'prefer-promise-reject-errors': 'error',
+    'prefer-rest-params': 'error',
+    'require-await': 'error',
+    'require-unicode-regexp': 'error',
+    semi: 'error',
+  },
+};

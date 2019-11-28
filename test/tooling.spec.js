@@ -9,9 +9,17 @@ import {
   slashed,
   createGlobMatcher,
 } from '../lib/tooling/fs.js';
+import { EOL, tmpdir } from 'os';
 import { escapeRegex, withRightsNotice } from '../lib/tooling/text.js';
 import { join, relative } from 'path';
-import getopt from '../lib/tooling/getopt.js';
+import {
+  aliased,
+  defaults,
+  FilePath,
+  optionsFromArguments,
+  optionsFromObject,
+  FileGlob,
+} from '../lib/tooling/getopt.js';
 import {
   injectIntoPath,
   sha256,
@@ -20,12 +28,12 @@ import {
 import { nearestManifest } from '../lib/tooling/manifest.js';
 import run from '../lib/tooling/run.js';
 import tap from 'tap';
-import { tmpdir } from 'os';
 import walk from '../lib/tooling/walk.js';
 
 const APPAREBIT = 'https://apparebit.com';
 const { assign, keys: keysOf } = Object;
-const DIRECTORY = directory(import.meta.url);
+const __directory = directory(import.meta.url);
+const { has } = Reflect;
 const { max } = Math;
 
 // -----------------------------------------------------------------------------
@@ -174,8 +182,8 @@ tap.test('tooling/fs', t => {
     oops: false,
   });
 
-  t.notOk(DIRECTORY.startsWith('file:'));
-  t.ok(DIRECTORY.endsWith('/test'));
+  t.notOk(__directory.startsWith('file:'));
+  t.ok(__directory.endsWith('/test'));
 
   t.strictEqual(slashed(APPAREBIT).href, APPAREBIT + '/');
   t.strictEqual(slashed(APPAREBIT + '/slasher').href, APPAREBIT + '/slasher/');
@@ -186,16 +194,34 @@ tap.test('tooling/fs', t => {
 // -----------------------------------------------------------------------------
 
 tap.test('tooling/getopt', t => {
-  const configuration = getopt.defaults();
-  assign(configuration, {
-    'dry-run': Boolean,
-    wetRun: Boolean,
-    path: String,
-    round: Number,
-  });
+  const configuration = defaults();
+  aliased(
+    assign(configuration, {
+      'dry-run': Boolean,
+      name: String,
+      path: FilePath,
+      round: Number,
+      wetRun: Boolean,
+    })
+  );
+
+  const check = options => {
+    t.strictSame(options._, ['whatever', 'everwhat']);
+    t.strictEqual(options.help, 1);
+    t.notOk(has(options, 'name'));
+    t.strictEqual(options.path, __directory);
+    t.strictEqual(options.quiet, 3);
+    t.strictEqual(options.round, 665);
+    t.strictEqual(options.verbose, 2);
+    t.strictEqual(options.version, 0);
+    t.strictEqual(options.volume, -1);
+    t.strictEqual(options.wetRun, 2);
+    t.strictEqual(options['dry-run'], 1);
+    t.strictEqual(keysOf(options).length, 10);
+  };
 
   // prettier-ignore
-  const options = getopt(
+  let options = optionsFromArguments(
     [
       '-vv',
       '-qqq',
@@ -204,62 +230,127 @@ tap.test('tooling/getopt', t => {
       '--wet-run',
       '--round', '665',
       '--dry-run',
-      '--path', '<path>',
+      '--path', 'test',
       'everwhat',
       '--help',
     ],
     configuration
   );
+  check(options);
 
-  t.strictSame(options._, ['whatever', 'everwhat']);
-  t.strictEqual(options.help, 1);
-  t.strictEqual(options.path, '<path>');
-  t.strictEqual(options.quiet, 3);
-  t.strictEqual(options.round, 665);
-  t.strictEqual(options.verbose, 2);
-  t.strictEqual(options.version, 0);
-  t.strictEqual(options.volume, -1);
-  t.strictEqual(options.wetRun, 2);
-  t.strictEqual(options['dry-run'], 1);
-  t.strictEqual(keysOf(options).length, 10);
+  options = optionsFromObject(
+    {
+      q: 3,
+      round: 665,
+      h: 1,
+      'dry-run': true,
+      'wet-run': 1,
+      wetRun: true,
+      verbose: 2,
+      path: 'test',
+      _: ['whatever', 'everwhat'],
+    },
+    configuration
+  );
+  check(options);
 
   configuration.r = 'round';
-  configuration._ = (arg, reportError) => {
-    if (arg !== 'whatever') reportError(`"whatever" not "${arg}"`);
+  configuration._ = (arg, report) => {
+    if (arg !== 'whatever') report(`should be "whatever"`);
     return arg;
   };
 
   t.throws(
     () =>
-      getopt(
+      optionsFromArguments(
         ['-x', '-r', '--path', '-x', 'whatever', 'everwhat', '--round'],
         configuration
       ),
     new RegExp(
       escapeRegex(
         [
-          'option "x" derived from argument "-x" is unknown',
-          'option "round" derived from argument "-r" must be flag',
-          'option "path" derived from argument "--path" has flag "-x" as value',
-          '"whatever" not "everwhat"',
-          'option "round" derived from argument "--round" is last argument but requires value',
-        ].join('; ')
+          'invalid options:',
+          'unknown command line option "x"',
+          'command line option "r"/"round" misconfigured to take value',
+          'command line option "path" has another option "-x" as value',
+          'command line argument "everwhat" should be "whatever"',
+          'command line option "round" is missing required value',
+        ].join(EOL)
       ),
       'u'
     )
   );
 
-  t.strictSame(getopt(['--round', '3', '--', '--not-a-flag'], configuration), {
-    _: ['--not-a-flag'],
-    'dry-run': 0,
-    help: 0,
-    quiet: 0,
-    round: 3,
-    verbose: 0,
-    version: 0,
-    volume: 0,
-    wetRun: 0,
-  });
+  t.throws(
+    () =>
+      optionsFromArguments(
+        ['--round', '3', '--', '--not-a-flag'],
+        configuration
+      ),
+    new RegExp(
+      escapeRegex('command line argument "--not-a-flag" should be "whatever"'),
+      'u'
+    )
+  );
+
+  delete configuration._;
+  t.strictSame(
+    optionsFromArguments(['--round', '3', '--', '--not-a-flag'], configuration),
+    {
+      _: ['--not-a-flag'],
+      'dry-run': 0,
+      help: 0,
+      quiet: 0,
+      round: 3,
+      verbose: 0,
+      version: 0,
+      volume: 0,
+      wetRun: 0,
+    }
+  );
+
+  t.throws(
+    () =>
+      optionsFromObject(
+        {
+          _: 13,
+          answer: 42,
+          verbose: 'quiet',
+        },
+        configuration
+      ),
+    new RegExp(
+      escapeRegex(
+        [
+          'invalid options:',
+          'option "_" does not have array value',
+          'unknown option "answer"',
+          'boolean option "verbose" has neither boolean nor numeric value',
+        ].join(EOL)
+      ),
+      'u'
+    )
+  );
+
+  options.quiet = 0;
+  options.verbose = 665;
+  t.strictEqual(options.volume, 665);
+  options.volume = 42;
+  t.strictEqual(options.volume, 42);
+
+  const errors = [];
+  const report = msg => {
+    errors.push(msg);
+  };
+  t.strictEqual(FileGlob(42, report), undefined);
+  t.strictEqual(FileGlob([42], report), undefined);
+  t.strictEqual(FileGlob('<**>', report), undefined);
+  t.strictEqual(typeof FileGlob('**/boo', report), 'function');
+  t.strictSame(errors, [
+    'is not a valid file glob',
+    'is not an array of valid file globs',
+    'contains an invalid segment glob expression',
+  ]);
 
   t.end();
 });
@@ -267,16 +358,16 @@ tap.test('tooling/getopt', t => {
 // -----------------------------------------------------------------------------
 
 tap.test('tooling/manifest', async t => {
-  const path = join(DIRECTORY, '..', 'package.json');
+  const path = join(__directory, '..', 'package.json');
 
   let start = Date.now();
-  const entry1 = await nearestManifest(DIRECTORY);
+  const entry1 = await nearestManifest(__directory);
   const duration1 = max(Date.now() - start, 1); // Avoid 0 duration.
   t.strictEqual(entry1.path, path);
   t.strictEqual(entry1.data.name, '@grr/siteforge');
 
   start = Date.now();
-  const entry2 = await nearestManifest(DIRECTORY);
+  const entry2 = await nearestManifest(__directory);
   const duration2 = max(Date.now() - start, 1); // Avoid 0 duration.
   t.strictEqual(entry2.path, path);
   t.strictEqual(entry2.data.name, '@grr/siteforge');
@@ -301,6 +392,7 @@ tap.test('tooling/run', async t => {
   t.strictEqual(stdout, 'Hello, world!');
   t.strictEqual(stderr, '');
 
+  t.resolves(() => run('sh', ['-c', 'exit']));
   t.rejects(
     () => run('sh', ['-c', 'exit 42']),
     /^child process failed with exit code "42" \(sh -c "exit 42"\)/u
@@ -348,7 +440,7 @@ tap.test('tooling/versioning', async t => {
 
 // -----------------------------------------------------------------------------
 
-const LIBRARY_PATH = join(DIRECTORY, '../lib');
+const LIBRARY_PATH = join(__directory, '../lib');
 const LIBRARY_FILES = new Set([
   'config.js',
   'usage.txt',
@@ -362,6 +454,7 @@ const LIBRARY_FILES = new Set([
   'task/build.js',
   'task/deploy.js',
   'task/validate-markup.js',
+  'tooling/error.js',
   'tooling/fs.js',
   'tooling/getopt.js',
   'tooling/logger.js',

@@ -36,7 +36,7 @@ The following options apply to the deploy task:
 
   --build-dir <path>         Read build from directory (default: "./build)
   --deployment-dir <remote>  Deploy build to rsync host and directory
-  --dry-deploy               Run rsync without actually making changes
+  --dry-run                  Run rsync without actually making changes
 
 The default volume is 0. At that level, the output of error(), warning(), and
 notice() is visible, though info() and debug() are suppressed.

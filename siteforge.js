@@ -15,13 +15,13 @@ import validateMarkup from './lib/task/validate-markup.js';
 
 const { apply } = Reflect;
 
-async function task(flag, description, work) {
+async function task(flag, logger, description, work) {
   if (!flag) return;
-  this.logger.notice(description);
+  logger.notice(description);
   try {
     await work();
   } catch (x) {
-    this.logger.error(`Task failed`, x);
+    logger.error(`Task failed:`, x);
   }
 }
 
@@ -42,16 +42,17 @@ async function task(flag, description, work) {
   // ------------------------------ Build ------------------------------
   await task(
     config.options.htaccess || config.options.build,
+    config.logger,
     `Building ${config.site.name}`,
     async () => {
       if (config.options.htaccess) {
-        await apply(buildHTAccess, this, []);
+        await apply(buildHTAccess, config, []);
       }
       if (config.options.build) {
         if (config.options.cleanBuild) {
           await rmdir(config.options.buildDir, { recursive: true });
         }
-        await apply(build, this, []);
+        await apply(build, config, []);
       }
     }
   );
@@ -59,12 +60,13 @@ async function task(flag, description, work) {
   // ------------------------------ Validate ------------------------------
   await task(
     config.options.validate,
+    config.logger,
     `Validating ${config.site.name}`,
     async () => {
       try {
-        await apply(validateMarkup, this, []);
+        await apply(validateMarkup, config, []);
       } catch (x) {
-        config.logger.error(`Markup did not validate`, x);
+        config.logger.error(`Markup did not validate:`, x);
         process.exit(65); // EX_DATAERR
       }
     }
@@ -73,13 +75,14 @@ async function task(flag, description, work) {
   // ------------------------------ Deploy ------------------------------
   await task(
     config.options.deploy,
+    config.logger,
     `Deploying ${config.site.name}`,
     async () => {
       if (!config.options.deploymentDir) {
         config.error(`Option "--deployment-dir" is not defined`);
         process.exit(78); // EX_CONFIG
       }
-      await apply(deploy, this, []);
+      await apply(deploy, config, []);
     }
   );
 

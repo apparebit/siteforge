@@ -7,71 +7,82 @@
 
 import build from './lib/task/build.js';
 import buildHTAccess from './lib/task/build-htaccess.js';
+import configure from './lib/config.js';
 import deploy from './lib/task/deploy.js';
 import { EOL } from 'os';
-import {
-  logger,
-  options,
-  toolName,
-  toolVersion,
-  siteName,
-  usage,
-} from './lib/config.js';
 import { rmdir } from './lib/tooling/fs.js';
 import validateMarkup from './lib/task/validate-markup.js';
 
+const { apply } = Reflect;
+
 async function task(flag, description, work) {
   if (!flag) return;
-  logger.notice(description);
+  this.logger.notice(description);
   try {
     await work();
   } catch (x) {
-    logger.error(`Task failed`, x);
+    this.logger.error(`Task failed`, x);
   }
 }
 
 (async function main() {
-  // ------------------------- Version and Usage -------------------------
-  if (options.version) console.error(`${toolName} ${toolVersion}${EOL}`);
-  if (options.help) console.error(usage);
-  if (options.version || options.help) return;
+  // ------------------------------ Startup ------------------------------
+  const config = await configure();
+
+  if (config.options.version) {
+    console.error(`site:forge ${config.forge.version}${EOL}`);
+  }
+  if (config.options.help) {
+    console.error(config.usage);
+  }
+  if (config.options.version || config.options.help) {
+    return;
+  }
 
   // ------------------------------ Build ------------------------------
   await task(
-    options.htaccess || options.build,
-    `Building ${siteName}`,
+    config.options.htaccess || config.options.build,
+    `Building ${config.site.name}`,
     async () => {
-      if (options.htaccess) {
-        await buildHTAccess();
+      if (config.options.htaccess) {
+        await apply(buildHTAccess, this, []);
       }
-      if (options.build) {
-        if (options.cleanBuild) {
-          await rmdir(options.buildDir, { recursive: true });
+      if (config.options.build) {
+        if (config.options.cleanBuild) {
+          await rmdir(config.options.buildDir, { recursive: true });
         }
-        await build();
+        await apply(build, this, []);
       }
     }
   );
 
   // ------------------------------ Validate ------------------------------
-  await task(options.validate, `Validating ${siteName}`, async () => {
-    try {
-      await validateMarkup();
-    } catch (x) {
-      logger.error(`Markup did not validate`, x);
-      process.exit(65); // EX_DATAERR
+  await task(
+    config.options.validate,
+    `Validating ${config.site.name}`,
+    async () => {
+      try {
+        await apply(validateMarkup, this, []);
+      } catch (x) {
+        config.logger.error(`Markup did not validate`, x);
+        process.exit(65); // EX_DATAERR
+      }
     }
-  });
+  );
 
   // ------------------------------ Deploy ------------------------------
-  await task(options.deploy, `Deploying ${siteName}`, async () => {
-    if (!options.deploymentDir) {
-      logger.error(`Option "--deployment-dir" is not defined`);
-      process.exit(78); // EX_CONFIG
+  await task(
+    config.options.deploy,
+    `Deploying ${config.site.name}`,
+    async () => {
+      if (!config.options.deploymentDir) {
+        config.error(`Option "--deployment-dir" is not defined`);
+        process.exit(78); // EX_CONFIG
+      }
+      await apply(deploy, this, []);
     }
-    await deploy();
-  });
+  );
 
   // ------------------------------ Done ------------------------------
-  logger.signOff();
+  config.logger.signOff();
 })();

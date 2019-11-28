@@ -213,11 +213,11 @@ tap.test('tooling/getopt', t => {
     t.strictEqual(options.quiet, 3);
     t.strictEqual(options.round, 665);
     t.strictEqual(options.verbose, 2);
-    t.strictEqual(options.version, 0);
+    t.notOk(has(options, 'version'));
     t.strictEqual(options.volume, -1);
     t.strictEqual(options.wetRun, 2);
     t.strictEqual(options['dry-run'], 1);
-    t.strictEqual(keysOf(options).length, 10);
+    t.strictEqual(keysOf(options).length, 9);
   };
 
   // prettier-ignore
@@ -298,14 +298,8 @@ tap.test('tooling/getopt', t => {
     optionsFromArguments(['--round', '3', '--', '--not-a-flag'], configuration),
     {
       _: ['--not-a-flag'],
-      'dry-run': 0,
-      help: 0,
-      quiet: 0,
       round: 3,
-      verbose: 0,
-      version: 0,
       volume: 0,
-      wetRun: 0,
     }
   );
 

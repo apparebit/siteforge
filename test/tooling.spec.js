@@ -1,5 +1,12 @@
 /* © 2019 Robert Grimm */
 
+import { EOL, tmpdir } from 'os';
+import { join, relative } from 'path';
+import run from '../lib/tooling/run.js';
+import Sq from '../lib/tooling/sequitur.js';
+import tap from 'tap';
+import Walk from '../lib/tooling/walk.js';
+
 import {
   copyFile,
   glob,
@@ -8,13 +15,7 @@ import {
   toDirectory,
   withTrailingSlash,
 } from '../lib/tooling/fs.js';
-import { EOL, tmpdir } from 'os';
-import {
-  escapeRegex,
-  extractRightsNotice,
-  withRightsNotice,
-} from '../lib/tooling/text.js';
-import { join, relative } from 'path';
+
 import {
   aliased,
   defaults,
@@ -23,19 +24,26 @@ import {
   optionsFromObject,
   FileGlob,
 } from '../lib/tooling/getopt.js';
+
+import {
+  escapeRegex,
+  extractRightsNotice,
+  withRightsNotice,
+} from '../lib/tooling/text.js';
+
 import {
   injectIntoPath,
   sha256,
   writeVersionedFile,
 } from '../lib/tooling/versioning.js';
-import run from '../lib/tooling/run.js';
-import tap from 'tap';
-import Walk from '../lib/tooling/walk.js';
 
 const APPAREBIT = 'https://apparebit.com';
 const { assign, keys: keysOf } = Object;
+const configurable = true;
 const __directory = toDirectory(import.meta.url);
+const enumerable = true;
 const { has } = Reflect;
+const writable = true;
 
 // -----------------------------------------------------------------------------
 
@@ -395,6 +403,92 @@ tap.test('tooling/run', async t => {
 
 // -----------------------------------------------------------------------------
 
+tap.test('tooling/sequitur', t => {
+  const sq = Sq.of(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+  const ar = [];
+
+  // The sequence below is processed lazily. Since zip() finishes as soon as
+  // the first iterator finishes, the resulting array ends with the flattened
+  // pair of 4 and 'e'. However, to determine that the second iterator being
+  // zipped has finished, the implementation of zip invokes next() on all
+  // iterators being zipped. Hence, the tapped away array does contain the 5.
+
+  t.strictSame(
+    sq
+      .filter(n => n % 2 === 0)
+      .map(n => n + 1)
+      .flatMap(n => [n - 1, n])
+      .tap(n => ar.push(n))
+      .zip(['a', 'b', 'c', 'd', 'e'])
+      .flatten()
+      .toArray(),
+    [0, 'a', 1, 'b', 2, 'c', 3, 'd', 4, 'e']
+  );
+  t.strictSame(ar, [0, 1, 2, 3, 4, 5]);
+
+  // The various ways of creating a sequence from a single value, i.e.,
+  // undefined/null, an iterator, an iterable, a generator function, and an
+  // arbitrary value.
+  t.strictSame(Sq.from().toArray(), []);
+  t.strictSame(
+    Sq.from({
+      count: 3,
+      next() {
+        return { value: this.count, done: --this.count < 0 };
+      },
+    }).toArray(),
+    [3, 2, 1]
+  );
+  t.strictSame(Sq.from('abc').toArray(), ['a', 'b', 'c']);
+  t.strictSame(
+    Sq.from(function*() {
+      yield 665;
+      yield 13;
+    }).toArray(),
+    [665, 13]
+  );
+  t.strictSame(
+    Sq.from(665).reduce((acc, it) => (acc.push(it), acc), []),
+    [665]
+  );
+
+  // keys(), values(), entries(), ownPropertyDescriptors()
+  t.strictSame(Sq.keys([1, 2]).toArray(), ['0', '1']);
+  t.strictSame(Sq.values([665, 42]).toArray(), [665, 42]);
+  t.strictSame(Sq.entries([665, 42]).toArray(), [
+    [0, 665],
+    [1, 42],
+  ]);
+  t.strictSame(Sq.entries({ a: 665, b: 42 }).toArray(), [
+    ['a', 665],
+    ['b', 42],
+  ]);
+  t.strictSame(
+    Sq.entries(
+      new Map([
+        ['a', 665],
+        ['b', 42],
+      ])
+    ).toArray(),
+    [
+      ['a', 665],
+      ['b', 42],
+    ]
+  );
+  t.strictSame(Sq.entries(new Set(['a', 'b'])).toArray(), [
+    ['a', 'a'],
+    ['b', 'b'],
+  ]);
+  t.strictSame(Sq.ownPropertyDescriptors({ a: 665, b: 42 }).collectEntries(), {
+    a: { configurable, enumerable, writable, value: 665 },
+    b: { configurable, enumerable, writable, value: 42 },
+  });
+
+  t.end();
+});
+
+// -----------------------------------------------------------------------------
+
 tap.test('tooling/text', t => {
   t.strictEqual(escapeRegex('[1.1.0]'), '\\[1\\.1\\.0\\]');
 
@@ -469,6 +563,7 @@ const LIBRARY_FILES = new Set([
   'tooling/getopt.js',
   'tooling/logger.js',
   'tooling/run.js',
+  'tooling/sequitur.js',
   'tooling/text.js',
   'tooling/versioning.js',
   'tooling/walk.js',
@@ -492,9 +587,9 @@ tap.test('tooling/walk', async t => {
 
   t.strictEqual(count, LIBRARY_FILES.size);
   t.strictEqual(walk.metrics.directory, 4);
-  t.strictEqual(walk.metrics.entry, 26);
-  t.strictEqual(walk.metrics.file, 20);
-  t.strictEqual(walk.metrics.status, 26);
+  t.strictEqual(walk.metrics.entry, 27);
+  t.strictEqual(walk.metrics.file, 21);
+  t.strictEqual(walk.metrics.status, 27);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

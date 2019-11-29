@@ -1,13 +1,19 @@
 /* © 2019 Robert Grimm */
 
 import {
-  directory,
+  copyFile,
+  glob,
   readFile,
-  slashed,
-  createGlobMatcher,
+  rmdir,
+  toDirectory,
+  withTrailingSlash,
 } from '../lib/tooling/fs.js';
 import { EOL, tmpdir } from 'os';
-import { escapeRegex, withRightsNotice } from '../lib/tooling/text.js';
+import {
+  escapeRegex,
+  extractRightsNotice,
+  withRightsNotice,
+} from '../lib/tooling/text.js';
 import { join, relative } from 'path';
 import {
   aliased,
@@ -22,21 +28,19 @@ import {
   sha256,
   writeVersionedFile,
 } from '../lib/tooling/versioning.js';
-import { nearestManifest } from '../lib/tooling/manifest.js';
 import run from '../lib/tooling/run.js';
 import tap from 'tap';
-import walk from '../lib/tooling/walk.js';
+import Walk from '../lib/tooling/walk.js';
 
 const APPAREBIT = 'https://apparebit.com';
 const { assign, keys: keysOf } = Object;
-const __directory = directory(import.meta.url);
+const __directory = toDirectory(import.meta.url);
 const { has } = Reflect;
-const { max } = Math;
 
 // -----------------------------------------------------------------------------
 
-tap.test('tooling/fs', t => {
-  t.throws(() => createGlobMatcher('b**h**'));
+tap.test('tooling/fs', async t => {
+  t.throws(() => glob('b**h**'));
 
   const PATHS = {
     text: 'file.txt',
@@ -52,8 +56,8 @@ tap.test('tooling/fs', t => {
     oops: 'dir1/dir2/filé.txt',
   };
 
-  const applyToPaths = glob => {
-    const test = createGlobMatcher(glob);
+  const applyToPaths = pattern => {
+    const test = glob(pattern);
     return keysOf(PATHS).reduce((result, key) => {
       result[key] = test(PATHS[key]);
       return result;
@@ -182,9 +186,27 @@ tap.test('tooling/fs', t => {
   t.notOk(__directory.startsWith('file:'));
   t.ok(__directory.endsWith('/test'));
 
-  t.strictEqual(slashed(APPAREBIT).href, APPAREBIT + '/');
-  t.strictEqual(slashed(APPAREBIT + '/slasher').href, APPAREBIT + '/slasher/');
-  t.strictEqual(slashed(APPAREBIT + '/slasher/').href, APPAREBIT + '/slasher/');
+  t.strictEqual(withTrailingSlash(APPAREBIT).href, APPAREBIT + '/');
+  t.strictEqual(
+    withTrailingSlash(APPAREBIT + '/slasher').href,
+    APPAREBIT + '/slasher/'
+  );
+  t.strictEqual(
+    withTrailingSlash(APPAREBIT + '/slasher/').href,
+    APPAREBIT + '/slasher/'
+  );
+
+  try {
+    const from = join(__directory, 'index.js');
+    const to = join(__directory, 'down/the/rabbit/hole/index.js');
+    await copyFile(from, to);
+    const index1 = await readFile(to, 'utf8');
+    const index2 = await readFile(from, 'utf8');
+    t.strictEqual(index1, index2);
+  } finally {
+    await rmdir(join(__directory, 'down'), { recursive: true });
+  }
+
   t.end();
 });
 
@@ -266,12 +288,12 @@ tap.test('tooling/getopt', t => {
     new RegExp(
       escapeRegex(
         [
-          'invalid options:',
-          'unknown command line option "x"',
-          'command line option "r"/"round" misconfigured to take value',
-          'command line option "path" has another option "-x" as value',
-          'command line argument "everwhat" should be "whatever"',
-          'command line option "round" is missing required value',
+          'Several options are invalid:',
+          'Unknown command line option "x"',
+          'Command line option "r"/"round" misconfigured to take value',
+          'Command line option "path" has another option "-x" as value',
+          'Command line argument "everwhat" should be "whatever"',
+          'Command line option "round" is missing required value',
         ].join(EOL)
       ),
       'u'
@@ -285,7 +307,7 @@ tap.test('tooling/getopt', t => {
         configuration
       ),
     new RegExp(
-      escapeRegex('command line argument "--not-a-flag" should be "whatever"'),
+      escapeRegex('Command line argument "--not-a-flag" should be "whatever"'),
       'u'
     )
   );
@@ -313,10 +335,10 @@ tap.test('tooling/getopt', t => {
     new RegExp(
       escapeRegex(
         [
-          'invalid options:',
-          'option "_" does not have array value',
-          'unknown option "answer"',
-          'boolean option "verbose" has neither boolean nor numeric value',
+          'Several options are invalid:',
+          'Option "_" does not have array value',
+          'Unknown option "answer"',
+          'Boolean option "verbose" has neither boolean nor numeric value',
         ].join(EOL)
       ),
       'u'
@@ -348,34 +370,6 @@ tap.test('tooling/getopt', t => {
 
 // -----------------------------------------------------------------------------
 
-tap.test('tooling/manifest', async t => {
-  const path = join(__directory, '..', 'package.json');
-
-  let start = Date.now();
-  const entry1 = await nearestManifest(__directory);
-  const duration1 = max(Date.now() - start, 1); // Avoid 0 duration.
-  t.strictEqual(entry1.path, path);
-  t.strictEqual(entry1.data.name, '@grr/siteforge');
-
-  start = Date.now();
-  const entry2 = await nearestManifest(__directory);
-  const duration2 = max(Date.now() - start, 1); // Avoid 0 duration.
-  t.strictEqual(entry2.path, path);
-  t.strictEqual(entry2.data.name, '@grr/siteforge');
-
-  t.comment(
-    `nearestManifest(): cache miss = ${String(duration1).padStart(3)}ms`
-  );
-  t.comment(
-    `nearestManifest(): cache hit  = ${String(duration2).padStart(3)}ms`
-  );
-  t.ok(duration1 >= duration2); // One would hope that to hold...
-
-  t.end();
-});
-
-// -----------------------------------------------------------------------------
-
 tap.test('tooling/run', async t => {
   const { stdout, stderr } = await run('printf', ['Hello, world!'], {
     stdio: 'buffer',
@@ -386,8 +380,15 @@ tap.test('tooling/run', async t => {
   t.resolves(() => run('sh', ['-c', 'exit']));
   t.rejects(
     () => run('sh', ['-c', 'exit 42']),
-    /^child process failed with exit code "42" \(sh -c "exit 42"\)/u
+    /^Child process failed with exit code "42" \(sh -c "exit 42"\)/u
   );
+
+  try {
+    await run('this-command-most-certainly-does-not-exist', []);
+    t.fail(`running non-existent command should fail`);
+  } catch (x) {
+    t.strictEqual(x.code, 'ENOENT');
+  }
 
   t.end();
 });
@@ -396,6 +397,24 @@ tap.test('tooling/run', async t => {
 
 tap.test('tooling/text', t => {
   t.strictEqual(escapeRegex('[1.1.0]'), '\\[1\\.1\\.0\\]');
+
+  t.strictEqual(
+    extractRightsNotice(`   //  (C) Robert Grimm`),
+    `(C) Robert Grimm`
+  );
+  t.strictEqual(
+    extractRightsNotice(`   /*  (C) Robert Grimm  \n  */  `),
+    `(C) Robert Grimm`
+  );
+  t.strictEqual(
+    extractRightsNotice(`   /*  © Robert Grimm  \n  */  `),
+    `© Robert Grimm`
+  );
+  t.strictEqual(
+    extractRightsNotice(`   /*  copyright Robert Grimm  \n  */  `),
+    `copyright Robert Grimm`
+  );
+
   t.strictEqual(withRightsNotice('code', undefined), 'code');
   t.strictEqual(withRightsNotice('code', 'notice'), '/* notice */ code');
   t.end();
@@ -449,7 +468,6 @@ const LIBRARY_FILES = new Set([
   'tooling/fs.js',
   'tooling/getopt.js',
   'tooling/logger.js',
-  'tooling/manifest.js',
   'tooling/run.js',
   'tooling/text.js',
   'tooling/versioning.js',
@@ -459,17 +477,25 @@ const LIBRARY_FILES = new Set([
 tap.test('tooling/walk', async t => {
   let count = 0;
 
-  for await (const entry of walk(LIBRARY_PATH)) {
+  const walk = new Walk(LIBRARY_PATH);
+  for await (const entry of walk.go()) {
     t.strictEqual(entry.type, 'file');
     const path = relative(LIBRARY_PATH, entry.path);
     t.ok(
       LIBRARY_FILES.has(path),
       `walk() encounters only site:forge's own modules in "lib"`
     );
+    t.strictEqual(entry.vpath, '/' + path);
+    t.strictEqual(entry.asset, path.startsWith('tooling/'));
     count++;
   }
 
   t.strictEqual(count, LIBRARY_FILES.size);
+  t.strictEqual(walk.metrics.directory, 4);
+  t.strictEqual(walk.metrics.entry, 26);
+  t.strictEqual(walk.metrics.file, 20);
+  t.strictEqual(walk.metrics.status, 26);
+  t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({
     file: 'file',
@@ -485,7 +511,7 @@ tap.test('tooling/walk', async t => {
 
   count = 0;
   let expected = 'file';
-  for await (const { type, path } of walk(root)) {
+  for await (const { type, path } of Walk.walk(root, { isExcluded: null })) {
     t.strictEqual(type, 'file');
 
     let actual = relative(root, path);
@@ -497,6 +523,12 @@ tap.test('tooling/walk', async t => {
     }
     count++;
   }
+
+  t.rejects(async () => {
+    for await (const _ of Walk.walk(42)) {
+      // Nothing to do.
+    }
+  }, /Root for file system walk "42" is not a path/u);
 
   t.end();
 });

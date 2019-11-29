@@ -17,7 +17,7 @@ async function task(flag, logger, description, work) {
   try {
     await work();
   } catch (x) {
-    logger.error(`Task failed:`, x);
+    logger.error(x);
   }
 }
 
@@ -62,7 +62,7 @@ async function task(flag, logger, description, work) {
       try {
         await apply(validateMarkup, config, []);
       } catch (x) {
-        config.logger.error(`Markup did not validate:`, x);
+        config.logger.error(`Markup did not validate`, x);
         process.exit(65); // EX_DATAERR
       }
     }

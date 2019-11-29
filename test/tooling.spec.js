@@ -581,15 +581,14 @@ tap.test('tooling/walk', async t => {
       `walk() encounters only site:forge's own modules in "lib"`
     );
     t.strictEqual(entry.vpath, '/' + path);
-    t.strictEqual(entry.asset, path.startsWith('tooling/'));
     count++;
   }
 
   t.strictEqual(count, LIBRARY_FILES.size);
   t.strictEqual(walk.metrics.directory, 4);
-  t.strictEqual(walk.metrics.entry, 27);
+  t.strictEqual(walk.metrics.entry, 26);
   t.strictEqual(walk.metrics.file, 21);
-  t.strictEqual(walk.metrics.status, 27);
+  t.strictEqual(walk.metrics.status, 26);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

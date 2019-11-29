@@ -3,7 +3,7 @@
 import { rmdir, toDirectory } from '../lib/tooling/fs.js';
 import { join } from 'path';
 
-const ROOT = join(directory(import.meta.url), '..');
+const ROOT = join(toDirectory(import.meta.url), '..');
 const COVERAGE_DATA = join(ROOT, '.coverage');
 //const COVERATE_REPORT = join(ROOT, 'coverage');
 

@@ -1,16 +1,19 @@
 {
   "name": "@grr/siteforge",
   "version": "0.1.0",
-  "description": "Yet another static website generator",
+  "description": "a static website generator",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
   "type": "module",
   "main": "./siteforge.js",
+  "files": [
+    "./lib/usage.txt",
+    "./lib/**/*.js"
+  ],
   "engines": {
     "node": ">=12.10.0"
   },
-  "engineStrict": true,
   "browserslist": [
     "> 1%",
     "not dead"

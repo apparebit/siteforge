@@ -1,9 +1,5 @@
 #!/usr/bin/env node
-
-/**
- * @module siteforge
- * @copyright (C) 2019 Robert Grimm
- */
+// © 2019 Robert Grimm
 
 import build from './lib/task/build.js';
 import buildHTAccess from './lib/task/build-htaccess.js';

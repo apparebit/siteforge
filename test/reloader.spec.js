@@ -1,7 +1,4 @@
-/**
- * @module test/reloader
- * @copyright (C) 2019 Robert Grimm
- */
+/* © 2019 Robert Grimm */
 
 import config from '../lib/reloader/config.js';
 import tap from 'tap';

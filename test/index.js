@@ -1,4 +1,6 @@
-import { directory, rmdir } from '../lib/tooling/fs.js';
+/* © 2019 Robert Grimm */
+
+import { rmdir, toDirectory } from '../lib/tooling/fs.js';
 import { join } from 'path';
 
 const ROOT = join(directory(import.meta.url), '..');

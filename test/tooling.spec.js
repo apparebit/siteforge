@@ -1,7 +1,4 @@
-/**
- * @module test/tooling
- * @copyright (C) 2019 Robert Grimm
- */
+/* © 2019 Robert Grimm */
 
 import {
   directory,

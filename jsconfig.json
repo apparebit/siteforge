@@ -1,10 +1,9 @@
 {
   "compilerOptions": {
-      "baseUrl": "source/",
-      "target": "esnext",
-      "module": "es6"
+    "module": "es6",
+    "target": "es2020",
   },
-  "exclude": [
-      "node_modules"
+  "include": [
+    "lib/**/*.js"
   ]
 }

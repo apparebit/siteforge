@@ -519,19 +519,19 @@ tap.test('tooling/text', t => {
 tap.test('tooling/versioning', async t => {
   const tmp = tmpdir();
   const path = join(tmp, 'hello.txt');
-  const vp = join(tmp, 'hello.2QFMRi.txt');
+  const vp = join(tmp, 'hello.v-d9014c46.txt');
   const data = 'Hello, world!\n';
 
   // Hash.
   t.strictEqual(
     sha256(data, false),
-    '2QFMRiSESqW6wxR3PWtomtRn+k4dGlChuKmdWpX3L/U='
+    'd9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5'
   );
 
   // Path injection.
   t.strictEqual(
-    injectIntoPath(path, 'ha/s+h-lalala'),
-    join(tmp, 'hello.ha_s-h.txt')
+    injectIntoPath(path, '789abcdef'),
+    join(tmp, 'hello.v-789abcde.txt')
   );
 
   // Versioned file.

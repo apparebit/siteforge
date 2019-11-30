@@ -23,7 +23,7 @@ import {
   optionsFromArguments,
   optionsFromObject,
   FileGlob,
-} from '../lib/tooling/getopt.js';
+} from '../lib/tooling/options.js';
 
 import {
   escapeRegex,
@@ -565,8 +565,8 @@ const LIBRARY_FILES = new Set([
   'task/validate-markup.js',
   'tooling/error.js',
   'tooling/fs.js',
-  'tooling/getopt.js',
   'tooling/logger.js',
+  'tooling/options.js',
   'tooling/run.js',
   'tooling/sequitur.js',
   'tooling/text.js',

@@ -520,7 +520,7 @@ tap.test('tooling/text', t => {
 tap.test('tooling/versioning', async t => {
   const tmp = tmpdir();
   const path = join(tmp, 'hello.txt');
-  const vp = join(tmp, 'hello.v-d9014c46.txt');
+  const vp = join(tmp, 'hello.v~d9014c46.txt');
   const data = 'Hello, world!\n';
 
   // Hash.
@@ -532,7 +532,7 @@ tap.test('tooling/versioning', async t => {
   // Path injection.
   t.strictEqual(
     injectIntoPath(path, '789abcdef'),
-    join(tmp, 'hello.v-789abcde.txt')
+    join(tmp, 'hello.v~789abcde.txt')
   );
 
   // Testing for versioned paths.

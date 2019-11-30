@@ -33,6 +33,7 @@ import {
 
 import {
   injectIntoPath,
+  isVersionedPath,
   sha256,
   writeVersionedFile,
 } from '../lib/tooling/versioning.js';
@@ -533,6 +534,10 @@ tap.test('tooling/versioning', async t => {
     injectIntoPath(path, '789abcdef'),
     join(tmp, 'hello.v-789abcde.txt')
   );
+
+  // Testing for versioned paths.
+  t.notOk(isVersionedPath(path));
+  t.ok(isVersionedPath(vp));
 
   // Versioned file.
   let actual = await writeVersionedFile(path, data);

@@ -14,6 +14,8 @@ It supports the following task-independent options:
   -v, --verbose              Increase the volume by one level
   -q, --quiet                Decrease the volume by one level
 
+  --realm <label>            `development` or `production`
+
 If the only argument is "-v", "-vh", or "-hv", site:forge treats the "-v"
 as a "-V".
 

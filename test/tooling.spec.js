@@ -44,7 +44,7 @@ const configurable = true;
 const __directory = toDirectory(import.meta.url);
 const enumerable = true;
 const { has } = Reflect;
-const { asyncIterator: ASYNC_ITERATOR, iterator: ITERATOR } = Symbol;
+const { iterator: ITERATOR } = Symbol;
 const Iterator = getPrototypeOf(getPrototypeOf([][ITERATOR]()));
 const writable = true;
 

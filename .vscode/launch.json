@@ -7,12 +7,12 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Test",
+      "name": "Run Tests",
+      "program": "${workspaceFolder}/test/index.js",
+      "cwd": "${workspaceFolder}",
       "skipFiles": [
         "<node_internals>/**"
-      ],
-      "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/test/index.js",
+      ]
     }
   ]
 }

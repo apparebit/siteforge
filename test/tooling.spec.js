@@ -12,6 +12,7 @@ import {
   glob,
   readFile,
   rmdir,
+  toCoolPath,
   toDirectory,
   withTrailingSlash,
 } from '../lib/tooling/fs.js';
@@ -53,6 +54,8 @@ const writable = true;
 // =============================================================================
 
 tap.test('tooling/fs', async t => {
+  // glob, glob, glob
+
   t.throws(() => glob('b**h**'));
 
   const PATHS = {
@@ -196,9 +199,13 @@ tap.test('tooling/fs', async t => {
     oops: false,
   });
 
+  // ---------------------------------------------------------------------------
+
+  // toDirectory()
   t.notOk(__directory.startsWith('file:'));
   t.ok(__directory.endsWith('/test'));
 
+  // withTrailingSlash()
   t.strictEqual(withTrailingSlash(APPAREBIT).href, APPAREBIT + '/');
   t.strictEqual(
     withTrailingSlash(APPAREBIT + '/slasher').href,
@@ -209,6 +216,36 @@ tap.test('tooling/fs', async t => {
     APPAREBIT + '/slasher/'
   );
 
+  // toCoolPath()
+  t.strictEqual(
+    toCoolPath('/features/ubu-trump/index.html'),
+    '/features/ubu-trump'
+  );
+  t.strictEqual(
+    toCoolPath('/features/ubu-trump/index.html', { trailingSlash: true }),
+    '/features/ubu-trump/'
+  );
+  t.strictEqual(
+    toCoolPath('/features/ubu-trump/about.html'),
+    '/features/ubu-trump/about'
+  );
+  t.strictEqual(
+    toCoolPath('/features/ubu-trump/about.html', { trailingSlash: true }),
+    '/features/ubu-trump/about'
+  );
+  t.strictEqual(
+    toCoolPath('/features/ubu-trump/the-dark-tower.jpg'),
+    '/features/ubu-trump/the-dark-tower.jpg'
+  );
+  t.strictEqual(toCoolPath('/features/ubu-trump/'), '/features/ubu-trump');
+  t.strictEqual(
+    toCoolPath('/features/ubu-trump/', { trailingSlash: true }),
+    '/features/ubu-trump/'
+  );
+
+  // ---------------------------------------------------------------------------
+
+  // copyFile()
   try {
     const from = join(__directory, 'index.js');
     const to = join(__directory, 'down/the/rabbit/hole/index.js');
@@ -592,6 +629,7 @@ const LIBRARY_PATH = join(__directory, '../lib');
 const LIBRARY_FILES = new Set([
   'config.js',
   'usage.txt',
+  'html/model.js',
   'reloader/config.js',
   'reloader/hook.js',
   'reloader/package.json',
@@ -601,9 +639,11 @@ const LIBRARY_FILES = new Set([
   'task/build-style.js',
   'task/build.js',
   'task/deploy.js',
+  'task/runner.js',
   'task/validate-markup.js',
   'tooling/error.js',
   'tooling/fs.js',
+  'tooling/function.js',
   'tooling/logger.js',
   'tooling/options.js',
   'tooling/run.js',
@@ -629,10 +669,10 @@ tap.test('tooling/walk', async t => {
   }
 
   t.strictEqual(count, LIBRARY_FILES.size);
-  t.strictEqual(walk.metrics.directory, 4);
-  t.strictEqual(walk.metrics.entry, 26);
-  t.strictEqual(walk.metrics.file, 21);
-  t.strictEqual(walk.metrics.status, 26);
+  t.strictEqual(walk.metrics.directory, 5);
+  t.strictEqual(walk.metrics.entry, 30);
+  t.strictEqual(walk.metrics.file, 24);
+  t.strictEqual(walk.metrics.status, 30);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

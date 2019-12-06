@@ -29,14 +29,14 @@ function testConfig(input, expected) {
       configTester.strictSame(output.scopes, expected);
     } else if (expected) {
       configTester.fail(
-        `config() yielded scopes "${output.scopes}" where exception expected`);
+        `config() yielded scopes "${output.scopes}" where exception expected`
+      );
     } else {
       return output;
     }
   } catch (x) {
     if (isArray(expected)) {
-      configTester.fail(
-        `exception "${x.message}" thrown where none expected`);
+      configTester.fail(`exception "${x.message}" thrown where none expected`);
     } else if (expected) {
       configTester.match(x.message, expected);
     } else {
@@ -49,28 +49,37 @@ function testConfig(input, expected) {
 
 tap.test('reloader/config -> { debug }', t => {
   // noop
-  t.strictEqual(config({
-    env: { RELOADER_SCOPES: 'test' },
-    println: s => s,
-    isPrintTTY: false,
-    exit: () => {},
-  }).debug('hello'), undefined);
+  t.strictEqual(
+    config({
+      env: { RELOADER_SCOPES: 'test' },
+      println: s => s,
+      isPrintTTY: false,
+      exit: () => {},
+    }).debug('hello'),
+    undefined
+  );
 
   // plain
-  t.strictEqual(config({
-    env: { RELOADER_SCOPES: 'test', DEBUG: 'reloader' },
-    println: s => s,
-    isPrintTTY: false,
-    exit: () => {},
-  }).debug('hello'), '[reloader] hello');
+  t.strictEqual(
+    config({
+      env: { RELOADER_SCOPES: 'test', DEBUG: 'reloader' },
+      println: s => s,
+      isPrintTTY: false,
+      exit: () => {},
+    }).debug('hello'),
+    '[reloader] hello'
+  );
 
   // styled
-  t.strictEqual(config({
-    env: { RELOADER_SCOPES: 'test', DEBUG: 'reloader' },
-    println: s => s,
-    isPrintTTY: true,
-    exit: () => {},
-  }).debug('hello'), '\x1b[90m[reloader] hello\x1b[39m');
+  t.strictEqual(
+    config({
+      env: { RELOADER_SCOPES: 'test', DEBUG: 'reloader' },
+      println: s => s,
+      isPrintTTY: true,
+      exit: () => {},
+    }).debug('hello'),
+    '\x1b[90m[reloader] hello\x1b[39m'
+  );
 
   t.end();
 });
@@ -79,7 +88,10 @@ tap.test('reloader/config -> { debug }', t => {
 
 tap.test('reloader/config -> { epoch }', t => {
   const { epoch } = config({ env: { RELOADER_SCOPES: 'test' } });
-  t.strictEqual(global[Symbol.for('@grr/reloader/epoch/current')], epoch.current);
+  t.strictEqual(
+    global[Symbol.for('@grr/reloader/epoch/current')],
+    epoch.current
+  );
   t.strictEqual(global[Symbol.for('@grr/reloader/epoch/next')], epoch.next);
   t.strictEqual(epoch.current(), 0);
   t.strictEqual(epoch.next(), 1);
@@ -95,19 +107,39 @@ tap.test('reloader/config -> { scopes }', t => {
     testConfig(undefined, `Environment variable RELOADER_SCOPES is missing`);
     testConfig(``, `Environment variable RELOADER_SCOPES is missing`);
     testConfig(`   `, `Environment variable RELOADER_SCOPES is missing`);
-    testConfig(`"`, /^Environment variable RELOADER_SCOPES contains malformed JSON string/u);
-    testConfig(`[`, /^Environment variable RELOADER_SCOPES contains malformed JSON array/u);
-    testConfig(`[]`, `Environment variable RELOADER_SCOPES contains empty JSON array`);
-    testConfig(`[null]`, `Environment variable RELOADER_SCOPES contains JSON array with non-string entries`);
-    testConfig('https://apparebit.com', `Environment variable RELOADER_SCOPES contains URL "https://apparebit.com" with scheme other than "file:"`);
-    testConfig('file://host:80', `Environment variable RELOADER_SCOPES contains malformed path or file URL "file://host:80"`);
+    testConfig(
+      `"`,
+      /^Environment variable RELOADER_SCOPES contains malformed JSON string/u
+    );
+    testConfig(
+      `[`,
+      /^Environment variable RELOADER_SCOPES contains malformed JSON array/u
+    );
+    testConfig(
+      `[]`,
+      `Environment variable RELOADER_SCOPES contains empty JSON array`
+    );
+    testConfig(
+      `[null]`,
+      `Environment variable RELOADER_SCOPES contains JSON array with non-string entries`
+    );
+    testConfig(
+      'https://apparebit.com',
+      `Environment variable RELOADER_SCOPES contains URL "https://apparebit.com" with scheme other than "file:"`
+    );
+    testConfig(
+      'file://host:80',
+      `Environment variable RELOADER_SCOPES contains malformed path or file URL "file://host:80"`
+    );
 
-    t.throws(() => config({
-      env: {},
-      println: () => {},
-      isPrintTTY: true,
-      exit: () => {},
-    }));
+    t.throws(() =>
+      config({
+        env: {},
+        println: () => {},
+        isPrintTTY: true,
+        exit: () => {},
+      })
+    );
 
     // All the ways config() can name the same scope.
     testConfig(`test`, [testdir]);
@@ -152,32 +184,41 @@ tap.test('reloader/resolve', async t => {
   const modMain = pkgdir + 'main.js';
   const modHookPath = './lib/reloader/hook.js';
   const modHook = new URL(modHookPath, modMain).href;
-  const modTestPath = './test/reloader.spec.js';
+  const modTestPath = './test/reloader.test.js';
   const modTest = import.meta.url;
-  const defaultResolver = (specifier, parentModuleURL) =>
-    ({ specifier, parentModuleURL, format: 'default' });
+  const defaultResolver = (specifier, parentModuleURL) => ({
+    specifier,
+    parentModuleURL,
+    format: 'default',
+  });
 
   t.strictSame(await resolve('fs', modMain, defaultResolver), {
-    url: 'fs', format: 'builtin'
+    url: 'fs',
+    format: 'builtin',
   });
   t.strictSame(await resolve('tap', modMain, defaultResolver), {
-    specifier: 'tap', parentModuleURL: modMain, format: 'default'
+    specifier: 'tap',
+    parentModuleURL: modMain,
+    format: 'default',
   });
   t.strictSame(await resolve(modHookPath, modMain, defaultResolver), {
     specifier: modHook,
     parentModuleURL: modMain,
-    format: 'default'
+    format: 'default',
   });
   t.strictSame(await resolve(modTestPath, modMain, defaultResolver), {
-    url: modTest + '#0', format: 'module'
+    url: modTest + '#0',
+    format: 'module',
   });
   t.strictSame(await resolve('./t2.js', modTest + '#665', defaultResolver), {
-    url: new URL('./t2.js', modTest).href + '#665', format: 'module'
+    url: new URL('./t2.js', modTest).href + '#665',
+    format: 'module',
   });
 
   global[Symbol.for('@grr/reloader/epoch/next')]();
   t.strictSame(await resolve(modTestPath, modMain, defaultResolver), {
-    url: modTest + '#1', format: 'module'
+    url: modTest + '#1',
+    format: 'module',
   });
 
   t.end();

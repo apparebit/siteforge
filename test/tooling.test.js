@@ -40,13 +40,14 @@ import {
 } from '../lib/tooling/versioning.js';
 
 const APPAREBIT = 'https://apparebit.com';
+const { apply, has } = Reflect;
 const { assign, getPrototypeOf, keys: keysOf } = Object;
 const configurable = true;
 const __directory = toDirectory(import.meta.url);
 const enumerable = true;
-const { has } = Reflect;
 const { iterator: ITERATOR } = Symbol;
 const Iterator = getPrototypeOf(getPrototypeOf([][ITERATOR]()));
+const { toString } = Object.prototype;
 const writable = true;
 
 // =============================================================================
@@ -452,7 +453,18 @@ tap.test('tooling/run', async t => {
 // =============================================================================
 
 tap.test('tooling/sequitur', t => {
-  const sq = Sq.of(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+  // Sq.isIterable(), Sq.isNonStringIterable()
+
+  t.ok(Sq.isIterable('abc'));
+  t.ok(Sq.isIterable([]));
+
+  t.notOk(Sq.isNonStringIterable('abc'));
+  t.ok(Sq.isNonStringIterable([]));
+
+  // ---------------------------------------------------------------------------
+  // A complex pipeline and some method- or stage-specific tests.
+
+  let sq = Sq.of(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
   const ar = [];
 
   // The sequence below is processed lazily. Since zip() finishes as soon as the
@@ -475,6 +487,23 @@ tap.test('tooling/sequitur', t => {
   );
   t.strictSame(ar, [0, 1, 2, 3, 4, 5]);
 
+  t.strictSame(
+    Sq([[[[[13]]]]])
+      .flatten()
+      .collect(),
+    [13]
+  );
+  t.strictSame(
+    Sq([[[[['pea']]]]])
+      .flatten()
+      .collect(),
+    ['pea']
+  );
+
+  t.strictEqual(apply(toString, Sq.of(), []), '[object Sq]');
+  t.strictEqual(Sq.of(665, '=', 'mark', -1n).join(), '665=mark-1');
+  t.throws(() => Sq().map(665));
+
   // ---------------------------------------------------------------------------
   // Sq(), Sq.of(), Sq.from()
 
@@ -494,9 +523,15 @@ tap.test('tooling/sequitur', t => {
   t.strictSame(Sq.from(counter()).collect(), [3, 2, 1]);
   t.strictSame(Sq.of(...counter()).collect(), [3, 2, 1]);
 
-  t.strictSame(Sq('abc').collect(), ['a', 'b', 'c']);
-  t.strictSame(Sq.from('abc').collect(), ['a', 'b', 'c']);
+  t.strictSame(Sq('abc').collect(), ['abc']);
+  t.strictSame(Sq.from('abc').collect(), ['abc']);
+  t.strictSame(Sq.fromString('abc').collect(), ['a', 'b', 'c']);
   t.strictSame(Sq.of(...'abc').collect(), ['a', 'b', 'c']);
+
+  t.strictSame(Sq([42]).collect(), [42]);
+  t.strictSame(Sq.from(42).collect(), [42]);
+  t.strictSame(Sq.fromString(42).collect(), [42]);
+  t.strictSame(Sq.of(42).collect(), [42]);
 
   const unlucky = function*() {
     yield 665;
@@ -512,9 +547,35 @@ tap.test('tooling/sequitur', t => {
     [665]
   );
 
-  t.throws(() => Sq(function() {}), 'bi a/sync function');
+  t.throws(() => Sq(function() {}), 'no ambiguous function');
   t.throws(() => Sq(async function*() {}), 'no async generator');
   t.throws(() => Sq((async function*() {})()), 'no async iterable');
+
+  // ---------------------------------------------------------------------------
+  // Sq.concat() and Sq.zip()
+
+  const context = {
+    toString() {
+      return 'context';
+    },
+  };
+
+  t.throws(() => Sq.concat(1, 2, 3));
+  t.throws(() => Sq.zip(1, 2, 3));
+  t.strictSame(Sq.concat([1], [2], [3]).collect(), [1, 2, 3]);
+
+  sq = Sq.concat(context, [1], [2], [3]);
+  t.strictEqual(sq.context, context);
+  sq = sq.map(v => v);
+  t.strictEqual(sq.context, context);
+  t.strictSame(sq.collect(), [1, 2, 3]);
+
+  t.strictSame(Sq.zip([1], [2], [3]).collect(), [[1, 2, 3]]);
+  sq = Sq.zip(context, [1], [2], [3]);
+  t.strictEqual(sq.context, context);
+  sq = sq.map(v => v);
+  t.strictEqual(sq.context, context);
+  t.strictSame(sq.collect(), [[1, 2, 3]]);
 
   // ---------------------------------------------------------------------------
   // keys(), values(), entries(), descriptors()
@@ -522,6 +583,17 @@ tap.test('tooling/sequitur', t => {
   t.strictSame(Sq.keys([1, 2]).collect(), [0, 1]);
   t.strictSame(Sq.keys({ '0': 1, '1': 2 }).collect(), ['0', '1']);
   t.strictSame(Sq.values([665, 42]).collect(), [665, 42]);
+  t.strictSame(Sq.values(new Set([13])).collect(), [13]);
+  t.strictSame(
+    Sq.values(
+      new Map([
+        [42, 'answer'],
+        [665, 'mark-1'],
+      ])
+    ).collect(),
+    ['answer', 'mark-1']
+  );
+  t.strictSame(Sq.values({ a: 42, m: 665 }).collect(), [42, 665]);
   t.strictSame(Sq.entries([665, 42]).collect(), [
     [0, 665],
     [1, 42],
@@ -629,7 +701,9 @@ const LIBRARY_PATH = join(__directory, '../lib');
 const LIBRARY_FILES = new Set([
   'config.js',
   'usage.txt',
-  'html/model.js',
+  'markup/render.js',
+  'markup/spec.js',
+  'markup/vdom.js',
   'reloader/config.js',
   'reloader/hook.js',
   'reloader/package.json',
@@ -670,9 +744,9 @@ tap.test('tooling/walk', async t => {
 
   t.strictEqual(count, LIBRARY_FILES.size);
   t.strictEqual(walk.metrics.directory, 5);
-  t.strictEqual(walk.metrics.entry, 30);
-  t.strictEqual(walk.metrics.file, 24);
-  t.strictEqual(walk.metrics.status, 30);
+  t.strictEqual(walk.metrics.entry, 32);
+  t.strictEqual(walk.metrics.file, 26);
+  t.strictEqual(walk.metrics.status, 32);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

@@ -602,6 +602,18 @@ tap.test('tooling/sequitur', t => {
     ['a', 665],
     ['b', 42],
   ]);
+  t.strictSame(Sq.entries({ a: 665, b: 42 }).collectEntries(), {
+    a: 665,
+    b: 42,
+  });
+  const m = Sq.entries({ a: 665, b: 42 }).collectEntries(new Map());
+  t.strictSame(
+    [...m.entries()],
+    [
+      ['a', 665],
+      ['b', 42],
+    ]
+  );
   t.strictSame(
     Sq.entries(
       new Map([
@@ -626,6 +638,10 @@ tap.test('tooling/sequitur', t => {
     a: 665,
     b: 42,
   });
+
+  let counted = 0;
+  Sq.values([13, 42, 665, 0]).each(_ => counted++);
+  t.strictEqual(counted, 4);
 
   t.end();
 });

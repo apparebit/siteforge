@@ -1,0 +1,2195 @@
+{
+  "//": [
+    "============================ Well-Formed HTML ===========================",
+    "Sources:",
+    "  * HTML Living Standard, https://html.spec.whatwg.org",
+    "  * WAI-ARIA, https://w3c.github.io/aria/",
+    "  * Open Graph Protocol, https://ogp.me",
+    "",
+    "Schema Sketch:",
+    " -- `attributes` defines valid values for each attribute",
+    "             : {{ <attribute> : (<cases> | <set> | <base>)) }}",
+    "    <cases>  = { cases: { <element> : ( <set> | <base> ) } }",
+    "    <set>    = { separator: (space | comma), ...<base> }",
+    "    <base>   = { instance: <type> } | { tokens: [[<xtoken>]] }",
+    "    <xtoken> = { default: <token> } | <token>",
+    " -- `categories` defines the elements for each content category",
+    "             : {{ <category>: [[ <element> ]] }}",
+    " -- `elements` defines valid attributes and children for each element",
+    "             : {{ <element> : <props> }}",
+    "    <props>  = { attributes: [[ <attribute> ]], children: <chldrn> }",
+    "    <chldrn> = { category: <category>, elements: [[ <element-name> ]] }",
+    " -- `events` defines valid events for elements and for window object",
+    "              : { *: [[ <event> ]], window: [[ <event> ]] }",
+    "",
+    "A few attribute specs have both an `instance` and `tokens` property, ie",
+    "their values may either be of the type or the list tokens. Valid instance",
+    "types are: boolean, codePoint (Unicode), color (CSS), contentType (MIME),",
+    "contextName, css, date, date/time/duration, elementName, featurePolicy,",
+    "hashName, html, id, imageCandidate, integer (optionally prefixed with",
+    "unsigned or positive), mediaQueryList, number (optionally prefixed with",
+    "unsigned), regularExpression,sourceSizeList, text, token, and url.",
+    "",
+    "An element spec omits the `attributes` property if it only supports the",
+    "global attributes. It omits the `children` if the element is void. If the",
+    "`children` are present, either `category`, `elements` or both must be",
+    "present. In the latter case, the element has the union of named elements",
+    "as children. The non-existent `*` wildcard element lists the global",
+    "attributes, `custom-element` refers to all custom elements, and `text`",
+    "is inter-element text. Properties named `//` are comments and should be",
+    "ignored by more tools."
+  ],
+  "attributes": {
+    "//": "---------------------------- Attributes ---------------------------",
+    "abbr": {
+      "instance": "text"
+    },
+    "accept": {
+      "separator": "comma",
+      "instance": "contentType"
+    },
+
+    "accept-charset": {
+      "tokens": ["utf-8"]
+    },
+    "accesskey": {
+      "separator": "space",
+      "instance": "codePoint"
+    },
+    "action": {
+      "instance": "url"
+    },
+    "allow": {
+      "instance": "featurePolicy"
+    },
+    "allowfullscreen": {
+      "instance": "boolean"
+    },
+    "allowpaymentrequest": {
+      "instance": "boolean"
+    },
+    "alt": {
+      "instance": "text"
+    },
+    "aria-activedescendant": {
+      "instance": "id"
+    },
+    "aria-atomic": {
+      "tokens": ["false", "true"]
+    },
+    "aria-autocomplete": {
+      "tokens": ["inline", "list", "both", { "default": "none" }]
+    },
+    "aria-busy": {
+      "tokens": ["false", "true"]
+    },
+    "aria-checked": {
+      "tokens": ["false", "mixed", "true"]
+    },
+    "aria-colcount": {
+      "instance": "integer"
+    },
+    "aria-colindex": {
+      "instance": "integer"
+    },
+    "aria-colindextext": {
+      "instance": "text"
+    },
+    "aria-colspan": {
+      "instance": "integer"
+    },
+    "aria-controls": {
+      "separated": "space",
+      "instance": "id"
+    },
+    "aria-current": {
+      "tokens": [
+        "date",
+        { "default": "false" },
+        "location",
+        "page",
+        "step",
+        "time",
+        "true"
+      ]
+    },
+    "aria-describedby": {
+      "separated": "space",
+      "instance": "id"
+    },
+    "aria-details": {
+      "instance": "id"
+    },
+    "aria-disabled": {
+      "tokens": ["false", "true"]
+    },
+    "aria-dropeffect": {
+      "tokens": [
+        "copy",
+        "execute",
+        "link",
+        "move",
+        { "default": "none" },
+        "popup"
+      ]
+    },
+    "aria-errormessage": {
+      "instance": "id"
+    },
+    "aria-expanded": {
+      "tokens": ["false", "true", "undefined"]
+    },
+    "aria-flowto": {
+      "separator": "space",
+      "instance": "id"
+    },
+    "aria-grabbed": {
+      "tokens": ["false", "true", "undefined"]
+    },
+    "aria-haspopup": {
+      "tokens": [
+        "dialog",
+        { "default": "false" },
+        "grid",
+        "listbox",
+        "menu",
+        "tree",
+        "true"
+      ]
+    },
+    "aria-hidden": {
+      "tokens": ["false", "true", "undefined"]
+    },
+    "aria-invalid": {
+      "tokens": [{ "default": "false" }, "grammar", "spelling", "true"]
+    },
+    "aria-keyshortcuts": {
+      "instance": "text"
+    },
+    "aria-label": {
+      "instance": "text"
+    },
+    "aria-labelledby": {
+      "separator": "space",
+      "instance": "id"
+    },
+    "aria-level": {
+      "instance": "integer"
+    },
+    "aria-live": { "tokens": ["assertive", { "default": "off" }, "polite"] },
+    "aria-modal": {
+      "tokens": ["false", "true"]
+    },
+    "aria-multiline": {
+      "tokens": ["false", "true"]
+    },
+    "aria-multiselectable": {
+      "tokens": ["false", "true"]
+    },
+    "aria-orientation": {
+      "tokens": ["horizontal", { "default": "undefined" }, "vertical"]
+    },
+    "aria-owns": {
+      "separator": "space",
+      "instance": "id"
+    },
+    "aria-placeholder": {
+      "instance": "text"
+    },
+    "aria-posinset": {
+      "instance": "integer"
+    },
+    "aria-pressed": {
+      "tokens": ["false", "mixed", "true"]
+    },
+    "aria-readonly": {
+      "tokens": ["false", "true"]
+    },
+    "aria-relevant": {
+      "separator": "space",
+      "tokens": ["additions", "all", "removals", "text"]
+    },
+    "aria-required": {
+      "tokens": ["false", "true"]
+    },
+    "aria-roledescription": {
+      "instance": "text"
+    },
+    "aria-brailleroledescription": {
+      "instance": "text"
+    },
+    "aria-rowcount": {
+      "instance": "integer"
+    },
+    "aria-rowindex": {
+      "instance": "integer"
+    },
+    "aria-rowindextext": {
+      "instance": "text"
+    },
+    "aria-rowspan": {
+      "instance": "integer"
+    },
+    "aria-selected": {
+      "tokens": ["false", "true", "undefined"]
+    },
+    "aria-setsize": {
+      "instance": "integer"
+    },
+    "aria-sort": {
+      "tokens": ["ascending", "descending", { "default": "none" }, "other"]
+    },
+    "aria-valuemax": {
+      "instance": "number"
+    },
+    "aria-valuemin": {
+      "instance": "number"
+    },
+    "aria-valuenow": {
+      "instance": "number"
+    },
+    "aria-valuetext": {
+      "instance": "text"
+    },
+    "as": {
+      "tokens": [
+        "",
+        "audio",
+        "audioworklet",
+        "document",
+        "embed",
+        "fetch",
+        "font",
+        "image",
+        "manifest",
+        "object",
+        "paintworklet",
+        "report",
+        "script",
+        "serviceworker",
+        "sharedworker",
+        "style",
+        "track",
+        "video",
+        "worker",
+        "xslt"
+      ]
+    },
+    "async": {
+      "instance": "boolean"
+    },
+    "autocapitalize": {
+      "tokens": ["characters", "none", "off", "on", "sentences", "words"]
+    },
+    "autocomplete": {
+      "cases": {
+        "form": {
+          "tokens": ["off", "on"]
+        },
+        "*": {
+          "elements": ["input", "select", "textarea"],
+          "tokens": [
+            "additional-name",
+            "address-level1",
+            "address-level2",
+            "address-level3",
+            "address-level4",
+            "address-line1",
+            "address-line2",
+            "address-line3",
+            "bday",
+            "bday-day",
+            "bday-month",
+            "bday-year",
+            "cc-additional-name",
+            "cc-csc",
+            "cc-exp",
+            "cc-exp-month",
+            "cc-exp-year",
+            "cc-family-name",
+            "cc-given-name",
+            "cc-name",
+            "cc-number",
+            "cc-type",
+            "country",
+            "country-name",
+            "current-password",
+            "email",
+            "family-name",
+            "given-name",
+            "honorific-prefix",
+            "honorific-suffix",
+            "impp",
+            "language",
+            "name",
+            "new-password",
+            "nickname",
+            "one-time-code",
+            "organization",
+            "organization-title",
+            "photo",
+            "postal-code",
+            "sex",
+            "street-address",
+            "tel",
+            "tel-area-code",
+            "tel-country-code",
+            "tel-extension",
+            "tel-local",
+            "tel-local-prefix",
+            "tel-local-suffix",
+            "tel-national",
+            "transaction-amount",
+            "transaction-currency",
+            "url",
+            "username"
+          ]
+        }
+      }
+    },
+    "autofocus": {
+      "instance": "boolean"
+    },
+    "autoplay": {
+      "instance": "boolean"
+    },
+    "charset": {
+      "tokens": ["utf-8"]
+    },
+    "checked": {
+      "instance": "boolean"
+    },
+    "cite": {
+      "instance": "url"
+    },
+    "class": {
+      "separator": "space",
+      "instance": "token"
+    },
+    "color": {
+      "instance": "color"
+    },
+    "cols": {
+      "instance": "unsigned integer"
+    },
+    "colspan": {
+      "instance": "unsigned integer"
+    },
+    "content": {
+      "instance": "text"
+    },
+    "contenteditable": {
+      "tokens": ["false", "true"]
+    },
+    "controls": {
+      "instance": "boolean"
+    },
+    "coords": {
+      "separated": "comma",
+      "instance": "number"
+    },
+    "crossorigin": {
+      "tokens": ["anonymous", "credentials"]
+    },
+    "data": {
+      "instance": "url"
+    },
+    "datetime": {
+      "cases": {
+        "time": {
+          "instance": "date/time/duration"
+        },
+        "*": {
+          "elements": ["del", "ins"],
+          "instance": "date"
+        }
+      }
+    },
+    "decoding": {
+      "tokens": ["async", "auto", "sync"]
+    },
+    "default": {
+      "instance": "boolean"
+    },
+    "defer": {
+      "instance": "boolean"
+    },
+    "dir": {
+      "cases": {
+        "bdo": {
+          "tokens": ["ltr", "rtl"]
+        },
+        "*": {
+          "tokens": ["auto", "ltr", "rtl"]
+        }
+      }
+    },
+    "dirname": {
+      "instance": "text"
+    },
+    "disabled": {
+      "instance": "boolean"
+    },
+    "download": {
+      "instance": "text"
+    },
+    "draggable": {
+      "tokens": ["false", "true"]
+    },
+    "enctype": {
+      "tokens": [
+        "application/x-www-form-urlencoded",
+        "multipart/form-data",
+        "text/plain"
+      ]
+    },
+    "enterkeyhint": {
+      "tokens": [
+        "done",
+        "enter",
+        "go",
+        "next",
+        "previous",
+        "search",
+        "send"
+      ]
+    },
+    "for": {
+      "instance": "id"
+    },
+    "form": {
+      "instance": "id"
+    },
+    "formaction": {
+      "instance": "url"
+    },
+    "formenctype": {
+      "tokens": [
+        "application/x-www-form-urlencoded",
+        "multipart/form-data",
+        "text/plain"
+      ]
+    },
+    "formmethod": {
+      "tokens": [
+        "dialog",
+        "GET",
+        "POST"
+      ]
+    },
+    "formnovalidate": {
+      "instance": "boolean"
+    },
+    "formtarget": {
+      "instance": "contextName"
+    },
+    "headers": {
+      "separator": "space",
+      "instance": "id"
+    },
+    "height": {
+      "instance": "unsigned integer"
+    },
+    "hidden": {
+      "instance": "boolean"
+    },
+    "high": {
+      "instance": "number"
+    },
+    "href": {
+      "instance": "url"
+    },
+    "hreflang": {
+      "instance": "languageTag"
+    },
+    "http-equiv": {
+      "tokens": [
+        "content-security-policy",
+        "content-type",
+        "default-style",
+        "refresh",
+        "x-ua-compatible"
+      ]
+    },
+    "id": {
+      "instance": "text"
+    },
+    "imagesizes": {
+      "instance": "sourceSizeList"
+    },
+    "imagesrcset": {
+      "separator": "comma",
+      "instance": "imageCandidate"
+    },
+    "inputmode": {
+      "tokens": [
+        "decimal",
+        "email",
+        "none",
+        "numeric",
+        "search",
+        "tel",
+        "text",
+        "url"
+      ]
+    },
+    "integrity": {
+      "instance": "text"
+    },
+    "is": {
+      "instance": "elementName"
+    },
+    "ismap": {
+      "instance": "boolean"
+    },
+    "itemid": {
+      "instance": "url"
+    },
+    "itemprop": {
+      "instance": "text"
+    },
+    "itemref": {
+      "separator": "space",
+      "instance": "id"
+    },
+    "itemscope": {
+      "instance": "boolean"
+    },
+    "itemtype": {
+      "separator": "space",
+      "instance": "url"
+    },
+    "kind": {
+      "tokens": [
+        "captions",
+        "chapters",
+        "descriptions",
+        "metadata",
+        "subtitles"
+      ]
+    },
+    "label": {
+      "instance": "text"
+    },
+    "lang": {
+      "instance": "languageTag"
+    },
+    "list": {
+      "instance": "id"
+    },
+    "loop": {
+      "instance": "boolean"
+    },
+    "low": {
+      "instance": "number"
+    },
+    "manifest": {
+      "instance": "url"
+    },
+    "max": {
+      "cases": {
+        "input": {
+          "instance": "text"
+        },
+        "*": {
+          "elements": [
+            "meter",
+            "progress"
+          ],
+          "instance": "number"
+        }
+      }
+    },
+    "maxlength": {
+      "instance": "unsigned integer"
+    },
+    "media": {
+      "instance": "mediaQueryList"
+    },
+    "method": {
+      "tokens": [
+        "dialog",
+        "GET",
+        "POST"
+      ]
+    },
+    "min": {
+      "cases": {
+        "input": {
+          "instance": "text"
+        },
+        "*": {
+          "elements": [
+            "meter",
+            "progress"
+          ],
+          "instance": "number"
+        }
+      }
+    },
+    "minlength": {
+      "instance": "unsigned integer"
+    },
+    "multiple": {
+      "instance": "boolean"
+    },
+    "muted": {
+      "instance": "boolean"
+    },
+    "name": {
+      "cases": {
+        "iframe": {
+          "instance": "contextName"
+        },
+        "object": {
+          "instance": "contextName"
+        },
+        "*": {
+          "elements": [
+            "custom-element",
+            "button",
+            "fieldset",
+            "form",
+            "input",
+            "map",
+            "meta",
+            "output",
+            "param",
+            "select",
+            "slot",
+            "textarea"
+          ],
+          "instance": "text"
+        }
+      }
+    },
+    "nomodule": {
+      "instance": "boolean"
+    },
+    "nonce": {
+      "instance": "text"
+    },
+    "novalidate": {
+      "instance": "boolean"
+    },
+    "open": {
+      "instance": "boolean"
+    },
+    "optimum": {
+      "instance": "number"
+    },
+    "pattern": {
+      "instance": "regularExpression"
+    },
+    "ping": {
+      "separator": "space",
+      "instance": "url"
+    },
+    "placeholder": {
+      "instance": "text"
+    },
+    "playsinline": {
+      "instance": "boolean"
+    },
+    "poster": {
+      "instance": "url"
+    },
+    "preload": {
+      "tokens": [
+        "auto",
+        "metadata",
+        "none"
+      ]
+    },
+    "property": {
+      "instance": "token"
+    },
+    "readonly": {
+      "instance": "boolean"
+    },
+    "referrerpolicy": {
+      "tokens": [
+        "",
+        "no-referrer",
+        "no-referrer-when-downgrade",
+        "origin",
+        "origin-when-cross-origin",
+        "same-origin",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+        "unsafe-url"
+      ]
+    },
+    "rel": {
+      "separator": "space",
+      "instance": "token"
+    },
+    "required": {
+      "instance": "boolean"
+    },
+    "reversed": {
+      "instance": "boolean"
+    },
+    "role": {
+      "tokens": [
+        "alert",
+        "alertdialog",
+        "application",
+        "article",
+        "associationlist",
+        "associationlistitemkey",
+        "associationlistitemvalue",
+        "banner",
+        "blockquote",
+        "button",
+        "caption",
+        "cell",
+        "checkbox",
+        "columnheader",
+        "combobox",
+        "complementary",
+        "contentinfo",
+        "definition",
+        "deletion",
+        "dialog",
+        "directory",
+        "document",
+        "emphasis",
+        "feed",
+        "figure",
+        "form",
+        "generic",
+        "grid",
+        "gridcell",
+        "group",
+        "heading",
+        "img",
+        "insertion",
+        "label",
+        "legend",
+        "link",
+        "list",
+        "listbox",
+        "listitem",
+        "log",
+        "main",
+        "marquee",
+        "math",
+        "menu",
+        "menubar",
+        "menuitem",
+        "menuitemcheckbox",
+        "menuitemradio",
+        "meter",
+        "navigation",
+        "none",
+        "note",
+        "option",
+        "paragraph",
+        "presentation",
+        "progressbar",
+        "radio",
+        "radiogroup",
+        "region",
+        "row",
+        "rowgroup",
+        "rowheader",
+        "scrollbar",
+        "search",
+        "searchbox",
+        "separator",
+        "separator",
+        "slider",
+        "spinbutton",
+        "status",
+        "strong",
+        "subscript",
+        "superscript",
+        "switch",
+        "tab",
+        "table",
+        "tablist",
+        "tabpanel",
+        "term",
+        "textbox",
+        "time",
+        "timer",
+        "toolbar",
+        "tooltip",
+        "tree",
+        "treegrid",
+        "treeitem"
+      ]
+    },
+    "rows": {
+      "instance": "positive integer"
+    },
+    "rowspan": {
+      "instance": "unsigned integer"
+    },
+    "sandbox": {
+      "separator": "space",
+      "tokens": [
+        "allow-forms",
+        "allow-modals",
+        "allow-orientation-lock",
+        "allow-pointer-lock",
+        "allow-popups",
+        "allow-popups-to-escape-sandbox",
+        "allow-presentation",
+        "allow-same-origin",
+        "allow-scripts",
+        "allow-top-navigation"
+      ]
+    },
+    "scope": {
+      "tokens": [
+        "col",
+        "colgroup",
+        "row",
+        "rowgroup"
+      ]
+    },
+    "selected": {
+      "instance": "boolean"
+    },
+    "shape": {
+      "tokens": [
+        "circle",
+        "default",
+        "poly",
+        "rect"
+      ]
+    },
+    "size": {
+      "instance": "positive integer"
+    },
+    "sizes": {
+      "instance": "sourceSizeList"
+    },
+    "slot": {
+      "instance": "text"
+    },
+    "span": {
+      "instance": "positive integer"
+    },
+    "spellcheck": {
+      "tokens": [
+        "false",
+        "true"
+      ]
+    },
+    "src": {
+      "instance": "url"
+    },
+    "srcdoc": {
+      "instance": "html"
+    },
+    "srclang": {
+      "instance": "languageTag"
+    },
+    "srcset": {
+      "separator": "comma",
+      "instance": "imageCandidate"
+    },
+    "start": {
+      "instance": "integer"
+    },
+    "step": {
+      "instance": "unsigned number",
+      "tokens": ["any"]
+    },
+    "style": {
+      "instance": "css"
+    },
+    "tabindex": {
+      "instance": "integer"
+    },
+    "target": {
+      "instance": "contextName"
+    },
+    "title": {
+      "instance": "text"
+    },
+    "translate": {
+      "tokens": [
+        "no",
+        "yes"
+      ]
+    },
+    "type": {
+      "cases": {
+        "button": {
+          "tokens": [
+            "button",
+            "reset",
+            "submit"
+          ]
+        },
+        "module": {
+          "instance": "url",
+          "tokens": [
+            "module"
+          ]
+        },
+        "ol": {
+          "tokens": [
+            "a",
+            "A",
+            "i",
+            "I",
+            "1"
+          ]
+        },
+        "*": {
+          "elements": [
+            "a",
+            "embed",
+            "link",
+            "object",
+            "source"
+          ],
+          "instance": "contentType"
+        }
+      }
+    },
+    "usemap": {
+      "instance": "hashName"
+    },
+    "value": {
+      "cases": {
+        "li": {
+          "instance": "integer"
+        },
+        "meter": {
+          "instance": "number"
+        },
+        "progress": {
+          "instance": "number"
+        },
+        "*": {
+          "elements": [
+            "button",
+            "data",
+            "input",
+            "option",
+            "param"
+          ],
+          "instance": "text"
+        }
+      }
+    },
+    "width": {
+      "instance": "unsigned integer"
+    },
+    "wrap": {
+      "tokens": [
+        "hard",
+        "soft"
+      ]
+    }
+  },
+  "categories": {
+    "//": "--------------------------- Categories ----------------------------",
+    "embedded": [
+      "audio",
+      "canvas",
+      "embed",
+      "iframe",
+      "img",
+      "math",
+      "object",
+      "picture",
+      "svg",
+      "video"
+    ],
+    "flow": [
+      "custom-element",
+      "text",
+      "a",
+      "abbr",
+      "address",
+      "area",
+      "article",
+      "aside",
+      "audio",
+      "b",
+      "bdi",
+      "bdo",
+      "blockquote",
+      "br",
+      "button",
+      "canvas",
+      "cite",
+      "code",
+      "data",
+      "datalist",
+      "del",
+      "details",
+      "dfn",
+      "dialog",
+      "div",
+      "dl",
+      "em",
+      "embed",
+      "fieldset",
+      "figure",
+      "footer",
+      "form",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "header",
+      "hgroup",
+      "hr",
+      "i",
+      "iframe",
+      "img",
+      "input",
+      "ins",
+      "kbd",
+      "label",
+      "link",
+      "main",
+      "map",
+      "mark",
+      "math",
+      "menu",
+      "meta",
+      "meter",
+      "nav",
+      "noscript",
+      "object",
+      "ol",
+      "output",
+      "p",
+      "picture",
+      "pre",
+      "progress",
+      "q",
+      "ruby",
+      "s",
+      "samp",
+      "script",
+      "section",
+      "select",
+      "slot",
+      "small",
+      "span",
+      "strong",
+      "sub",
+      "sup",
+      "svg",
+      "table",
+      "template",
+      "textarea",
+      "time",
+      "u",
+      "ul",
+      "var",
+      "video",
+      "wbr"
+    ],
+    "formAssociated": [
+      "custom-element",
+      "button",
+      "fieldset",
+      "input",
+      "label",
+      "object",
+      "output",
+      "select",
+      "textarea"
+    ],
+    "heading": ["h1", "h2", "h3", "h4", "h5", "h6", "hgroup"],
+    "interactive": [
+      "a",
+      "audio",
+      "button",
+      "details",
+      "embed",
+      "iframe",
+      "img",
+      "input",
+      "label",
+      "object",
+      "select",
+      "textarea",
+      "video"
+    ],
+    "labelable": [
+      "custom-element",
+      "button",
+      "input",
+      "meter",
+      "output",
+      "progress",
+      "select",
+      "textarea"
+    ],
+    "metadata": [
+      "base",
+      "link",
+      "meta",
+      "noscript",
+      "script",
+      "style",
+      "template",
+      "title"
+    ],
+    "palpable": [
+      "custom-element",
+      "text",
+      "a",
+      "abbr",
+      "address",
+      "article",
+      "aside",
+      "audio",
+      "b",
+      "bdi",
+      "bdo",
+      "blockquote",
+      "button",
+      "canvas",
+      "cite",
+      "code",
+      "data",
+      "details",
+      "dfn",
+      "div",
+      "dl",
+      "em",
+      "embed",
+      "fieldset",
+      "figure",
+      "footer",
+      "form",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "header",
+      "hgroup",
+      "i",
+      "iframe",
+      "img",
+      "input",
+      "ins",
+      "kbd",
+      "label",
+      "main",
+      "map",
+      "mark",
+      "math",
+      "menu",
+      "meter",
+      "nav",
+      "object",
+      "ol",
+      "output",
+      "p",
+      "pre",
+      "progress",
+      "q",
+      "ruby",
+      "s",
+      "samp",
+      "section",
+      "select",
+      "small",
+      "span",
+      "strong",
+      "sub",
+      "sup",
+      "svg",
+      "table",
+      "textarea",
+      "time",
+      "u",
+      "ul",
+      "var",
+      "video"
+    ],
+    "phrasing": [
+      "custom-element",
+      "text",
+      "a",
+      "abbr",
+      "area",
+      "audio",
+      "b",
+      "bdi",
+      "bdo",
+      "br",
+      "button",
+      "canvas",
+      "cite",
+      "code",
+      "data",
+      "datalist",
+      "del",
+      "dfn",
+      "em",
+      "embed",
+      "i",
+      "iframe",
+      "img",
+      "input",
+      "ins",
+      "kbd",
+      "label",
+      "link",
+      "map",
+      "mark",
+      "math",
+      "meta",
+      "meter",
+      "noscript",
+      "object",
+      "output",
+      "picture",
+      "progress",
+      "q",
+      "ruby",
+      "s",
+      "samp",
+      "script",
+      "select",
+      "slot",
+      "small",
+      "span",
+      "strong",
+      "sub",
+      "sup",
+      "svg",
+      "template",
+      "textarea",
+      "time",
+      "u",
+      "var",
+      "video",
+      "wbr"
+    ],
+    "rawText": ["script", "style", "textarea", "title"],
+    "scriptSupporting": ["script", "template"],
+    "sectioning": ["article", "aside", "nav", "section"],
+    "sectioningRoots": [
+      "blockquote",
+      "body",
+      "details",
+      "dialog",
+      "fieldset",
+      "figure",
+      "td"
+    ],
+    "transparent": [
+      "custom-element",
+      "a",
+      "audio",
+      "canvas",
+      "del",
+      "ins",
+      "map",
+      "object",
+      "slot",
+      "video"
+    ],
+    "void": [
+      "area",
+      "base",
+      "br",
+      "col",
+      "embed",
+      "hr",
+      "img",
+      "input",
+      "link",
+      "meta",
+      "param",
+      "source",
+      "track",
+      "wbr"
+    ]
+  },
+  "elements": {
+    "//": "----------------------------- Elements ----------------------------",
+    "*": {
+      "//": "The global attributes follow:",
+      "attributes": [
+        "accesskey",
+        "autocapitalize",
+        "autofocus",
+        "class",
+        "contenteditable",
+        "dir",
+        "draggable",
+        "enterkeyhint",
+        "hidden",
+        "id",
+        "inputmode",
+        "is",
+        "itemid",
+        "itemprop",
+        "itemref",
+        "itemscope",
+        "itemtype",
+        "lang",
+        "nonce",
+        "slot",
+        "spellcheck",
+        "style",
+        "tabindex",
+        "title",
+        "translate"
+      ]
+    },
+    "a": {
+      "attributes": [
+        "download",
+        "href",
+        "hreflang",
+        "ping",
+        "referrerpolicy",
+        "rel",
+        "target",
+        "type"
+      ],
+      "children": {
+        "category": "transparent"
+      }
+    },
+    "abbr": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "address": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "area": {
+      "attributes": [
+        "alt",
+        "coords",
+        "download",
+        "href",
+        "ping",
+        "reffererpolicy",
+        "rel",
+        "shape",
+        "target"
+      ]
+    },
+    "article": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "aside": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "audio": {
+      "attributes": [
+        "autoplay",
+        "controls",
+        "crossorigin",
+        "loop",
+        "muted",
+        "preload",
+        "src"
+      ],
+      "children": {
+        "category": "transparent",
+        "elements": ["source", "track"]
+      }
+    },
+    "b": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "base": {
+      "attributes": ["href", "target"]
+    },
+    "bdi": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "bdo": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "blockquote": {
+      "attributes": ["cite"],
+      "children": {
+        "category": "flow"
+      }
+    },
+    "body": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "br": {},
+    "button": {
+      "attributes": [
+        "disabled",
+        "form",
+        "formaction",
+        "formenctype",
+        "formmethod",
+        "formnovalidate",
+        "formtarget",
+        "name",
+        "type",
+        "value"
+      ],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "canvas": {
+      "attributes": ["height", "width"],
+      "children": {
+        "category": "transparent"
+      }
+    },
+    "caption": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "cite": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "code": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "col": {
+      "attributes": ["span"]
+    },
+    "colgroup": {
+      "attributes": ["span"],
+      "children": {
+        "elements": ["col", "template"]
+      }
+    },
+    "data": {
+      "attributes": ["value"],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "datalist": {
+      "children": {
+        "category": "phrasing",
+        "elements": ["option", "script", "template"]
+      }
+    },
+    "dd": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "del": {
+      "attributes": ["cite", "datetime"],
+      "children": {
+        "category": "transparent"
+      }
+    },
+    "details": {
+      "attributes": ["open"],
+      "children": {
+        "category": "flow",
+        "elements": ["summary"]
+      }
+    },
+    "dfn": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "dialog": {
+      "attributes": ["open"],
+      "children": {
+        "category": "flow"
+      }
+    },
+    "div": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "dl": {
+      "children": {
+        "elements": ["dd", "div", "dt", "script", "template"]
+      }
+    },
+    "dt": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "em": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "embed": {
+      "attributes": ["*", "height", "src", "type", "width"]
+    },
+    "fieldset": {
+      "attributes": ["disabled", "form", "name"],
+      "children": {
+        "category": "flow",
+        "elements": ["legend"]
+      }
+    },
+    "figcaption": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "figure": {
+      "children": {
+        "category": "flow",
+        "elements": ["figcaption"]
+      }
+    },
+    "footer": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "form": {
+      "attributes": [
+        "accept-charset",
+        "action",
+        "autocomplete",
+        "enctype",
+        "method",
+        "name",
+        "novalidate",
+        "target"
+      ],
+      "children": {
+        "category": "flow"
+      }
+    },
+    "h1": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "h2": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "h3": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "h4": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "h5": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "h6": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "head": {
+      "children": {
+        "category": "metadata"
+      }
+    },
+    "header": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "hgroup": {
+      "children": {
+        "elements": ["h1", "h2", "h3", "h4", "h5", "h6", "script", "template"]
+      }
+    },
+    "hr": {},
+    "html": {
+      "attributes": ["manifest"],
+      "children": {
+        "elements": ["head", "body"]
+      }
+    },
+    "i": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "iframe": {
+      "attributes": [
+        "allow",
+        "allowfullscreen",
+        "allowpaymentrequest",
+        "height",
+        "name",
+        "referrerpolicy",
+        "sandbox",
+        "src",
+        "srcdoc",
+        "width"
+      ]
+    },
+    "img": {
+      "attributes": [
+        "alt",
+        "crossorigin",
+        "decoding",
+        "height",
+        "ismap",
+        "referrerpolicy",
+        "src",
+        "srcset",
+        "usemap",
+        "width"
+      ]
+    },
+    "input": {
+      "attributes": [
+        "accept",
+        "alt",
+        "autocomplete",
+        "checked",
+        "dirname",
+        "disabled",
+        "form",
+        "formaction",
+        "formenctype",
+        "formmethod",
+        "formnovalidate",
+        "formtarget",
+        "height",
+        "list",
+        "max",
+        "maxlength",
+        "min",
+        "minlength",
+        "multiple",
+        "name",
+        "pattern",
+        "placeholder",
+        "readonly",
+        "required",
+        "size",
+        "src",
+        "step",
+        "type",
+        "value",
+        "width"
+      ]
+    },
+    "ins": {
+      "attributes": ["cite", "datetime"],
+      "children": {
+        "category": "transparent"
+      }
+    },
+    "kbd": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "label": {
+      "attributes": ["for"],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "legend": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "li": {
+      "attributes": ["value"],
+      "children": {
+        "category": "flow"
+      }
+    },
+    "link": {
+      "attributes": [
+        "as",
+        "crossorigin",
+        "href",
+        "hreflang",
+        "imagesrcset",
+        "imagesizes",
+        "integrity",
+        "media",
+        "referrerpolicy",
+        "rel",
+        "sizes",
+        "type"
+      ]
+    },
+    "main": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "map": {
+      "attributes": ["name"],
+      "children": {
+        "category": "transparent",
+        "elements": ["area"]
+      }
+    },
+    "mark": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "math": {
+      "attributes": ["*"],
+      "children": {
+        "category": "MathML"
+      }
+    },
+    "menu": {
+      "children": {
+        "elements": ["li", "script", "template"]
+      }
+    },
+    "meta": {
+      "attributes": ["charset", "content", "http-equiv", "name", "property"]
+    },
+    "meter": {
+      "attributes": ["high", "low", "max", "min", "optimum", "value"],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "nav": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "noscript": {
+      "children": {
+        "category": "*"
+      }
+    },
+    "object": {
+      "attributes": [
+        "data",
+        "form",
+        "height",
+        "name",
+        "type",
+        "usemap",
+        "width"
+      ],
+      "children": {
+        "category": "transparent",
+        "elements": ["param"]
+      }
+    },
+    "ol": {
+      "attributes": ["reversed", "start", "type"],
+      "children": {
+        "elements": ["li", "script", "template"]
+      }
+    },
+    "optgroup": {
+      "attributes": ["disabled", "label"],
+      "children": {
+        "elements": ["option", "script", "template"]
+      }
+    },
+    "option": {
+      "attributes": ["disabled", "label", "selected", "value"],
+      "children": {
+        "elements": ["..."]
+      }
+    },
+    "output": {
+      "attributes": ["for", "form", "name"],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "p": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "param": {
+      "attributes": ["name", "value"]
+    },
+    "picture": {
+      "children": {
+        "elements": ["img", "script", "source", "template"]
+      }
+    },
+    "pre": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "progress": {
+      "attributes": ["max", "value"],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "q": {
+      "attributes": ["cite"],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "rp": {
+      "children": {
+        "elements": ["..."]
+      }
+    },
+    "rt": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "ruby": {
+      "children": {
+        "category": "phrasing",
+        "elements": ["rp", "rt"]
+      }
+    },
+    "s": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "samp": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "script": {
+      "attributes": [
+        "async",
+        "crossorigin",
+        "defer",
+        "integrity",
+        "referrerpolicy",
+        "src",
+        "type"
+      ],
+      "children": {
+        "elements": ["..."]
+      }
+    },
+    "section": {
+      "children": {
+        "category": "flow"
+      }
+    },
+    "select": {
+      "attributes": [
+        "autocomplete",
+        "disabled",
+        "form",
+        "multiple",
+        "name",
+        "required",
+        "size"
+      ],
+      "children": {
+        "elements": ["optgroup", "option", "script", "template"]
+      }
+    },
+    "slot": {
+      "attributes": ["name"],
+      "children": {
+        "category": "transparent"
+      }
+    },
+    "small": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "source": {
+      "attributes": ["media", "src", "srcset", "sizes", "type"]
+    },
+    "span": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "strong": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "style": {
+      "attributes": ["media"],
+      "children": {
+        "elements": ["..."]
+      }
+    },
+    "sub": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "summary": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "sup": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "svg": {
+      "attributes": ["*"],
+      "children": {
+        "category": "SVG"
+      }
+    },
+    "table": {
+      "children": {
+        "elements": [
+          "caption",
+          "colgroup",
+          "script",
+          "tbody",
+          "template",
+          "tfoot",
+          "thead",
+          "tr"
+        ]
+      }
+    },
+    "tbody": {
+      "children": {
+        "elements": ["script", "template", "tr"]
+      }
+    },
+    "td": {
+      "attributes": ["colspan", "headers", "rowspan"],
+      "children": {
+        "category": "flow"
+      }
+    },
+    "template": {},
+    "textarea": {
+      "attributes": [
+        "cols",
+        "dirname",
+        "disabled",
+        "form",
+        "maxlength",
+        "minlength",
+        "name",
+        "placeholder",
+        "readonly",
+        "required",
+        "rows",
+        "wrap"
+      ],
+      "children": {
+        "elements": ["..."]
+      }
+    },
+    "tfoot": {
+      "children": {
+        "elements": ["script", "template", "tr"]
+      }
+    },
+    "th": {
+      "attributes": ["abbr", "colspan", "rowspan", "headers", "scope"],
+      "children": {
+        "category": "flow"
+      }
+    },
+    "thead": {
+      "children": {
+        "elements": ["script", "template", "tr"]
+      }
+    },
+    "time": {
+      "attributes": ["datetime"],
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "title": {
+      "children": {
+        "elements": ["..."]
+      }
+    },
+    "tr": {
+      "children": {
+        "elements": ["script", "td", "template", "th"]
+      }
+    },
+    "track": {
+      "attributes": ["default", "kind", "label", "src", "srclang"]
+    },
+    "u": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "ul": {
+      "children": {
+        "elements": ["li", "script", "template"]
+      }
+    },
+    "var": {
+      "children": {
+        "category": "phrasing"
+      }
+    },
+    "video": {
+      "attributes": [
+        "autoplay",
+        "controls",
+        "crossorigin",
+        "height",
+        "loop",
+        "muted",
+        "playsinline",
+        "poster",
+        "preload",
+        "src",
+        "width"
+      ],
+      "children": {
+        "category": "transparent",
+        "elements": ["source", "track"]
+      }
+    },
+    "wbr": {},
+    "custom-element": {
+      "//": "The minimal constraints on custom elements follow:",
+      "attributes": ["*"],
+      "children": {
+        "category": "transparent"
+      }
+    }
+  },
+  "events": {
+    "//": "------------------------------ Events -----------------------------",
+    "*": [
+      "abort",
+      "auxclick",
+      "blur",
+      "cancel",
+      "canplay",
+      "canplaythrough",
+      "change",
+      "click",
+      "close",
+      "contextmenu",
+      "copy",
+      "cuechange",
+      "cut",
+      "dblclick",
+      "drag",
+      "dragend",
+      "dragenter",
+      "dragexit",
+      "dragleave",
+      "dragover",
+      "dragstart",
+      "drop",
+      "durationchange",
+      "emptied",
+      "ended",
+      "error",
+      "focus",
+      "formdata",
+      "input",
+      "invalid",
+      "keydown",
+      "keypress",
+      "keyup",
+      "load",
+      "loadeddata",
+      "loadedmetadata",
+      "loadstart",
+      "mousedown",
+      "mouseenter",
+      "mouseleave",
+      "mousemove",
+      "mouseout",
+      "mouseover",
+      "mouseup",
+      "paste",
+      "pause",
+      "play",
+      "playing",
+      "progress",
+      "ratechange",
+      "reset",
+      "resize",
+      "scroll",
+      "securitypolicyviolation",
+      "seeked",
+      "seeking",
+      "select",
+      "slotchange",
+      "stalled",
+      "submit",
+      "suspend",
+      "timeupdate",
+      "toggle",
+      "volumechange",
+      "waiting",
+      "wheel"
+    ],
+    "window": [
+      "afterprint",
+      "beforeprint",
+      "beforeunload",
+      "hashchange",
+      "languagechange",
+      "message",
+      "messageerror",
+      "offline",
+      "online",
+      "pagehide",
+      "pageshow",
+      "popstate",
+      "rejectionhandled",
+      "storage",
+      "unhandledrejection",
+      "unload"
+    ]
+  }
+}

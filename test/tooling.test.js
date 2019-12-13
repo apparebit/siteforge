@@ -17,6 +17,8 @@ import {
   withTrailingSlash,
 } from '../lib/tooling/fs.js';
 
+import { not, once } from '../lib/tooling/function.js';
+
 import {
   aliased,
   defaults,
@@ -257,6 +259,43 @@ tap.test('tooling/fs', async t => {
   } finally {
     await rmdir(join(__directory, 'down'), { recursive: true });
   }
+
+  t.end();
+});
+
+// =============================================================================
+// function
+// =============================================================================
+
+tap.test('tooling/function', t => {
+  let counter = 0;
+  const incr = () => ++counter;
+  const onceMore = once(incr);
+
+  t.strictEqual(incr.name, 'incr');
+  t.strictEqual(onceMore.name, 'once(incr)');
+  t.strictEqual(incr.length, 0);
+  t.strictEqual(onceMore.length, 0);
+
+  t.strictEqual(counter, 0);
+  t.strictEqual(incr(), 1);
+  t.strictEqual(incr(), 2);
+  t.strictEqual(counter, 2);
+  t.strictEqual(onceMore(), 3);
+  t.strictEqual(onceMore(), undefined);
+  t.strictEqual(counter, 3);
+  t.strictEqual(incr(), 4);
+  t.strictEqual(counter, 4);
+
+  // eslint-disable-next-line no-unused-vars
+  const truth = fakeArgument => true;
+  const falsehood = not(truth);
+
+  t.strictEqual(truth.name, 'truth');
+  t.strictEqual(falsehood.name, 'not(truth)');
+
+  t.strictEqual(truth.length, 1);
+  t.strictEqual(falsehood.length, 1);
 
   t.end();
 });
@@ -717,8 +756,9 @@ const LIBRARY_PATH = join(__directory, '../lib');
 const LIBRARY_FILES = new Set([
   'config.js',
   'usage.txt',
+  'markup/model.json',
+  'markup/model.js',
   'markup/render.js',
-  'markup/spec.js',
   'markup/vdom.js',
   'reloader/config.js',
   'reloader/hook.js',
@@ -760,9 +800,9 @@ tap.test('tooling/walk', async t => {
 
   t.strictEqual(count, LIBRARY_FILES.size);
   t.strictEqual(walk.metrics.directory, 5);
-  t.strictEqual(walk.metrics.entry, 32);
-  t.strictEqual(walk.metrics.file, 26);
-  t.strictEqual(walk.metrics.status, 32);
+  t.strictEqual(walk.metrics.entry, 33);
+  t.strictEqual(walk.metrics.file, 27);
+  t.strictEqual(walk.metrics.status, 33);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

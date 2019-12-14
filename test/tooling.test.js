@@ -491,7 +491,7 @@ tap.test('tooling/run', async t => {
 // sequitur
 // =============================================================================
 
-tap.test('tooling/sequitur', t => {
+tap.test('tooling/sequitur', async t => {
   // Sq.isIterable(), Sq.isNonStringIterable()
 
   t.ok(Sq.isIterable('abc'));
@@ -499,6 +499,35 @@ tap.test('tooling/sequitur', t => {
 
   t.notOk(Sq.isNonStringIterable('abc'));
   t.ok(Sq.isNonStringIterable([]));
+
+  const AsyncIterable = {
+    [Symbol.asyncIterator]() {
+      return {
+        next() { return Promise.resolve({ done: true }); }
+      };
+    }
+  };
+
+  t.ok(Sq.isAsyncIterable(AsyncIterable));
+  t.notOk(Sq.isAsyncIterable([]));
+
+  t.ok(Sq.isAsync(async () => {}));
+  t.ok(Sq.isAsync(async function() {}));
+  t.ok(Sq.isAsync(async function*() {}));
+  t.ok(Sq.isAsync(AsyncIterable));
+  t.ok(Sq.isAsync(function doThisAsync(){}));
+
+  function poser() {}
+  poser.async = true;
+
+  t.ok(Sq.isAsync(poser));
+  t.notOk(Sq.isAsync(() => {}));
+  t.notOk(Sq.isAsync(function() {}));
+  t.notOk(Sq.isAsync(function*() {}));
+  t.notOk(Sq.isAsync());
+  t.notOk(Sq.isAsync(null));
+  t.notOk(Sq.isAsync(665));
+  t.notOk(Sq.isAsync([]));
 
   // ---------------------------------------------------------------------------
   // A complex pipeline and some method- or stage-specific tests.
@@ -526,6 +555,8 @@ tap.test('tooling/sequitur', t => {
   );
   t.strictSame(ar, [0, 1, 2, 3, 4, 5]);
 
+  t.strictSame(Sq.of(1, 2, 3,).flatMap(() => undefined).collect(), []);
+
   t.strictSame(
     Sq([[[[[13]]]]])
       .flatten()
@@ -539,7 +570,7 @@ tap.test('tooling/sequitur', t => {
     ['pea']
   );
 
-  t.strictEqual(apply(toString, Sq.of(), []), '[object Sq]');
+  t.strictEqual(apply(toString, Sq.of(), []), '[object Sequence]');
   t.strictEqual(Sq.of(665, '=', 'mark', -1n).join(), '665=mark-1');
   t.throws(() => Sq().map(665));
 
@@ -587,8 +618,6 @@ tap.test('tooling/sequitur', t => {
   );
 
   t.throws(() => Sq(function() {}), 'no ambiguous function');
-  t.throws(() => Sq(async function*() {}), 'no async generator');
-  t.throws(() => Sq((async function*() {})()), 'no async iterable');
 
   // ---------------------------------------------------------------------------
   // Sq.concat() and Sq.zip()
@@ -681,6 +710,117 @@ tap.test('tooling/sequitur', t => {
   let counted = 0;
   Sq.values([13, 42, 665, 0]).each(_ => counted++);
   t.strictEqual(counted, 4);
+
+  // ---------------------------------------------------------------------------
+  // Extensibility: run()
+
+  t.strictSame(
+    Sq.of(1, 2, 3)
+      .run(function*(source) {
+        for (const el of source) yield el * el;
+      })
+      .collect(),
+    [1, 4, 9]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Asynchronous Sequences
+
+  const double = n => n * n;
+  async function* asyncish() {
+    let n = await double(7);
+    n = n + 1;
+    yield n;
+    n = await (n + 1);
+    n = n + 1;
+    yield n;
+    n = n + 1;
+    yield* [n, n + 1, n + 2];
+  }
+
+  const aseq0 = Sq.from(asyncish);
+  t.strictEqual(apply(toString, aseq0, []), '[object async Sequence]');
+
+  const atap = [];
+  const aseq = await aseq0
+    .map(double)
+    .tap(el => atap.push(el))
+    .filter(el => el % 2 === 0)
+    .flatMap(el => [el, el])
+    .collect();
+
+  t.strictSame(aseq, [2500, 2500, 2704, 2704, 2916, 2916]);
+  t.strictSame(atap, [2500, 2704, 2809, 2916, 3025]);
+
+  t.strictSame(
+    await Sq.from(asyncish)
+      .flatMap(el => [el])
+      .collect(),
+    [50, 52, 53, 54, 55]
+  );
+  t.strictSame(
+    await Sq.from(asyncish)
+      .flatMap(() => undefined)
+      .collect(),
+    []
+  );
+
+  t.strictEqual(await aseq0.reduce((acc, el) => acc + el, 0), 264);
+  t.strictSame(await Sq.from(AsyncIterable).collect(), []);
+
+  t.strictSame(
+    await Sq.entries({ a: 1, b: 2, c: 3 })
+      // eslint-disable-next-line require-await
+      .filter(async ([k, _]) => k !== 'c')
+      .collectEntries(),
+    { a: 1, b: 2 }
+  );
+
+  t.strictSame(
+    await Sq.entries({ a: 1, b: 2 })
+      // eslint-disable-next-line require-await
+      .map(async ([k, v]) => [k, v + 3])
+      .collectEntries(new Map()),
+    new Map([['a', 4], ['b', 5]])
+  );
+
+  const aside = [];
+  await Sq.of(1, 2, 3)
+    // eslint-disable-next-line require-await
+    .flatMap(async n => [n * n])
+    .tap(el => aside.push(el))
+    .each(el => aside.push(el));
+  t.strictSame(aside, [1, 1, 4, 4, 9, 9]);
+
+  aside.length = 0;
+  t.strictSame(
+    await Sq.descriptors({ a: 1 })
+      // eslint-disable-next-line require-await
+      .tap(async () => {})
+      .collectDescriptors(),
+    { a: 1 }
+  );
+
+  // eslint-disable-next-line require-await
+  async function* nester() {
+    yield [[[[[[[[[[[[42]]]]], 665]]]]]]];
+  }
+
+  t.strictEqual(await Sq.from(nester).flatten().join(' * '), '42 * 665');
+  t.strictSame(await Sq.from(nester).flatten().run(async function*(source) {
+    for await (const element of source) {
+      yield element - 42;
+    }
+  }).collect(), [0, 623]);
+
+  // eslint-disable-next-line require-await
+  Sq.of(665, 665, 665).each(async el => t.strictEqual(el, 665));
+
+  t.strictEqual(
+    // eslint-disable-next-line require-await
+    await Sq.of(42, 42).reduce(async (acc, el) => acc + el, ''),
+    '4242'
+  );
 
   t.end();
 });

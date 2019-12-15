@@ -503,31 +503,33 @@ tap.test('tooling/sequitur', async t => {
   const AsyncIterable = {
     [Symbol.asyncIterator]() {
       return {
-        next() { return Promise.resolve({ done: true }); }
+        next() {
+          return Promise.resolve({ done: true });
+        },
       };
-    }
+    },
   };
-
-  t.ok(Sq.isAsyncIterable(AsyncIterable));
-  t.notOk(Sq.isAsyncIterable([]));
-
-  t.ok(Sq.isAsync(async () => {}));
-  t.ok(Sq.isAsync(async function() {}));
-  t.ok(Sq.isAsync(async function*() {}));
-  t.ok(Sq.isAsync(AsyncIterable));
-  t.ok(Sq.isAsync(function doThisAsync(){}));
 
   function poser() {}
   poser.async = true;
 
-  t.ok(Sq.isAsync(poser));
-  t.notOk(Sq.isAsync(() => {}));
-  t.notOk(Sq.isAsync(function() {}));
-  t.notOk(Sq.isAsync(function*() {}));
-  t.notOk(Sq.isAsync());
-  t.notOk(Sq.isAsync(null));
-  t.notOk(Sq.isAsync(665));
-  t.notOk(Sq.isAsync([]));
+  t.ok(Sq.isAsyncIterable(AsyncIterable));
+  t.notOk(Sq.isAsyncIterable([]));
+
+  t.ok(Sq.isAsyncFunction(async () => {}));
+  t.ok(Sq.isAsyncFunction(async function() {}));
+  t.ok(Sq.isAsyncFunction(function doThisAsync() {}));
+  t.ok(Sq.isAsyncFunction(poser));
+
+  t.notOk(Sq.isAsyncFunction(() => {}));
+  t.notOk(Sq.isAsyncFunction(function() {}));
+  t.notOk(Sq.isAsyncFunction(function*() {}));
+  t.notOk(Sq.isAsyncFunction(async function*() {}));
+  t.notOk(Sq.isAsyncFunction());
+  t.notOk(Sq.isAsyncFunction(null));
+  t.notOk(Sq.isAsyncFunction(665));
+  t.notOk(Sq.isAsyncFunction([]));
+  t.notOk(Sq.isAsyncFunction(AsyncIterable));
 
   // ---------------------------------------------------------------------------
   // A complex pipeline and some method- or stage-specific tests.
@@ -555,16 +557,21 @@ tap.test('tooling/sequitur', async t => {
   );
   t.strictSame(ar, [0, 1, 2, 3, 4, 5]);
 
-  t.strictSame(Sq.of(1, 2, 3,).flatMap(() => undefined).collect(), []);
+  t.strictSame(
+    Sq.of(1, 2, 3)
+      .flatMap(() => undefined)
+      .collect(),
+    []
+  );
 
   t.strictSame(
-    Sq([[[[[13]]]]])
+    Sq.of([[[[[13]]]]])
       .flatten()
       .collect(),
     [13]
   );
   t.strictSame(
-    Sq([[[[['pea']]]]])
+    Sq.of([[[[['pea']]]]])
       .flatten()
       .collect(),
     ['pea']
@@ -572,12 +579,12 @@ tap.test('tooling/sequitur', async t => {
 
   t.strictEqual(apply(toString, Sq.of(), []), '[object Sequence]');
   t.strictEqual(Sq.of(665, '=', 'mark', -1n).join(), '665=mark-1');
-  t.throws(() => Sq().map(665));
+  t.throws(() => Sq.of().map(665));
 
   // ---------------------------------------------------------------------------
-  // Sq(), Sq.of(), Sq.from()
+  // Sq.of(), Sq.from()
 
-  t.strictSame(Sq().collect(), []);
+  t.throws(() => Sq().collect());
   t.strictSame(Sq.from().collect(), []);
   t.strictSame(Sq.of().collect(), []);
 
@@ -589,16 +596,13 @@ tap.test('tooling/sequitur', async t => {
     },
   });
 
-  t.strictSame(Sq(counter()).collect(), [3, 2, 1]);
   t.strictSame(Sq.from(counter()).collect(), [3, 2, 1]);
   t.strictSame(Sq.of(...counter()).collect(), [3, 2, 1]);
 
-  t.strictSame(Sq('abc').collect(), ['abc']);
   t.strictSame(Sq.from('abc').collect(), ['abc']);
   t.strictSame(Sq.fromString('abc').collect(), ['a', 'b', 'c']);
   t.strictSame(Sq.of(...'abc').collect(), ['a', 'b', 'c']);
 
-  t.strictSame(Sq([42]).collect(), [42]);
   t.strictSame(Sq.from(42).collect(), [42]);
   t.strictSame(Sq.fromString(42).collect(), [42]);
   t.strictSame(Sq.of(42).collect(), [42]);
@@ -608,16 +612,13 @@ tap.test('tooling/sequitur', async t => {
     yield 13;
   };
 
-  t.strictSame(Sq(unlucky).collect(), [665, 13]);
   t.strictSame(Sq.from(unlucky).collect(), [665, 13]);
   t.strictSame(Sq.of(...unlucky()).collect(), [665, 13]);
 
   t.strictSame(
-    Sq([665]).reduce((acc, it) => (acc.push(it), acc), []),
+    Sq.from([665]).reduce((acc, it) => (acc.push(it), acc), []),
     [665]
   );
-
-  t.throws(() => Sq(function() {}), 'no ambiguous function');
 
   // ---------------------------------------------------------------------------
   // Sq.concat() and Sq.zip()
@@ -644,6 +645,62 @@ tap.test('tooling/sequitur', async t => {
   sq = sq.map(v => v);
   t.strictEqual(sq.context, context);
   t.strictSame(sq.collect(), [[1, 2, 3]]);
+
+  // Let's do the async!
+
+  t.strictSame(
+    await Sq.concat(
+      Sq.toAsyncIterable([1]),
+      Sq.toAsyncIterable([2]),
+      Sq.toAsyncIterable([3])
+    ).collect(),
+    [1, 2, 3]
+  );
+
+  t.strictSame(
+    await Sq.of(1)
+      .concat(Sq.toAsyncIterable([2]))
+      .collect(),
+    [1, 2]
+  );
+
+  t.strictSame(
+    await Sq.zip(
+      Sq.toAsyncIterable([1, 2]),
+      Sq.toAsyncIterable(['a', 'b'])
+    ).collect(),
+    [
+      [1, 'a'],
+      [2, 'b'],
+    ]
+  );
+
+  t.strictSame(
+    await Sq.of(1, 2)
+      .zip(Sq.toAsyncIterable(['a', 'b']))
+      .collect(),
+    [
+      [1, 'a'],
+      [2, 'b'],
+    ]
+  );
+
+  t.strictSame(
+    await Sq.from(Sq.toAsyncIterable([1, 2]))
+      .concat([3])
+      .collect(),
+    [1, 2, 3]
+  );
+
+  t.strictSame(
+    await Sq.from(Sq.toAsyncIterable([1, 2]))
+      .zip(['a', 'b'])
+      .collect(),
+    [
+      [1, 'a'],
+      [2, 'b'],
+    ]
+  );
 
   // ---------------------------------------------------------------------------
   // keys(), values(), entries(), descriptors()
@@ -781,7 +838,10 @@ tap.test('tooling/sequitur', async t => {
       // eslint-disable-next-line require-await
       .map(async ([k, v]) => [k, v + 3])
       .collectEntries(new Map()),
-    new Map([['a', 4], ['b', 5]])
+    new Map([
+      ['a', 4],
+      ['b', 5],
+    ])
   );
 
   const aside = [];
@@ -806,12 +866,23 @@ tap.test('tooling/sequitur', async t => {
     yield [[[[[[[[[[[[42]]]]], 665]]]]]]];
   }
 
-  t.strictEqual(await Sq.from(nester).flatten().join(' * '), '42 * 665');
-  t.strictSame(await Sq.from(nester).flatten().run(async function*(source) {
-    for await (const element of source) {
-      yield element - 42;
-    }
-  }).collect(), [0, 623]);
+  t.strictEqual(
+    await Sq.from(nester)
+      .flatten()
+      .join(' * '),
+    '42 * 665'
+  );
+  t.strictSame(
+    await Sq.from(nester)
+      .flatten()
+      .run(async function*(source) {
+        for await (const element of source) {
+          yield element - 42;
+        }
+      })
+      .collect(),
+    [0, 623]
+  );
 
   // eslint-disable-next-line require-await
   Sq.of(665, 665, 665).each(async el => t.strictEqual(el, 665));
@@ -930,10 +1001,7 @@ tap.test('tooling/walk', async t => {
   for await (const entry of walk.go()) {
     t.strictEqual(entry.type, 'file');
     const path = relative(LIBRARY_PATH, entry.path);
-    t.ok(
-      LIBRARY_FILES.has(path),
-      `walk() encounters only site:forge's own modules in "lib"`
-    );
+    t.ok(LIBRARY_FILES.has(path), `should be a site:forge module`);
     t.strictEqual(entry.vpath, '/' + path);
     count++;
   }

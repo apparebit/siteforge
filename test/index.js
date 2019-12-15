@@ -21,7 +21,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
       slogan = `  Yay, all ${tap.counts.total} tests passed!  `;
     } else {
       color = '48;5;210;1';
-      slogan = `  Nay, ${tap.counts.fail} out of ${tap.counts.total} tests failed!  `;
+      slogan = `  Nope, ${tap.counts.fail} out of ${tap.counts.total} tests failed!  `;
       process.exitCode = 70; // X_SOFTWARE
     }
     const spacer = Array(slogan.length)

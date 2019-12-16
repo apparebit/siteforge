@@ -1,14 +1,16 @@
 /* © 2019 Robert Grimm */
 
-import Error from '../tooling/error.js';
-import { join } from 'path';
-import { readFile, toDirectory } from '../tooling/fs.js';
-import Sq from '../tooling/sequitur.js';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { promises } from 'fs';
+import Sq from '@grr/sequitur.js';
 
 const { assign, freeze } = Object;
 const { has } = Reflect;
-const ModelDotJSON = join(toDirectory(import.meta.url), 'model.json');
+const ModelDotJSON = join(dirname(fileURLToPath(import.meta.url)), 'model.json');
 const { parse: parseJSON } = JSON;
+const { readFile } = promises;
+
 const AnyInstance = freeze({ instance: '*' });
 const HandlerInstance = freeze({ instance: 'eventHandler' });
 
@@ -37,7 +39,7 @@ export const readModelData = async path => {
   try {
     return parseJSON(await readFile(path, 'utf8'));
   } catch (x) {
-    throw Error(`Could not load model data from "${path}"`, x);
+    throw new Error(`Could not load model data from "${path}": ${x.message}`);
   }
 };
 
@@ -73,9 +75,9 @@ export const prepareModelData = (data, path) => {
   const extractEntries = (prop, transform = entry => [entry]) => {
     const value = data[prop];
     if (!has(data, prop) || value == null) {
-      throw Error(`Property "${prop}" missing from model data in "${path}"`);
+      throw new Error(`Property "${prop}" missing from model data in "${path}"`);
     } else if (typeof value !== 'object') {
-      throw Error(`Property "${prop}" invalid for model data in "${path}"`);
+      throw new Error(`Property "${prop}" invalid for model data in "${path}"`);
     }
     return Sq.entries(value)
       .filter(([k, _]) => k !== '//')
@@ -92,11 +94,11 @@ export const prepareModelData = (data, path) => {
     .collect();
 
   if (missing.length === 1) {
-    throw Error(
+    throw new Error(
       `Category "${missing[0]}" missing from model data in "${path}"`
     );
   } else if (missing.length > 0) {
-    throw Error(
+    throw new Error(
       `Categories ${missing
         .map((c, i) => (i === missing.length - 1 ? 'and ' : '') + `"${c}"`)
         .join(', ')} missing from model data in "${path}"`
@@ -107,7 +109,7 @@ export const prepareModelData = (data, path) => {
   const attributes = extractEntries('attributes', patchEffectiveInstance);
   const globalAttributes = new Set((elements.get('*') || {}).attributes || []);
   if (globalAttributes.size === 0) {
-    throw Error(`Global attributes missing from model data in "${path}"`);
+    throw new Error(`Global attributes missing from model data in "${path}"`);
   }
   elements.delete('*');
   const events = extractEntries('events');
@@ -180,17 +182,17 @@ class Element {
         if (this.name === 'body') {
           return HandlerInstance;
         } else {
-          throw Error(
+          throw new Error(
             `Window event "${name.slice(2)}" unavailable on "${this.name}"`
           );
         }
       } else {
-        throw Error(`Unknown event handler "${name}"`);
+        throw new Error(`Unknown event handler "${name}"`);
       }
     } else {
       let spec = this.model.attributes.get(name);
       if (spec == null) {
-        throw Error(`Unknown attribute "${name}"`);
+        throw new Error(`Unknown attribute "${name}"`);
       } else if (spec.cases != null) {
         if (spec.cases[this.name] != null) {
           spec = spec.cases[this.name];
@@ -202,7 +204,7 @@ class Element {
       // Make sure the attribute is valid for this element.
       if (!this.model.isARIALike(name) && !this.model.isGlobalAttribute(name)) {
         if (this.attributes == null || !this.attributes.includes(name)) {
-          throw Error(`Attribute "${name}" is undefined on "${this.name}"`);
+          throw new Error(`Attribute "${name}" is undefined on "${this.name}"`);
         }
       }
 
@@ -270,7 +272,7 @@ export default class Model {
 
   attributeForName(name) {
     const spec = this.attributes.get(name);
-    if (spec == null) throw Error(`Unknown attribute "${name}"`);
+    if (spec == null) throw new Error(`Unknown attribute "${name}"`);
     return spec;
   }
 
@@ -292,7 +294,7 @@ export default class Model {
   elementForName(name) {
     if (name.includes('-')) name = 'custom-element';
     const spec = this.elements.get(name);
-    if (spec == null) throw Error(`Unknown element "${name}"`);
+    if (spec == null) throw new Error(`Unknown element "${name}"`);
     return Element.for(name, spec, this);
   }
 
@@ -301,7 +303,7 @@ export default class Model {
 
   categoryForName(name) {
     const members = this.categories.get(name);
-    if (members == null) throw Error(`Unknown category "${name}"`);
+    if (members == null) throw new Error(`Unknown category "${name}"`);
     return members;
   }
 

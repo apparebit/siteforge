@@ -1,16 +1,9 @@
 {
-  "name": "@grr/siteforge",
-  "version": "0.1.0",
-  "description": "a static website generator",
+  "private": true,
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
   "type": "module",
-  "main": "./siteforge.js",
-  "files": [
-    "./lib/usage.txt",
-    "./lib/**/*.js"
-  ],
   "engines": {
     "node": ">=12.10.0"
   },
@@ -27,18 +20,11 @@
     "prettier": "1.19.1",
     "tap": "14.10.2"
   },
-  "dependencies": {
-    "@babel/core": "7.7.5",
-    "babel-minify": "0.5.1",
-    "cssnano": "4.1.10",
-    "htm": "2.2.1",
-    "postcss": "7.0.24",
-    "vnu-jar": "19.9.4"
-  },
   "scripts": {
     "coverage": "c8 report && open coverage/index.html",
     "test": "NODE_V8_COVERAGE=.coverage node test/index.js"
   },
+  "workspaces": ["source", "packages/*"],
   "c8": {
     "exclude": [
       "test",

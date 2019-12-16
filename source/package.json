@@ -1,0 +1,30 @@
+{
+  "name": "@grr/siteforge",
+  "version": "0.1.0",
+  "description": "a static website generator",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./siteforge.js",
+  "files": [
+    "./usage.txt",
+    "./**/*.js"
+  ],
+  "engines": {
+    "node": ">=12.10.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "not dead"
+  ],
+  "dependencies": {
+    "@babel/core": "7.7.5",
+    "@grr/sequitur": "*",
+    "babel-minify": "0.5.1",
+    "cssnano": "4.1.10",
+    "htm": "2.2.1",
+    "postcss": "7.0.24",
+    "vnu-jar": "19.9.4"
+  }
+}

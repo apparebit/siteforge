@@ -6,9 +6,9 @@ import {
   escapeText,
   isValidComment,
   isValidRawText,
-} from '../lib/markup/render.js';
+} from '../source/markup/render.js';
 import { join } from 'path';
-import { default as Model, prepareModelData } from '../lib/markup/model.js';
+import { default as Model, prepareModelData } from '../source/markup/model.js';
 import {
   isComponent,
   isInternalChild,
@@ -18,9 +18,9 @@ import {
   Opcode,
   tag,
   traverse,
-} from '../lib/markup/vdom.js';
+} from '../source/markup/vdom.js';
 import tap from 'tap';
-import { toDirectory } from '../lib/tooling/fs.js';
+import { toDirectory } from '../source/tooling/fs.js';
 
 const __directory = toDirectory(import.meta.url);
 const __package = join(__directory, '../package.json');

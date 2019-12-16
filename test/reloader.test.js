@@ -1,6 +1,6 @@
 /* © 2019 Robert Grimm */
 
-import config from '../lib/reloader/config.js';
+import config from '../source/reloader/config.js';
 import tap from 'tap';
 
 const { isArray } = Array;

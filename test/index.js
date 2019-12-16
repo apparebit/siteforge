@@ -1,6 +1,6 @@
 /* © 2019 Robert Grimm */
 
-import { rmdir, toDirectory } from '../lib/tooling/fs.js';
+import { rmdir, toDirectory } from '../source/tooling/fs.js';
 import { join } from 'path';
 import tap from 'tap';
 

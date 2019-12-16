@@ -2,10 +2,10 @@
 
 import { EOL, tmpdir } from 'os';
 import { join, relative } from 'path';
-import run from '../lib/tooling/run.js';
-import Sq from '../lib/tooling/sequitur.js';
+import run from '../source/tooling/run.js';
+import Sq from '../source/tooling/sequitur.js';
 import tap from 'tap';
-import Walk from '../lib/tooling/walk.js';
+import Walk from '../source/tooling/walk.js';
 
 import {
   copyFile,
@@ -15,9 +15,9 @@ import {
   toCoolPath,
   toDirectory,
   withTrailingSlash,
-} from '../lib/tooling/fs.js';
+} from '../source/tooling/fs.js';
 
-import { not, once } from '../lib/tooling/function.js';
+import { not, once } from '../source/tooling/function.js';
 
 import {
   aliased,
@@ -26,20 +26,20 @@ import {
   optionsFromArguments,
   optionsFromObject,
   FileGlob,
-} from '../lib/tooling/options.js';
+} from '../source/tooling/options.js';
 
 import {
   escapeRegex,
   extractRightsNotice,
   withRightsNotice,
-} from '../lib/tooling/text.js';
+} from '../source/tooling/text.js';
 
 import {
   injectIntoPath,
   isVersionedPath,
   sha256,
   writeVersionedFile,
-} from '../lib/tooling/versioning.js';
+} from '../source/tooling/versioning.js';
 
 const APPAREBIT = 'https://apparebit.com';
 const { apply, has } = Reflect;

@@ -164,7 +164,7 @@ async function loadResolveHook() {
 
   let mod;
   try {
-    mod = await import('../lib/reloader/hook.js');
+    mod = await import('../source/reloader/hook.js');
   } finally {
     if (DEBUG) {
       defineProperty(process.env, 'DEBUG', DEBUG);
@@ -182,7 +182,7 @@ async function loadResolveHook() {
 tap.test('reloader/resolve', async t => {
   const resolve = await loadResolveHook();
   const modMain = pkgdir + 'main.js';
-  const modHookPath = './lib/reloader/hook.js';
+  const modHookPath = './source/reloader/hook.js';
   const modHook = new URL(modHookPath, modMain).href;
   const modTestPath = './test/reloader.test.js';
   const modTest = import.meta.url;

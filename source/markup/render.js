@@ -1,7 +1,7 @@
 /* © 2019 Robert Grimm */
 
 import { isInternalProperty, Opcode, tag, traverse } from './vdom.js';
-import Sq from '@grr/sequitur.js';
+import Sq from '../tooling/sequitur.js';
 
 const { has } = Reflect;
 

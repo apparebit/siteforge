@@ -963,9 +963,11 @@ tap.test('tooling/versioning', async t => {
 // walk
 // =============================================================================
 
-const LIBRARY_PATH = join(__directory, '../lib');
+const LIBRARY_PATH = join(__directory, '../source');
 const LIBRARY_FILES = new Set([
   'config.js',
+  'package.json',
+  'siteforge.js',
   'usage.txt',
   'markup/model.json',
   'markup/model.js',
@@ -1008,9 +1010,9 @@ tap.test('tooling/walk', async t => {
 
   t.strictEqual(count, LIBRARY_FILES.size);
   t.strictEqual(walk.metrics.directory, 5);
-  t.strictEqual(walk.metrics.entry, 33);
-  t.strictEqual(walk.metrics.file, 27);
-  t.strictEqual(walk.metrics.status, 33);
+  t.strictEqual(walk.metrics.entry, 35);
+  t.strictEqual(walk.metrics.file, 29);
+  t.strictEqual(walk.metrics.status, 35);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

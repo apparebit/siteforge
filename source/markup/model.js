@@ -3,11 +3,14 @@
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { promises } from 'fs';
-import Sq from '@grr/sequitur.js';
+import Sq from '../tooling/sequitur.js';
 
 const { assign, freeze } = Object;
 const { has } = Reflect;
-const ModelDotJSON = join(dirname(fileURLToPath(import.meta.url)), 'model.json');
+const ModelDotJSON = join(
+  dirname(fileURLToPath(import.meta.url)),
+  'model.json'
+);
 const { parse: parseJSON } = JSON;
 const { readFile } = promises;
 
@@ -75,7 +78,9 @@ export const prepareModelData = (data, path) => {
   const extractEntries = (prop, transform = entry => [entry]) => {
     const value = data[prop];
     if (!has(data, prop) || value == null) {
-      throw new Error(`Property "${prop}" missing from model data in "${path}"`);
+      throw new Error(
+        `Property "${prop}" missing from model data in "${path}"`
+      );
     } else if (typeof value !== 'object') {
       throw new Error(`Property "${prop}" invalid for model data in "${path}"`);
     }

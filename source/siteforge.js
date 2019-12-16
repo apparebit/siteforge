@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // © 2019 Robert Grimm
 
-import build from './lib/task/build.js';
-import buildHTAccess from './lib/task/build-htaccess.js';
-import configure from './lib/config.js';
-import deploy from './lib/task/deploy.js';
+import build from './task/build.js';
+import buildHTAccess from './task/build-htaccess.js';
+import configure from './config.js';
+import deploy from './task/deploy.js';
 import { EOL } from 'os';
-import { rmdir } from './lib/tooling/fs.js';
-import validateMarkup from './lib/task/validate-markup.js';
+import { rmdir } from './tooling/fs.js';
+import validateMarkup from './task/validate-markup.js';
 
 const { apply } = Reflect;
 

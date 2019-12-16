@@ -23,9 +23,9 @@ const { isArray } = Array;
 // Helper Functions
 // =============================================================================
 
-// Prototypes (+1 Factory)
+// Prototypes
 const AsyncFunctionPrototype = getPrototypeOf(async function() {});
-const GeneratorFunctionPrototype = getPrototypeOf(function*() {});
+//const GeneratorFunctionPrototype = getPrototypeOf(function*() {});
 const AsyncGeneratorFunctionPrototype = getPrototypeOf(async function*() {});
 const IteratorPrototype = getPrototypeOf(getPrototypeOf([][ITERATOR]()));
 const AsyncIteratorPrototype = getPrototypeOf(
@@ -49,19 +49,6 @@ const checkIterables = (op, iterables) => {
     }
   }
   return notSync;
-};
-
-const splitContextAndIterables = args => {
-  if (
-    args.length > 0 &&
-    !Sq.isNonStringIterable(args[0]) &&
-    !Sq.isAsyncIterable(args[0])
-  ) {
-    const [context, ...iterables] = args;
-    return { context, iterables };
-  } else {
-    return { iterables: args };
-  }
 };
 
 // =============================================================================
@@ -131,10 +118,9 @@ function flatMapSync(fn, source, context) {
 
       if (mapped == null) {
         continue;
-      } else if (isArray(mapped) && mapped.length === 1) {
-        yield mapped[0];
+      } else if (typeof mapped[ITERATOR] !== 'function') {
+        yield mapped;
       } else {
-        // All uncommon cases in one concise statement.
         yield* mapped;
       }
     }
@@ -148,10 +134,12 @@ function flatMapAsync(fn, source, context) {
 
       if (mapped == null) {
         continue;
-      } else if (isArray(mapped) && mapped.length === 1) {
-        yield mapped[0];
+      } else if (
+        typeof mapped[ITERATOR] !== 'function' &&
+        typeof mapped[ASYNC_ITERATOR] !== 'function'
+      ) {
+        yield mapped;
       } else {
-        // All uncommon cases in one concise statement.
         yield* mapped;
       }
     }
@@ -390,6 +378,7 @@ export default class Sq {
               }
             },
           },
+
         });
       },
     };
@@ -418,10 +407,15 @@ export default class Sq {
       return new Sequence(() => [value][ITERATOR](), context);
     } else if (type === 'function') {
       const proto = getPrototypeOf(value);
-      if (proto === GeneratorFunctionPrototype) {
-        return new Sequence(value, context);
-      } else if (proto === AsyncGeneratorFunctionPrototype) {
+      if (
+        proto === AsyncGeneratorFunctionPrototype ||
+        proto === AsyncFunctionPrototype ||
+        /async/iu.test(value.name) ||
+        value.async
+      ) {
         return new AsyncSequence(value, context);
+      } else {
+        return new Sequence(value, context);
       }
     } else if (typeof value[ITERATOR] === 'function') {
       return new Sequence(() => value[ITERATOR](), context);
@@ -480,25 +474,36 @@ export default class Sq {
 
   // ---------------------------------------------------------------------------
 
-  static concat(...args) {
-    const { context, iterables } = splitContextAndIterables(args);
+  static concat(...iterables) {
     return checkIterables('static concat', iterables)
-      ? new AsyncSequence(() => concatAsync(iterables), context)
-      : new Sequence(() => concatSync(iterables), context);
+      ? new AsyncSequence(() => concatAsync(iterables))
+      : new Sequence(() => concatSync(iterables));
   }
 
-  static zip(...args) {
-    const { context, iterables } = splitContextAndIterables(args);
+  static zip(...iterables) {
     return checkIterables('static zip', iterables)
-      ? new AsyncSequence(() => zipAsync(iterables), context)
-      : new Sequence(() => zipSync(iterables), context);
+      ? new AsyncSequence(() => zipAsync(iterables))
+      : new Sequence(() => zipSync(iterables));
   }
+
+  // ---------------------------------------------------------------------------
 
   constructor(factory, context) {
     defineProperties(this, {
       factory: { configurable, value: factory },
       context: { configurable, value: context },
     });
+  }
+
+  get [TO_STRING_TAG]() {
+    return 'Sq';
+  }
+
+  with(context) {
+    defineProperty(this, 'context', {
+      configurable, value: context
+    });
+    return this;
   }
 }
 
@@ -617,6 +622,10 @@ class AsyncSequence extends Sq {
 
   get [TO_STRING_TAG]() {
     return 'async Sequence';
+  }
+
+  get async() {
+    return true;
   }
 
   // ---------------------------------------------------------------------------

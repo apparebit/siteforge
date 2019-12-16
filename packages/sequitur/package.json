@@ -1,0 +1,22 @@
+{
+  "name": "@grr/sequitur",
+  "description": "expressive, lazy, synchronous and asynchronous iteration",
+  "keywords": [
+    "iteration",
+    "itertools",
+    "iterable",
+    "iterator",
+    "generator",
+    "generator function",
+    "sequence",
+    "lazy",
+    "synchronous",
+    "asynchronous"
+  ],
+  "version": "1.0.0",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./sequitur.js"
+}

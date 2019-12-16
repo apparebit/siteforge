@@ -3,7 +3,7 @@
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { promises } from 'fs';
-import Sq from '../tooling/sequitur.js';
+import Sq from '@grr/sequitur';
 
 const { assign, freeze } = Object;
 const { has } = Reflect;

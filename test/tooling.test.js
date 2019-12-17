@@ -588,7 +588,6 @@ tap.test('tooling/walk', async t => {
   };
   const walk = new Walk(LIBRARY_PATH, { isExcluded });
   for await (const entry of walk.go()) {
-    console.log('>>>', entry.vpath);
     t.strictEqual(entry.type, 'file');
     const path = relative(LIBRARY_PATH, entry.path);
     t.ok(LIBRARY_FILES.has(path), `should be a site:forge module`);

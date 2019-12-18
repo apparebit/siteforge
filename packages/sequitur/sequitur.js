@@ -25,7 +25,7 @@ const { isArray } = Array;
 
 // Prototypes
 const AsyncFunctionPrototype = getPrototypeOf(async function() {});
-//const GeneratorFunctionPrototype = getPrototypeOf(function*() {});
+const GeneratorFunctionPrototype = getPrototypeOf(function*() {});
 const AsyncGeneratorFunctionPrototype = getPrototypeOf(async function*() {});
 const IteratorPrototype = getPrototypeOf(getPrototypeOf([][ITERATOR]()));
 const AsyncIteratorPrototype = getPrototypeOf(
@@ -35,7 +35,7 @@ const AsyncIteratorPrototype = getPrototypeOf(
 // Validations
 const checkFunction = (op, fn) => {
   if (typeof fn !== 'function') {
-    throw new Error(`callback "${fn}" for ${op}() is not a function`);
+    throw new Error(`Callback "${fn}" for ${op}() is not a function`);
   }
 };
 
@@ -45,11 +45,36 @@ const checkIterables = (op, iterables) => {
     if (Sq.isAsyncIterable(iterable)) {
       notSync = true;
     } else if (!Sq.isIterable(iterable)) {
-      throw new Error(`unable to ${op}() non-iterable "${iterable}"`);
+      throw new Error(`Unable to ${op}() non-iterable "${iterable}"`);
     }
   }
   return notSync;
 };
+
+// An Unexpected Conversion (Note the "Iterator")
+
+function toAsyncIterator(iterable) {
+  const iterator = iterable[ITERATOR]();
+
+  return create(AsyncIteratorPrototype, {
+    next: {
+      configurable,
+      value(...args) {
+        return Promise.resolve(iterator.next(...args));
+      },
+    },
+    return: {
+      configurable,
+      value(...args) {
+        return Promise.resolve(
+          typeof iterator.return === 'function'
+            ? iterator.return(...args)
+            : { done: true }
+        );
+      },
+    },
+  });
+}
 
 // =============================================================================
 // The Operators in Sync and Async
@@ -206,12 +231,11 @@ function* zipSync(iterables) {
 }
 
 async function* zipAsync(iterables) {
-  const iterators = iterables.map(it => {
-    if (it[ASYNC_ITERATOR] === undefined) {
-      it = Sq.toAsyncIterable(it);
-    }
-    return it[ASYNC_ITERATOR]();
-  });
+  const iterators = iterables.map(it =>
+    it[ASYNC_ITERATOR] === undefined
+      ? toAsyncIterator(it)
+      : it[ASYNC_ITERATOR]()
+  );
 
   try {
     while (true) {
@@ -262,15 +286,27 @@ async function reduceAsync(fn, initial, source, context) {
 // -----------------------------------------------------------------------------
 
 function collectSync(source, into) {
-  for (const element of source) {
-    into.push(element);
+  if (into instanceof Set) {
+    for (const element of source) {
+      into.add(element);
+    }
+  } else {
+    for (const element of source) {
+      into.push(element);
+    }
   }
   return into;
 }
 
 async function collectAsync(source, into) {
-  for await (const element of source) {
-    into.push(element);
+  if (into instanceof Set) {
+    for await (const element of source) {
+      into.add(element);
+    }
+  } else {
+    for await (const element of source) {
+      into.push(element);
+    }
   }
   return into;
 }
@@ -324,6 +360,14 @@ async function collectDescriptorsAsync(source, into) {
 // =============================================================================
 
 export default class Sq {
+  static get IteratorPrototype() {
+    return IteratorPrototype;
+  }
+
+  static get AsyncIteratorPrototype() {
+    return AsyncIteratorPrototype;
+  }
+
   static isIterable(value) {
     return value && typeof value[ITERATOR] === 'function';
   }
@@ -340,18 +384,12 @@ export default class Sq {
     return value && typeof value[ASYNC_ITERATOR] === 'function';
   }
 
-  /**
-   * Determine whether the given value is an asynchronous function, i.e.,
-   * returns a promise instead of a value. Since not all asynchronous functions
-   * are written with `async`/`await`, this method also recognizes functions
-   * with the word `async` in the name as well as functions whose `async`
-   * property is truthy.
-   */
   static isAsyncFunction(value) {
     if (!value || typeof value !== 'function') return false;
     const proto = getPrototypeOf(value);
     return (
       proto === AsyncFunctionPrototype ||
+      proto === AsyncGeneratorFunctionPrototype ||
       /async/iu.test(value.name) ||
       value.async
     );
@@ -359,29 +397,12 @@ export default class Sq {
 
   // ---------------------------------------------------------------------------
 
-  static toAsyncIterable(iterable) {
-    return {
-      [ASYNC_ITERATOR]() {
-        const iterator = iterable[ITERATOR]();
-        return create(AsyncIteratorPrototype, {
-          next: {
-            configurable,
-            value(...args) {
-              return Promise.resolve(iterator.next(...args));
-            },
-          },
-          return: {
-            configurable,
-            value(...args) {
-              if (typeof iterator.return === 'function') {
-                iterator.return(...args);
-              }
-            },
-          },
-
-        });
-      },
-    };
+  static toAsyncIterable(iterable, context) {
+    // We could just return a minimal asynchronous iterable. That certainly
+    // suffices for the original use case in zip(). But since much of the raison
+    // d'être for this package is code implementing more expressive asynchronous
+    // iterables, this method also returns a sequence.
+    return new AsyncSequence(() => toAsyncIterator(iterable), context);
   }
 
   // ---------------------------------------------------------------------------
@@ -407,23 +428,22 @@ export default class Sq {
       return new Sequence(() => [value][ITERATOR](), context);
     } else if (type === 'function') {
       const proto = getPrototypeOf(value);
-      if (
-        proto === AsyncGeneratorFunctionPrototype ||
-        proto === AsyncFunctionPrototype ||
-        /async/iu.test(value.name) ||
-        value.async
-      ) {
+      if (proto === GeneratorFunctionPrototype) {
+        return new Sequence(value, context);
+      } else if (proto === AsyncGeneratorFunctionPrototype) {
         return new AsyncSequence(value, context);
       } else {
-        return new Sequence(value, context);
+        throw new Error(
+          `Unable to tell whether function "${value}" is synchronous or asynchronous`
+        );
       }
     } else if (typeof value[ITERATOR] === 'function') {
       return new Sequence(() => value[ITERATOR](), context);
     } else if (typeof value[ASYNC_ITERATOR] === 'function') {
       return new AsyncSequence(() => value[ASYNC_ITERATOR](), context);
+    } else {
+      return new Sequence(() => [value][ITERATOR]());
     }
-
-    return new Sequence(() => [value][ITERATOR]());
   }
 
   static fromString(value, context) {
@@ -501,9 +521,86 @@ export default class Sq {
 
   with(context) {
     defineProperty(this, 'context', {
-      configurable, value: context
+      configurable,
+      value: context,
     });
     return this;
+  }
+
+  // Lazy, Intermediate Operators
+
+  filter() {
+    throw new Error(
+      `filter() not implemented on abstract base class for sequences`
+    );
+  }
+  map() {
+    throw new Error(
+      `map() not implemented on abstract base class for sequences`
+    );
+  }
+  tap() {
+    throw new Error(
+      `tap() not implemented on abstract base class for sequences`
+    );
+  }
+  flatMap() {
+    throw new Error(
+      `flatMap() not implemented on abstract base class for sequences`
+    );
+  }
+  flatten() {
+    throw new Error(
+      `flatten() not implemented on abstract base class for sequences`
+    );
+  }
+  concat() {
+    throw new Error(
+      `concat() not implemented on abstract base class for sequences`
+    );
+  }
+  zip() {
+    throw new Error(
+      `zip() not implemented on abstract base class for sequences`
+    );
+  }
+  run() {
+    throw new Error(
+      `run() not implemented on abstract base class for sequences`
+    );
+  }
+
+  // Eager, Terminal Operators
+
+  each() {
+    throw new Error(
+      `each() not implemented on abstract base class for sequences`
+    );
+  }
+  reduce() {
+    throw new Error(
+      `reduce() not implemented on abstract base class for sequences`
+    );
+  }
+  collect() {
+    throw new Error(
+      `collect() not implemented on abstract base class for sequences`
+    );
+  }
+  collectEntries() {
+    throw new Error(
+      `collectEntries() not implemented on abstract base class for sequences`
+    );
+  }
+  collectDescriptors() {
+    throw new Error(
+      `collectDescriptors() not implemented on abstract base class for sequences`
+    );
+  }
+  join() {
+    throw new Error(
+      `join() not implemented on abstract base class for sequences`
+    );
   }
 }
 
@@ -518,6 +615,10 @@ class Sequence extends Sq {
 
   get [TO_STRING_TAG]() {
     return 'Sequence';
+  }
+
+  toAsync() {
+    return new AsyncSequence(() => toAsyncIterator(this), this.context);
   }
 
   // ---------------------------------------------------------------------------
@@ -626,6 +727,10 @@ class AsyncSequence extends Sq {
 
   get async() {
     return true;
+  }
+
+  toAsync() {
+    return this;
   }
 
   // ---------------------------------------------------------------------------

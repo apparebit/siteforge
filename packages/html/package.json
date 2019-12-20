@@ -1,0 +1,21 @@
+{
+  "name": "@grr/html",
+  "description": "A model for well-formed HTML",
+  "keywords": [
+    "HTML",
+    "HTML5",
+    "semantics",
+    "model",
+    "validation",
+    "well-formedness",
+    "ARIA",
+    "element",
+    "attribute"
+  ],
+  "version": "0.1.0",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./model.js"
+}

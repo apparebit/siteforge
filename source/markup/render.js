@@ -54,7 +54,7 @@ export const escapeText = text => {
 // =============================================================================
 
 const renderAttribute = (name, value, elementSpec) => {
-  const spec = elementSpec.attributeForName(name);
+  const spec = elementSpec.attribute(name);
   const type = spec.instance || spec.effectiveInstance;
   if (value == null) return '';
 
@@ -110,7 +110,10 @@ export default async function* render(
     collapseWhiteSpace = true,
   } = {}
 ) {
+  const ancestors = [];
+
   for await (const step of traverse(node, {
+    ancestors,
     context,
     hooks,
     traverseChildren,
@@ -118,7 +121,7 @@ export default async function* render(
     const { code, parent, node } = step;
 
     if (code === Opcode.Text) {
-      if (model.hasRawText(parent.type)) {
+      if (model.hasCategory(parent.type, 'rawText')) {
         if (isValidRawText(node)) {
           yield node;
         } else {
@@ -139,7 +142,7 @@ export default async function* render(
           renderAttribute(key, value, model.elementForName(name))
         )
         .join();
-      const isVoid = model.isVoid(node.type);
+      const isVoid = model.hasCategory(node.type, 'void');
       yield '<' + name + attributes + (isVoid ? ' /' : '') + '>';
 
       // Check that void elements really are void.
@@ -147,7 +150,7 @@ export default async function* render(
         throw new Error(`Void element "${tag}" has children`);
       }
     } else if (code === Opcode.ExitNode) {
-      if (!model.isVoid(node.type)) {
+      if (!model.hasCategory(node.type, 'void')) {
         yield `</${node.type}>`;
       }
     }

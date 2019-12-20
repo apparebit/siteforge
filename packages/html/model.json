@@ -99,7 +99,7 @@
       "instance": "integer"
     },
     "aria-controls": {
-      "separated": "space",
+      "separator": "space",
       "instance": "id"
     },
     "aria-current": {
@@ -114,7 +114,7 @@
       ]
     },
     "aria-describedby": {
-      "separated": "space",
+      "separator": "space",
       "instance": "id"
     },
     "aria-details": {
@@ -385,7 +385,7 @@
       "instance": "boolean"
     },
     "coords": {
-      "separated": "comma",
+      "separator": "comma",
       "instance": "number"
     },
     "crossorigin": {
@@ -991,6 +991,14 @@
   },
   "categories": {
     "//": "--------------------------- Categories ----------------------------",
+    "autocapitalizeInheriting": [
+      "button",
+      "fieldset",
+      "input",
+      "output",
+      "select",
+      "textarea"
+    ],
     "embedded": [
       "audio",
       "canvas",
@@ -1002,6 +1010,24 @@
       "picture",
       "svg",
       "video"
+    ],
+    "empty": [
+      "area",
+      "base",
+      "br",
+      "col",
+      "embed",
+      "hr",
+      "iframe",
+      "img",
+      "input",
+      "link",
+      "meta",
+      "param",
+      "source",
+      "template",
+      "track",
+      "wbr"
     ],
     "flow": [
       "custom-element",
@@ -1127,6 +1153,16 @@
       "meter",
       "output",
       "progress",
+      "select",
+      "textarea"
+    ],
+    "listed": [
+      "custom-element",
+      "button",
+      "fieldset",
+      "input",
+      "object",
+      "output",
       "select",
       "textarea"
     ],
@@ -1277,9 +1313,16 @@
       "wbr"
     ],
     "rawText": ["script", "style", "textarea", "title"],
+    "resettable": [
+      "custom-element",
+      "input",
+      "output",
+      "select",
+      "textarea"
+    ],
     "scriptSupporting": ["script", "template"],
     "sectioning": ["article", "aside", "nav", "section"],
-    "sectioningRoots": [
+    "sectioningRoot": [
       "blockquote",
       "body",
       "details",
@@ -1287,6 +1330,14 @@
       "fieldset",
       "figure",
       "td"
+    ],
+    "submittable": [
+      "custom-element",
+      "button",
+      "input",
+      "object",
+      "select",
+      "textarea"
     ],
     "transparent": [
       "custom-element",

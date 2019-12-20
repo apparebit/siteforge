@@ -553,8 +553,6 @@ const LIBRARY_FILES = new Set([
   'package.json',
   'siteforge.js',
   'usage.txt',
-  'markup/model.json',
-  'markup/model.js',
   'markup/render.js',
   'markup/vdom.js',
   'reloader/config.js',
@@ -597,9 +595,9 @@ tap.test('tooling/walk', async t => {
 
   t.strictEqual(count, LIBRARY_FILES.size);
   t.strictEqual(walk.metrics.directory, 5);
-  t.strictEqual(walk.metrics.entry, 35);
-  t.strictEqual(walk.metrics.file, 28);
-  t.strictEqual(walk.metrics.status, 35);
+  t.strictEqual(walk.metrics.entry, 33);
+  t.strictEqual(walk.metrics.file, 26);
+  t.strictEqual(walk.metrics.status, 33);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

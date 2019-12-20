@@ -53,8 +53,7 @@ export const escapeText = text => {
 
 // =============================================================================
 
-const renderAttribute = (name, value, elementSpec) => {
-  const spec = elementSpec.attribute(name);
+const renderAttribute = (name, value, spec) => {
   const type = spec.instance || spec.effectiveInstance;
   if (value == null) return '';
 
@@ -77,9 +76,7 @@ const renderAttribute = (name, value, elementSpec) => {
     default:
       if (Sq.isNonStringIterable(value)) {
         if (!has(spec, 'separator')) {
-          throw new Error(
-            `Attribute "${name}" for "${elementSpec.name}" has invalid list value`
-          );
+          throw new Error(`Attribute "${name}" has invalid list value`);
         }
 
         return ` ${name}=${escapeAttribute(
@@ -136,11 +133,13 @@ export default async function* render(
       }
     } else if (code === Opcode.EnterNode) {
       const name = tag(node);
+      const spec = model.elementForName(name);
       const attributes = Sq.entries(node)
         .filter(([key, _]) => !isInternalProperty(key))
-        .map(([key, value]) =>
-          renderAttribute(key, value, model.elementForName(name))
-        )
+        .map(([key, value]) => {
+          const attributeSpec = spec.attribute(key, ancestors);
+          return renderAttribute(key, value, attributeSpec);
+        })
         .join();
       const isVoid = model.hasCategory(node.type, 'void');
       yield '<' + name + attributes + (isVoid ? ' /' : '') + '>';

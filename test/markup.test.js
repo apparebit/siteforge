@@ -85,15 +85,15 @@ tap.test('markup/vdom', async t => {
       parent: undefined,
       node: theQuestion,
     },
-    { code: Opcode.EnterNode, parent: theQuestion, node: ultimate },
+    { code: Opcode.EnterNode, parent: 'div', node: ultimate },
     {
       code: Opcode.Text,
-      parent: ultimate,
+      parent: 'span',
       node: 'And the answer is   42!',
     },
     {
       code: Opcode.ExitNode,
-      parent: theQuestion,
+      parent: 'div',
       node: ultimate,
     },
     {

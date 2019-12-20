@@ -84,9 +84,8 @@ export const Opcode = freeze({
  */
 export async function* traverse(
   node,
-  { context = {}, hooks = {}, traverseChildren = true } = {}
+  { ancestors = [], context = {}, hooks = {}, traverseChildren = true } = {}
 ) {
-  const ancestors = [];
   const pending = [node];
   const fragments = [];
   const bufferFragment = fragment => fragments.push(fragment);
@@ -125,7 +124,7 @@ export async function* traverse(
       if (hooks[node.type]) node = hooks[node.type](node, context);
       yield { code: Opcode.EnterNode, parent, node };
 
-      ancestors.push(node);
+      ancestors.push(node.type);
       pending.push({ code: Opcode.ExitNode, parent, node });
       if (traverseChildren) pending.push(node.children);
     } else if (node.code === Opcode.ExitNode) {

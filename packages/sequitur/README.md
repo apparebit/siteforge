@@ -205,7 +205,7 @@ ends with the shortest iterable.
 
 ### Changing Context
 
-#### with(context)
+#### Sq.prototype.with(context)
 
 Update the context of this sequence with the given value and return `this` for
 chaining operators.
@@ -213,7 +213,7 @@ chaining operators.
 
 ### Slouching Towards Asynchronous
 
-#### toAsync()
+#### Sq.prototype.toAsync()
 
 Return a new asynchronous version of this sequence if it is synchronous. Just
 return `this` if the sequence is asynchronous already.
@@ -241,19 +241,19 @@ strict.equal(s2.context, 'context');
 strict.equal(s3.context, 'context');
 ```
 
-#### filter(fn)
+#### Sq.prototype.filter(fn)
 
 Filter out any elements that do not match the given predicate.
 
-#### map(fn)
+#### Sq.prototype.map(fn)
 
 Transform each element into another with the given transform.
 
-#### tap(fn)
+#### Sq.prototype.tap(fn)
 
 Process each element for some side-effect while leaving the sequence as is.
 
-#### flatMap(fn)
+#### Sq.prototype.flatMap(fn)
 
 Transform each element into an iterable, whose elements take its place.
 Returning `undefined` or `null` is the same as returning an empty iterable and
@@ -262,24 +262,24 @@ over a single value. If the sequence is synchronous, the returned iterable must
 also be synchronous. If the sequence is asynchronous, the returned iterable may
 be synchronous or asynchronous.
 
-#### flatten()
+#### Sq.prototype.flatten()
 
 Flatten any nested iterables, no matter how deeply nested. If the sequence is
 synchronous, only synchronous iterables are flattened. If the sequence is
 asynchronous, both synchronous and asynchronous iterables are flattened. In
 either case, *strings are treated a non-iterable*.
 
-#### concat(...iterables)
+#### Sq.prototype.concat(...iterables)
 
 Concatenate the elements in this sequence with those in the given iterables in
 order.
 
-#### zip(...iterables)
+#### Sq.prototype.zip(...iterables)
 
 Zip the elements in this sequence with those in the given iterables in order.
 The new sequence is as long as the shortest of its inputs.
 
-#### run(generatorFunction)
+#### Sq.prototype.run(generatorFunction)
 
 Create a new sequence with the elements of the generator created by the given
 generator function. The two arguments passed to each invocation are this
@@ -291,11 +291,11 @@ sequence and its context.
 Each of the following eager and terminal operators immediately starts consuming
 this sequence in the described way.
 
-#### each(fn)
+#### Sq.prototype.each(fn)
 
 Invoke the given callback on each element.
 
-#### reduce(fn, initial)
+#### Sq.prototype.reduce(fn, initial)
 
 Reduce the sequence with the given callback and initial accumulator value. The
 order of arguments to the callback is consistent with the built-in array
@@ -319,20 +319,20 @@ strict.deepEqual(
 );
 ```
 
-#### collect(into = [])
+#### Sq.prototype.collect(into = [])
 
 Collect the elements in an array or a set.
 
-#### collectEntries(into = {})
+#### Sq.prototype.collectEntries(into = {})
 
 Collect the key, value pairs as configurable, enumerable, and writable
 properties of an object or as entries of a map.
 
-#### collectDescriptors(into = {})
+#### Sq.prototype.collectDescriptors(into = {})
 
 Collect the property descriptors as properties of an object.
 
-#### join(separator = '')
+#### Sq.prototype.join(separator = '')
 
 Join the string representations of each element with the given separator. Note
 that the default separator is the empty string and not the comma as for

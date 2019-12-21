@@ -18,6 +18,7 @@ const {
   values: valuesOf,
 } = Object;
 const { isArray } = Array;
+const noop = () => {};
 
 // =============================================================================
 // Helper Functions
@@ -33,6 +34,18 @@ const AsyncIteratorPrototype = getPrototypeOf(
 );
 
 // Validations
+const checkInteger = (op, num) => {
+  if (!Number.isInteger(num)) {
+    throw new Error(`Count "${num}" for ${op}() is not an integer`);
+  }
+};
+
+const checkPositiveInteger = (op, num) => {
+  if (!Number.isInteger(num) || num <= 0) {
+    throw new Error(`Count "${num}" for ${op}() is not a positive integer`);
+  }
+};
+
 const checkFunction = (op, fn) => {
   if (typeof fn !== 'function') {
     throw new Error(`Callback "${fn}" for ${op}() is not a function`);
@@ -79,6 +92,28 @@ function toAsyncIterator(iterable) {
 // =============================================================================
 // The Operators in Sync and Async
 // =============================================================================
+
+function takeSync(count, source, context) {
+  return new Sequence(function* taker() {
+    let taken = 0;
+    for (const element of source) {
+      yield element;
+      if (++taken === count) break;
+    }
+  }, context);
+}
+
+function takeAsync(count, source, context) {
+  return new AsyncSequence(async function* taker() {
+    let taken = 0;
+    for await (const element of source) {
+      yield element;
+      if (++taken === count) break;
+    }
+  }, context);
+}
+
+// -----------------------------------------------------------------------------
 
 function filterSync(fn, source, context) {
   return new Sequence(function* filter() {
@@ -460,6 +495,21 @@ export default class Sq {
 
   // ---------------------------------------------------------------------------
 
+  static count(start = 0, step = 1, context) {
+    checkInteger('static count', start);
+    checkInteger('static count', step);
+
+    return new Sequence(function* counter() {
+      let count = start;
+      while (true) {
+        yield count;
+        count += step;
+      }
+    }, context);
+  }
+
+  // ---------------------------------------------------------------------------
+
   static keys(object, context) {
     if (isArray(object) || object instanceof Map || object instanceof Set) {
       return new Sequence(() => object.keys(), context);
@@ -529,6 +579,11 @@ export default class Sq {
 
   // Lazy, Intermediate Operators
 
+  take() {
+    throw new Error(
+      `take() not implemented on abstract base class for sequences`
+    );
+  }
   filter() {
     throw new Error(
       `filter() not implemented on abstract base class for sequences`
@@ -622,6 +677,14 @@ class Sequence extends Sq {
   }
 
   // ---------------------------------------------------------------------------
+  // Counting Sequence Elements
+
+  take(count) {
+    checkPositiveInteger('take', count);
+    return takeSync(count, this, this.context);
+  }
+
+  // ---------------------------------------------------------------------------
   // Processing Individual Sequence Elements
 
   filter(fn) {
@@ -681,7 +744,7 @@ class Sequence extends Sq {
   // ---------------------------------------------------------------------------
   // Eagerly Pulling Sequence Elements
 
-  each(fn) {
+  each(fn = noop) {
     checkFunction('each', fn);
     return Sq.isAsyncFunction(fn)
       ? eachAsync(fn, this, this.context)
@@ -734,6 +797,14 @@ class AsyncSequence extends Sq {
   }
 
   // ---------------------------------------------------------------------------
+  // Counting Sequence Elements
+
+  take(count) {
+    checkPositiveInteger('async take', count);
+    return takeAsync(count, this, this.context);
+  }
+
+  // ---------------------------------------------------------------------------
   // Processing Individual Sequence Elements
 
   filter(fn) {
@@ -783,7 +854,7 @@ class AsyncSequence extends Sq {
   // ---------------------------------------------------------------------------
   // Eagerly Pulling Asynchronous Sequence Elements
 
-  each(fn) {
+  each(fn = noop) {
     checkFunction('async each', fn);
     return eachAsync(fn, this, this.context);
   }

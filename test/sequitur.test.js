@@ -425,7 +425,48 @@ tap.test('@grr/sequitur', t => {
   // It is worth noting that at this point of test execution all of sequitur's
   // code has been tested with exception of some lazy, intermediate operators.
 
-  t.test('Executing Lazy and Intermediate Operations', async t => {
+  t.test('Counting', async t => {
+    t.throws(
+      () => Sq.count('0'),
+      /Count "0" for static count\(\) is not an integer/u
+    );
+
+    t.throws(
+      () => Sq.count(0, '1'),
+      /Count "1" for static count\(\) is not an integer/u
+    );
+
+    t.throws(
+      () => Sq.count().take(-1),
+      /Count "-1" for take\(\) is not a positive integer/u
+    );
+
+    t.strictSame(
+      Sq.count(1)
+        .take(3)
+        .collect(),
+      [1, 2, 3]
+    );
+
+    const list = [];
+    Sq.count(-1, -1)
+      .take(3)
+      .tap(el => list.push(el))
+      .each();
+    t.strictSame(list, [-1, -2, -3]);
+
+    list.length = 0;
+    await Sq.count(0, 5)
+      .toAsync()
+      .take(4)
+      .tap(el => list.push(el))
+      .each();
+    t.strictSame(list, [0, 5, 10, 15]);
+
+    t.end();
+  });
+
+  t.test('Intermediate, Inspecting Operators', async t => {
     const list = [];
     t.strictSame(
       Sq.of(1, 2, 3)

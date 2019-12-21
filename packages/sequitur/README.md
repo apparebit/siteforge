@@ -167,6 +167,15 @@ Create a new sequence just like `Sq.from()`, but treat strings as iterables.
 Create a new synchronous sequence over the elements.
 
 
+### Synchronous Sequences over Integers
+
+#### Sq.count(start = 0, step = 1, context?)
+
+Create a new synchronous sequence over integers that starts with and increments
+by the given numbers. The parameters must either both be integral JavaScript
+numbers or big integers.
+
+
 ### Synchronous Sequences over Properties
 
 #### Sq.keys(object, context?)
@@ -241,6 +250,10 @@ strict.equal(s2.context, 'context');
 strict.equal(s3.context, 'context');
 ```
 
+#### Sq.prototype.take(count)
+
+Limit the sequence to at most the given number of elements.
+
 #### Sq.prototype.filter(fn)
 
 Filter out any elements that do not match the given predicate.
@@ -291,9 +304,10 @@ sequence and its context.
 Each of the following eager and terminal operators immediately starts consuming
 this sequence in the described way.
 
-#### Sq.prototype.each(fn)
+#### Sq.prototype.each(fn = noop)
 
-Invoke the given callback on each element.
+Invoke the given callback on each element. The `noop` default callback serves to
+make `each()` the designed method when consuming a sequence for side-effect.
 
 #### Sq.prototype.reduce(fn, initial)
 

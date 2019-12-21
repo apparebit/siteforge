@@ -128,7 +128,7 @@ tap.test('@grr/sequitur', t => {
     t.strictSame([...Sq.from(665)], [665]);
     t.throws(
       () => Sq.from(() => {}),
-      /Unable to tell whether function "\(\) => \{\}" is synchronous or asynchronous/u
+      /Unable to tell whether function \(\) => \{\} is synchronous or asynchronous/u
     );
 
     t.strictSame(Sq.fromString().collect(), []);
@@ -147,6 +147,64 @@ tap.test('@grr/sequitur', t => {
   // we can compare it against the expected values. Instead of just using, say,
   // collect() to create an array, such tests cover the spectrum of available
   // terminal operations and thereby test them, too.
+
+  t.test('Counting', async t => {
+    t.throws(
+      () => Sq.count('0'),
+      /Start "0" and step 1 for static count\(\) must both be \(big\) integers, with step also being nonzero/u
+    );
+
+    t.throws(
+      () => Sq.count(0, '1'),
+      /Start 0 and step "1" for static count\(\) must both be \(big\) integers, with step also being nonzero/u
+    );
+
+    t.throws(
+      () => Sq.count(0, 1n),
+      /Start 0 and step 1n for static count\(\) must both be \(big\) integers, with step also being nonzero/u
+    );
+
+    t.throws(
+      () => Sq.count(0n, 0n),
+      /Start 0n and step 0n for static count\(\) must both be \(big\) integers, with step also being nonzero/u
+    );
+
+    t.throws(
+      () => Sq.count().take(-1),
+      /Count -1 for take\(\) is not a positive integer/u
+    );
+
+    t.strictSame(
+      Sq.count(1)
+        .take(3)
+        .collect(),
+      [1, 2, 3]
+    );
+
+    t.strictSame(
+      Sq.count(1n, 1n)
+        .take(3)
+        .collect(),
+      [1n, 2n, 3n]
+    );
+
+    const list = [];
+    Sq.count(-1, -1)
+      .take(3)
+      .tap(el => list.push(el))
+      .each();
+    t.strictSame(list, [-1, -2, -3]);
+
+    list.length = 0;
+    await Sq.count(0, 5)
+      .toAsync()
+      .take(4)
+      .tap(el => list.push(el))
+      .each();
+    t.strictSame(list, [0, 5, 10, 15]);
+
+    t.end();
+  });
 
   t.test('Turning Properties into Sequences', t => {
     const object = { a: 1, b: 2 };
@@ -382,11 +440,11 @@ tap.test('@grr/sequitur', t => {
 
     t.throws(
       () => Sq.of().map(665),
-      /Callback "665" for map\(\) is not a function/u
+      /Callback 665 for map\(\) is not a function/u
     );
     t.throws(
       () => Sq.concat(665),
-      /Unable to static concat\(\) non-iterable "665"/u
+      /Unable to static concat\(\) non-iterable 665/u
     );
 
     t.end();
@@ -424,47 +482,6 @@ tap.test('@grr/sequitur', t => {
 
   // It is worth noting that at this point of test execution all of sequitur's
   // code has been tested with exception of some lazy, intermediate operators.
-
-  t.test('Counting', async t => {
-    t.throws(
-      () => Sq.count('0'),
-      /Count "0" for static count\(\) is not an integer/u
-    );
-
-    t.throws(
-      () => Sq.count(0, '1'),
-      /Count "1" for static count\(\) is not an integer/u
-    );
-
-    t.throws(
-      () => Sq.count().take(-1),
-      /Count "-1" for take\(\) is not a positive integer/u
-    );
-
-    t.strictSame(
-      Sq.count(1)
-        .take(3)
-        .collect(),
-      [1, 2, 3]
-    );
-
-    const list = [];
-    Sq.count(-1, -1)
-      .take(3)
-      .tap(el => list.push(el))
-      .each();
-    t.strictSame(list, [-1, -2, -3]);
-
-    list.length = 0;
-    await Sq.count(0, 5)
-      .toAsync()
-      .take(4)
-      .tap(el => list.push(el))
-      .each();
-    t.strictSame(list, [0, 5, 10, 15]);
-
-    t.end();
-  });
 
   t.test('Intermediate, Inspecting Operators', async t => {
     const list = [];

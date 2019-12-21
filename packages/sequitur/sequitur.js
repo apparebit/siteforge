@@ -34,21 +34,42 @@ const AsyncIteratorPrototype = getPrototypeOf(
 );
 
 // Validations
-const checkInteger = (op, num) => {
-  if (!Number.isInteger(num)) {
-    throw new Error(`Count "${num}" for ${op}() is not an integer`);
+const render = value => {
+  const type = typeof value;
+
+  if (type === 'string') {
+    return `"${value}"`;
+  } else if (type === 'bigint') {
+    return `${value}n`;
+  } else {
+    return String(value);
+  }
+};
+
+const checkStartStep = (op, start, step) => {
+  if (!Number.isInteger(start) || !Number.isInteger(step) || step === 0) {
+    if (typeof start !== 'bigint' || typeof step !== 'bigint' || step === 0n) {
+      throw new Error(
+        `Start ${render(start)} and step ${render(
+          step
+        )} for ${op}() must both be (big) ` +
+          `integers, with step also being nonzero`
+      );
+    }
   }
 };
 
 const checkPositiveInteger = (op, num) => {
   if (!Number.isInteger(num) || num <= 0) {
-    throw new Error(`Count "${num}" for ${op}() is not a positive integer`);
+    throw new Error(
+      `Count ${render(num)} for ${op}() is not a positive integer`
+    );
   }
 };
 
 const checkFunction = (op, fn) => {
   if (typeof fn !== 'function') {
-    throw new Error(`Callback "${fn}" for ${op}() is not a function`);
+    throw new Error(`Callback ${render(fn)} for ${op}() is not a function`);
   }
 };
 
@@ -58,7 +79,7 @@ const checkIterables = (op, iterables) => {
     if (Sq.isAsyncIterable(iterable)) {
       notSync = true;
     } else if (!Sq.isIterable(iterable)) {
-      throw new Error(`Unable to ${op}() non-iterable "${iterable}"`);
+      throw new Error(`Unable to ${op}() non-iterable ${render(iterable)}`);
     }
   }
   return notSync;
@@ -469,7 +490,9 @@ export default class Sq {
         return new AsyncSequence(value, context);
       } else {
         throw new Error(
-          `Unable to tell whether function "${value}" is synchronous or asynchronous`
+          `Unable to tell whether function ${render(
+            value
+          )} is synchronous or asynchronous`
         );
       }
     } else if (typeof value[ITERATOR] === 'function') {
@@ -496,8 +519,7 @@ export default class Sq {
   // ---------------------------------------------------------------------------
 
   static count(start = 0, step = 1, context) {
-    checkInteger('static count', start);
-    checkInteger('static count', step);
+    checkStartStep('static count', start, step);
 
     return new Sequence(function* counter() {
       let count = start;

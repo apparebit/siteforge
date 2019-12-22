@@ -1,6 +1,6 @@
 # site:forge
 
-## Proactive View Components
+## The Case for Proactive View Components
 
 __site:forge__ is a static website generator centered around *proactive view
 components*, that is, components that are rendered well ahead of time. By
@@ -42,27 +42,37 @@ to the server. Notably, there is no need for view reconciliation or state
 management. At the same time, using a virtual DOM entails two important
 benefits: First, content is syntactically well-formed by construction. Second,
 content can be more easily validated. As a proof of potential, site:forge
-already includes a [mechanized model](lib/markup/model.json) for
-HTML—incorporating the basic structural and typing rules from the
+already includes a [mechanized model](packages/html/README.md) for
+HTML—capturing the rules from the
 [HTML](https://html.spec.whatwg.org), [WAI-ARIA](https://w3c.github.io/aria/),
 and [OpenGraph](https://ogp.me) standards.
 
-### History and Process
+### Project Prehistory
 
 This project is based, in part, on experiences with two earlier and by now
-discarded prototypes. To keep myself honest for this third iteration, I started
-with an actual website, v3 of my personal website https://apparebit.com. In
-fact, the starting point for this repository were the very much site-specific
-and also ad-hoc scripts I wrote for generating and deploying the website
-originally. Once the initial push on site:forge is complete, I expect to
-alternate between the two projects, thus ensuring a very direct feedback loop in
-both directions.
+discarded prototypes. But whereas tooling came first for those earlier two
+attempts, the website takes precedence for this third iteration. In fact,
+site:forge started out as a few ad-hoc scripts to build and deploy Apparebit. I
+expect that I will alternate focus between website and website generator for the
+forseeable future and thereby hope to ensure that site:forge's development
+remains focused on features that are useful when building small to medium sized
+websites. It also serves as a end-to-end test for the tool and its usability.
 
-## Using site:forge
 
-site:forge's first release still is some time off. Especially when first
-drafting a new module, I may wait before the first commit, usually to also write
-some tests. But overall, I push code to GitHub as I commit it.
+## The Packages of site:forge
+
+In addition to the tool for generating websites itself, this repository also
+includes the source code for several packages that are more generally useful.
+
+  * __@grr/sequitur__ provides expressive and lazy sequences that may just be
+    synchronous or asynchronous.
+  * __@grr/reloader__ provides a module hook that enables hot module reloading,
+    but only for modules in select directories and at select times.
+  * __@grr/html__ provides a model for well-formed HTML based on HTML5,
+    WAI-ARIA, and the Open Graph Protocol.
+  * __@grr/proact__ implements the proactive view system, notably a template tag
+    for creating virtual DOM fragments and a render function for validating and
+    emitting HTML.
 
 ---
 

@@ -553,11 +553,6 @@ const LIBRARY_FILES = new Set([
   'package.json',
   'siteforge.js',
   'usage.txt',
-  'markup/render.js',
-  'markup/vdom.js',
-  'reloader/config.js',
-  'reloader/hook.js',
-  'reloader/package.json',
   'task/build-htaccess.js',
   'task/build-markup.js',
   'task/build-script.js',
@@ -572,6 +567,7 @@ const LIBRARY_FILES = new Set([
   'tooling/logger.js',
   'tooling/options.js',
   'tooling/run.js',
+  'tooling/task-runner.js',
   'tooling/text.js',
   'tooling/versioning.js',
   'tooling/walk.js',
@@ -594,10 +590,10 @@ tap.test('tooling/walk', async t => {
   }
 
   t.strictEqual(count, LIBRARY_FILES.size);
-  t.strictEqual(walk.metrics.directory, 5);
-  t.strictEqual(walk.metrics.entry, 33);
-  t.strictEqual(walk.metrics.file, 26);
-  t.strictEqual(walk.metrics.status, 33);
+  t.strictEqual(walk.metrics.directory, 3);
+  t.strictEqual(walk.metrics.entry, 27);
+  t.strictEqual(walk.metrics.file, 22);
+  t.strictEqual(walk.metrics.status, 27);
   t.strictEqual(walk.metrics.symlink, 0);
 
   const root = t.testdir({

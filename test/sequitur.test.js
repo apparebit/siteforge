@@ -203,6 +203,9 @@ tap.test('@grr/sequitur', t => {
       .each();
     t.strictSame(list, [0, 5, 10, 15]);
 
+    const notSync = Sq.of(1, 2, 3).toAsync();
+    t.strictEqual(notSync.toAsync(), notSync);
+
     t.end();
   });
 
@@ -388,6 +391,7 @@ tap.test('@grr/sequitur', t => {
     // Sq serves as an abstract base. Make sure all its stub methods throw.
     const sq = new Sq(() => [][ITERATOR](), 'context');
     for (const method of [
+      'take',
       'filter',
       'map',
       'tap',

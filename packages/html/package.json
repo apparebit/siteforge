@@ -17,5 +17,8 @@
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
   "type": "module",
-  "main": "./model.js"
+  "main": "./model.js",
+  "dependencies": {
+    "@grr/sequitur": "*"
+  }
 }

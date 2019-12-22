@@ -1,6 +1,7 @@
 /* © 2019 Robert Grimm */
 
 import { isInternalProperty, Opcode, tag, traverse } from './vdom.js';
+import Model from '@grr/html';
 import Sq from '@grr/sequitur';
 
 const { has } = Reflect;
@@ -99,14 +100,15 @@ const renderAttribute = (name, value, spec) => {
 
 export default async function* render(
   node,
-  model,
   {
     context = {},
     hooks = {},
+    model = Model.load(),
     traverseChildren = true,
     collapseWhiteSpace = true,
   } = {}
 ) {
+  model = await model;
   const ancestors = [];
 
   for await (const step of traverse(node, {

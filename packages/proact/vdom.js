@@ -1,7 +1,6 @@
 /* © 2019 Robert Grimm */
 
 import htm from 'htm';
-import { not } from '../tooling/function.js';
 
 const { apply } = Reflect;
 const configurable = true;
@@ -21,7 +20,8 @@ export const h = (type, props, ...children) => {
 };
 
 /** Parse a thusly tagged string template into the vDOM. */
-export const html = htm.bind(h);
+const html = htm.bind(h);
+export default html;
 
 /** Determine the tag name for a vDOM node including view components. */
 export const tag = node => {
@@ -45,6 +45,7 @@ const TextualTypes = new Set(['bigint', 'number', 'string']);
  */
 export const isInternalChild = child =>
   child == null || child === '' || IgnoredTypes.has(typeof child);
+const isNotInternalChild = child => !isInternalChild(child);
 
 /**
  * Determine whether the given value is textual, i.e., contributes to text
@@ -54,7 +55,7 @@ export const isTextualChild = child => TextualTypes.has(typeof child);
 
 defineProperty(isInternalChild, 'not', {
   configurable,
-  value: not(isInternalChild),
+  value: isNotInternalChild,
 });
 
 /** Determine whether the value is a component. */

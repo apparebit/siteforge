@@ -1,23 +1,27 @@
 /* © 2019 Robert Grimm */
 
+import { html, render } from '@grr/proact';
+
 import {
-  default as render,
-  escapeAttribute,
-  escapeText,
-  isValidComment,
-  isValidRawText,
-} from '../source/markup/render.js';
-import Model from '@grr/html';
-import {
+  h,
   isComponent,
   isInternalChild,
   isInternalProperty,
   isTextualChild,
-  h,
   Opcode,
   tag,
   traverse,
-} from '../source/markup/vdom.js';
+} from '@grr/proact/vdom.js';
+
+import {
+  escapeAttribute,
+  escapeText,
+  isValidComment,
+  isValidRawText,
+} from '@grr/proact/render.js';
+
+import Model from '@grr/html';
+import Sq from '@grr/sequitur';
 import tap from 'tap';
 
 const answer = [
@@ -132,12 +136,19 @@ tap.test('markup/render', async t => {
 
   const model = await Model.load();
   const steps = [];
-  for await (const step of render(theQuestion, model)) {
+  for await (const step of render(theQuestion, { model })) {
     steps.push(step);
   }
 
   t.strictEqual(
     steps.join(''),
+    '<div class=highlight><span>And the answer is 42!</span></div>'
+  );
+
+  t.strictEqual(
+    await Sq.from(render(
+      html`<div class=highlight><span>And the answer is 42!</span></div>`
+    )).join(),
     '<div class=highlight><span>And the answer is 42!</span></div>'
   );
 

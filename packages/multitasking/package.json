@@ -1,0 +1,13 @@
+{
+  "name": "@grr/multitasking",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "multitasking.js",
+  "description": "Concurrent execution of asynchronous tasks with concurrency limit and coarse priorities.",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

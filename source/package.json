@@ -19,13 +19,15 @@
     "not dead"
   ],
   "dependencies": {
-    "@babel/core": "7.7.5",
-    "@grr/html": "*",
-    "@grr/sequitur": "*",
+    "@babel/core": "7.7.7",
+    "@grr/html": "1.0.0",
+    "@grr/multitasking": "*",
+    "@grr/proact": "*",
+    "@grr/sequitur": "1.0.0",
     "babel-minify": "0.5.1",
     "cssnano": "4.1.10",
     "htm": "2.2.1",
-    "postcss": "7.0.24",
+    "postcss": "7.0.25",
     "vnu-jar": "19.9.4"
   }
 }

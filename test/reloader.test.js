@@ -47,7 +47,7 @@ function testConfig(input, expected) {
 
 // ===== debug() =====
 
-tap.test('reloader/config -> { debug }', t => {
+tap.test('@grr/reloader/config -> { debug }', t => {
   // noop
   t.strictEqual(
     config({
@@ -86,7 +86,7 @@ tap.test('reloader/config -> { debug }', t => {
 
 // ===== epoch =====
 
-tap.test('reloader/config -> { epoch }', t => {
+tap.test('@grr/reloader/config -> { epoch }', t => {
   const { epoch } = config({ env: { RELOADER_SCOPES: 'test' } });
   t.strictEqual(
     global[Symbol.for('@grr/reloader/epoch/current')],
@@ -99,7 +99,7 @@ tap.test('reloader/config -> { epoch }', t => {
   t.end();
 });
 
-tap.test('reloader/config -> { scopes }', t => {
+tap.test('@grr/reloader/config -> { scopes }', t => {
   configTester = t;
 
   try {
@@ -179,7 +179,7 @@ async function loadResolveHook() {
   return mod.resolve;
 }
 
-tap.test('reloader/resolve', async t => {
+tap.test('@grr/reloader/resolve', async t => {
   const resolve = await loadResolveHook();
   const modMain = pkgdir + 'main.js';
   const modHookPath = './packages/reloader/hook.js';

@@ -41,7 +41,7 @@ const theQuestion = h('div', { class: 'highlight' }, ultimate);
 
 // =============================================================================
 
-tap.test('markup/vdom', async t => {
+tap.test('@grr/proact/vdom.js', async t => {
   const props = { class: ['logo', 'positive'], role: 'presentation' };
   const logo = h('div', props, h('span'), h('span'), h('span'));
   t.strictEqual(logo, props);
@@ -112,7 +112,7 @@ tap.test('markup/vdom', async t => {
 
 // =============================================================================
 
-tap.test('markup/render', async t => {
+tap.test('@grr/proact/render.js', async t => {
   t.strictEqual(escapeAttribute(`totally-fine`), `totally-fine`);
   t.strictEqual(escapeAttribute(`totally fine`), `"totally fine"`);
   t.strictEqual(escapeAttribute(`totally & fine`), `"totally &amp; fine"`);
@@ -146,9 +146,13 @@ tap.test('markup/render', async t => {
   );
 
   t.strictEqual(
-    await Sq.from(render(
-      html`<div class=highlight><span>And the answer is 42!</span></div>`
-    )).join(),
+    await Sq.from(
+      render(
+        html`
+          <div class="highlight"><span>And the answer is 42!</span></div>
+        `
+      )
+    ).join(),
     '<div class=highlight><span>And the answer is 42!</span></div>'
   );
 

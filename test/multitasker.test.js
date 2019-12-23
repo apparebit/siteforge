@@ -1,6 +1,6 @@
 /* © 2019 Robert Grimm */
 
-import Multitasking from '@grr/multitasking';
+import Multitasker from '@grr/multitasker';
 import tap from 'tap';
 
 const configurable = true;
@@ -37,7 +37,7 @@ tap.test('@grr/multitasker', async t => {
   const t5 = task(5);
   const t6 = task(6);
 
-  const runner = new Multitasking({
+  const runner = new Multitasker({
     concurrency: 2,
     context: { '@type': 'context' },
   });
@@ -46,7 +46,7 @@ tap.test('@grr/multitasker', async t => {
 
   t.ok(runner.hasCapacity());
   t.notOk(runner.hasReadyTask());
-  t.strictEqual(runner._status, Multitasking.Idle);
+  t.strictEqual(runner._status, Multitasker.Idle);
   t.strictEqual(runner._inflight, 0);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
@@ -56,7 +56,7 @@ tap.test('@grr/multitasker', async t => {
 
   t.ok(runner.hasCapacity());
   t.notOk(runner.hasReadyTask());
-  t.strictEqual(runner._status, Multitasking.Running);
+  t.strictEqual(runner._status, Multitasker.Running);
   t.strictEqual(runner._inflight, 1);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
@@ -66,44 +66,44 @@ tap.test('@grr/multitasker', async t => {
 
   t.notOk(runner.hasCapacity());
   t.notOk(runner.hasReadyTask());
-  t.ok(runner.is(Multitasking.Running));
+  t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._blocked.length, 0);
 
   const p3 = runner
-    .enqueue(Multitasking.Asap, t3)
+    .enqueue(Multitasker.Asap, t3)
     .then(v => t.strictEqual(v, 'T3'));
 
   t.notOk(runner.hasCapacity());
   t.ok(runner.hasReadyTask());
-  t.ok(runner.is(Multitasking.Running));
+  t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 1);
   t.strictEqual(runner._blocked.length, 0);
 
   const p4 = runner
-    .enqueue(Multitasking.Later, t4)
+    .enqueue(Multitasker.Later, t4)
     .then(v => t.strictEqual(v, 'T4'));
 
   t.notOk(runner.hasCapacity());
   t.ok(runner.hasReadyTask());
-  t.ok(runner.is(Multitasking.Running));
+  t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 1);
   t.strictEqual(runner._blocked.length, 1);
 
   const p5 = runner
-    .enqueue(Multitasking.Later, t5)
+    .enqueue(Multitasker.Later, t5)
     .then(v => t.strictEqual(v, 'T5'));
-  runner.enqueue(Multitasking.Later, t6).then(v => t.strictEqual(v, 'T6'));
+  runner.enqueue(Multitasker.Later, t6).then(v => t.strictEqual(v, 'T6'));
 
   t.notOk(runner.hasCapacity());
   t.ok(runner.hasReadyTask());
-  t.ok(runner.is(Multitasking.Running));
+  t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 1);
@@ -114,7 +114,7 @@ tap.test('@grr/multitasker', async t => {
 
   t.notOk(runner.hasCapacity());
   t.notOk(runner.hasReadyTask());
-  t.ok(runner.is(Multitasking.Running));
+  t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._ready.length, 0);
@@ -125,7 +125,7 @@ tap.test('@grr/multitasker', async t => {
 
   t.ok(runner.hasCapacity());
   t.notOk(runner.hasReadyTask());
-  t.ok(runner.is(Multitasking.Running));
+  t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 1);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._ready.length, 0);
@@ -134,7 +134,7 @@ tap.test('@grr/multitasker', async t => {
   const pidle = runner.onidle(() => {
     t.ok(runner.hasCapacity());
     t.notOk(runner.hasReadyTask());
-    t.ok(runner.is(Multitasking.Idle));
+    t.ok(runner.is(Multitasker.Idle));
     t.strictEqual(runner._inflight, 0);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 0);
@@ -144,7 +144,7 @@ tap.test('@grr/multitasker', async t => {
 
     t.notOk(runner.hasCapacity());
     t.ok(runner.hasReadyTask());
-    t.ok(runner.is(Multitasking.Running));
+    t.ok(runner.is(Multitasker.Running));
     t.strictEqual(runner._inflight, 2);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 1);
@@ -154,7 +154,7 @@ tap.test('@grr/multitasker', async t => {
 
     t.notOk(runner.hasCapacity());
     t.notOk(runner.hasReadyTask());
-    t.ok(runner.is(Multitasking.Stopping));
+    t.ok(runner.is(Multitasker.Stopping));
     t.strictEqual(runner._inflight, 2);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 0);
@@ -182,6 +182,6 @@ tap.test('@grr/multitasker', async t => {
   await Promise.all([p4, p5, pidle, pstop, runner.ondone()]);
 
   t.strictEqual(runner._inflight, 0);
-  t.ok(runner.is(Multitasking.Done));
+  t.ok(runner.is(Multitasker.Done));
   t.end();
 });

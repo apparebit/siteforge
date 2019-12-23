@@ -21,7 +21,7 @@
   "dependencies": {
     "@babel/core": "7.7.7",
     "@grr/html": "1.0.0",
-    "@grr/multitasking": "*",
+    "@grr/multitasker": "*",
     "@grr/proact": "*",
     "@grr/sequitur": "1.0.0",
     "babel-minify": "0.5.1",

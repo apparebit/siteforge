@@ -9,11 +9,11 @@ const Done = 4;
 
 const { apply, has } = Reflect;
 
-export default class Multitasking {
+export default class Multitasker {
   static get Asap() {
     return 1;
   }
-  static get Later() {
+  static get Block() {
     return -1;
   }
   static get Idle() {
@@ -34,7 +34,9 @@ export default class Multitasking {
   constructor({ concurrency = 8, context = {} } = {}) {
     this._concurrency = concurrency;
     this._context = context;
-    if (!has(this._context, 'runner')) this._context.runner = this;
+    if (!has(this._context, 'multitasker')) {
+      this._context.multitasker = this;
+    }
 
     this._status = Idle;
     this._inflight = 0;

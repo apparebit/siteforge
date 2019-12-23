@@ -66,10 +66,10 @@ includes the source code for several packages that are more generally useful.
 
   * __@grr/sequitur__ provides expressive and lazy sequences that may just be
     synchronous or asynchronous.
-  * __@grr/multitasking__ enables concurrent, asynchronous task execution in an
-    orderly and differentiated manner. While @grr/multitasking necessarily deals
-    in promises, it mostly focuses on the promise-producing tasks first. After
-    all, they actually get shit done.
+  * __@grr/multitasker__ performs concurrent, asynchronous task execution in an
+    orderly and context-aware manner. While the package necessarily deals in
+    promises, it mostly focuses on the promise-producing tasks. After all, they
+    actually get shit done.
   * __@grr/reloader__ provides a module hook that enables hot module reloading,
     but only for modules in select directories and at select times.
   * __@grr/html__ provides a model for well-formed HTML based on HTML5,

@@ -1,8 +1,8 @@
 {
-  "name": "@grr/multitasking",
+  "name": "@grr/multitasker",
   "version": "1.0.0",
   "type": "module",
-  "main": "multitasking.js",
+  "main": "multitasker.js",
   "description": "Concurrent execution of asynchronous tasks with concurrency limit and simple priorities",
   "keywords": [
     "task",

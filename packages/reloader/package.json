@@ -1,6 +1,6 @@
 {
   "name": "@grr/reloader",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "main": "hook.js",
   "description": "A hook for reloading ES6 modules in modern Node.js",

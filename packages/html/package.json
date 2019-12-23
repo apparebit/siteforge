@@ -12,13 +12,13 @@
     "element",
     "attribute"
   ],
-  "version": "0.1.0",
+  "version": "1.0.0",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
   "type": "module",
   "main": "./model.js",
   "dependencies": {
-    "@grr/sequitur": "*"
+    "@grr/sequitur": "1.0.0"
   }
 }

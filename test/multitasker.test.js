@@ -85,7 +85,7 @@ tap.test('@grr/multitasker', async t => {
   t.strictEqual(runner._blocked.length, 0);
 
   const p4 = runner
-    .enqueue(Multitasker.Later, t4)
+    .enqueue(Multitasker.Block, t4)
     .then(v => t.strictEqual(v, 'T4'));
 
   t.notOk(runner.hasCapacity());
@@ -97,9 +97,9 @@ tap.test('@grr/multitasker', async t => {
   t.strictEqual(runner._blocked.length, 1);
 
   const p5 = runner
-    .enqueue(Multitasker.Later, t5)
+    .enqueue(Multitasker.Block, t5)
     .then(v => t.strictEqual(v, 'T5'));
-  runner.enqueue(Multitasker.Later, t6).then(v => t.strictEqual(v, 'T6'));
+  runner.enqueue(Multitasker.Block, t6).then(v => t.strictEqual(v, 'T6'));
 
   t.notOk(runner.hasCapacity());
   t.ok(runner.hasReadyTask());

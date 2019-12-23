@@ -43,7 +43,9 @@ export function toDirectory(url) {
   return dirname(fileURLToPath(url));
 }
 
-// Cool URIs don't change (https://www.w3.org/Provider/Style/URI).
+// Cool URIs don't change (https://www.w3.org/Provider/Style/URI). But cool URIs
+// also are crafted with care, i.e., without ".html" and without those
+// extraneous trailing slashes.
 export function toCoolPath(path, { trailingSlash = false } = {}) {
   const { dir, name, ext } = parsePath(path);
   if (ext === '.html') {

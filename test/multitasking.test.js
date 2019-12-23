@@ -23,7 +23,7 @@ const task = (
   return fn;
 };
 
-tap.test('@grr/runner', async t => {
+tap.test('@grr/multitasker', async t => {
   function t1() {
     t.strictEqual(typeof this, 'object');
     t.strictEqual(this['@type'], 'context');
@@ -50,7 +50,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 0);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
-  t.strictEqual(runner._later.length, 0);
+  t.strictEqual(runner._blocked.length, 0);
 
   const p1 = runner.enqueue(t1).then(v => t.strictEqual(v, 'T1'));
 
@@ -60,7 +60,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 1);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
-  t.strictEqual(runner._later.length, 0);
+  t.strictEqual(runner._blocked.length, 0);
 
   const p2 = runner.enqueue(t2).then(v => t.strictEqual(v, 'T2'));
 
@@ -70,7 +70,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
-  t.strictEqual(runner._later.length, 0);
+  t.strictEqual(runner._blocked.length, 0);
 
   const p3 = runner
     .enqueue(Multitasking.Asap, t3)
@@ -82,7 +82,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 1);
-  t.strictEqual(runner._later.length, 0);
+  t.strictEqual(runner._blocked.length, 0);
 
   const p4 = runner
     .enqueue(Multitasking.Later, t4)
@@ -94,7 +94,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 1);
-  t.strictEqual(runner._later.length, 1);
+  t.strictEqual(runner._blocked.length, 1);
 
   const p5 = runner
     .enqueue(Multitasking.Later, t5)
@@ -107,7 +107,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 1);
-  t.strictEqual(runner._later.length, 3);
+  t.strictEqual(runner._blocked.length, 3);
 
   t1.resolve(t1.name);
   await p1;
@@ -118,7 +118,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._later.length, 3);
+  t.strictEqual(runner._blocked.length, 3);
 
   t2.resolve(t2.name);
   await p2;
@@ -129,7 +129,7 @@ tap.test('@grr/runner', async t => {
   t.strictEqual(runner._inflight, 1);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._later.length, 3);
+  t.strictEqual(runner._blocked.length, 3);
 
   const pidle = runner.onidle(() => {
     t.ok(runner.hasCapacity());
@@ -138,7 +138,7 @@ tap.test('@grr/runner', async t => {
     t.strictEqual(runner._inflight, 0);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 0);
-    t.strictEqual(runner._later.length, 3);
+    t.strictEqual(runner._blocked.length, 3);
 
     runner.unblock();
 
@@ -148,7 +148,7 @@ tap.test('@grr/runner', async t => {
     t.strictEqual(runner._inflight, 2);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 1);
-    t.strictEqual(runner._later.length, 0);
+    t.strictEqual(runner._blocked.length, 0);
 
     runner.stop();
 
@@ -158,7 +158,7 @@ tap.test('@grr/runner', async t => {
     t.strictEqual(runner._inflight, 2);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 0);
-    t.strictEqual(runner._later.length, 0);
+    t.strictEqual(runner._blocked.length, 0);
 
     t4.resolve(t4.name);
     t5.resolve(t5.name);

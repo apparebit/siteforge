@@ -45,7 +45,7 @@ tap.test('@grr/multitasker', async t => {
   t.throws(() => runner.enqueue(665), /Invalid invocation enqueue\(665\)/u);
 
   t.ok(runner.hasCapacity());
-  t.notOk(runner.hasReadyTask());
+  t.notOk(runner.hasTaskReady());
   t.strictEqual(runner._status, Multitasker.Idle);
   t.strictEqual(runner._inflight, 0);
   t.strictEqual(runner._ready.length, 0);
@@ -55,17 +55,17 @@ tap.test('@grr/multitasker', async t => {
   const p1 = runner.enqueue(t1).then(v => t.strictEqual(v, 'T1'));
 
   t.ok(runner.hasCapacity());
-  t.notOk(runner.hasReadyTask());
+  t.notOk(runner.hasTaskReady());
   t.strictEqual(runner._status, Multitasker.Running);
   t.strictEqual(runner._inflight, 1);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._blocked.length, 0);
 
-  const p2 = runner.enqueue(t2).then(v => t.strictEqual(v, 'T2'));
+  const p2 = runner.enqueue(t2);
 
   t.notOk(runner.hasCapacity());
-  t.notOk(runner.hasReadyTask());
+  t.notOk(runner.hasTaskReady());
   t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
@@ -77,7 +77,7 @@ tap.test('@grr/multitasker', async t => {
     .then(v => t.strictEqual(v, 'T3'));
 
   t.notOk(runner.hasCapacity());
-  t.ok(runner.hasReadyTask());
+  t.ok(runner.hasTaskReady());
   t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
@@ -89,7 +89,7 @@ tap.test('@grr/multitasker', async t => {
     .then(v => t.strictEqual(v, 'T4'));
 
   t.notOk(runner.hasCapacity());
-  t.ok(runner.hasReadyTask());
+  t.ok(runner.hasTaskReady());
   t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
@@ -102,7 +102,7 @@ tap.test('@grr/multitasker', async t => {
   runner.enqueue(Multitasker.Block, t6).then(v => t.strictEqual(v, 'T6'));
 
   t.notOk(runner.hasCapacity());
-  t.ok(runner.hasReadyTask());
+  t.ok(runner.hasTaskReady());
   t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._ready.length, 0);
@@ -113,27 +113,33 @@ tap.test('@grr/multitasker', async t => {
   await p1;
 
   t.notOk(runner.hasCapacity());
-  t.notOk(runner.hasReadyTask());
+  t.notOk(runner.hasTaskReady());
   t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 2);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._blocked.length, 3);
 
-  t2.resolve(t2.name);
-  await p2;
+  t2.reject(new Error('boo'));
+  try {
+    await p2;
+    t.fail();
+  } catch (x) {
+    t.strictEqual(x.message, 'boo');
+  }
 
   t.ok(runner.hasCapacity());
-  t.notOk(runner.hasReadyTask());
+  t.notOk(runner.hasTaskReady());
   t.ok(runner.is(Multitasker.Running));
   t.strictEqual(runner._inflight, 1);
   t.strictEqual(runner._asap.length, 0);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._blocked.length, 3);
 
+  t.resolves(runner.onidle());
   const pidle = runner.onidle(() => {
     t.ok(runner.hasCapacity());
-    t.notOk(runner.hasReadyTask());
+    t.notOk(runner.hasTaskReady());
     t.ok(runner.is(Multitasker.Idle));
     t.strictEqual(runner._inflight, 0);
     t.strictEqual(runner._asap.length, 0);
@@ -143,17 +149,19 @@ tap.test('@grr/multitasker', async t => {
     runner.unblock();
 
     t.notOk(runner.hasCapacity());
-    t.ok(runner.hasReadyTask());
+    t.ok(runner.hasTaskReady());
     t.ok(runner.is(Multitasker.Running));
     t.strictEqual(runner._inflight, 2);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 1);
     t.strictEqual(runner._blocked.length, 0);
 
-    runner.stop();
+    t.resolves(runner.onstop());
+    const done = runner.stop();
+    t.strictEqual(runner.stop(), done);
 
     t.notOk(runner.hasCapacity());
-    t.notOk(runner.hasReadyTask());
+    t.notOk(runner.hasTaskReady());
     t.ok(runner.is(Multitasker.Stopping));
     t.strictEqual(runner._inflight, 2);
     t.strictEqual(runner._asap.length, 0);
@@ -179,9 +187,20 @@ tap.test('@grr/multitasker', async t => {
   // while stopping), outstanding eventhandlers (the onidle and onstop callbacks), and the
   // multitasking instance itself.
 
+  t.resolves(runner.ondone(() => t.pass()));
   await Promise.all([p4, p5, pidle, pstop, runner.ondone()]);
 
   t.strictEqual(runner._inflight, 0);
   t.ok(runner.is(Multitasker.Done));
+
+  // An idle multitasker, when stopped, transitions directly to the done state.
+  // That transition skips the stop state but still triggers the stop promise.
+  const r2 = new Multitasker();
+  t.resolves(r2.onstop());
+  t.resolves(r2.ondone());
+  t.ok(r2.is(Multitasker.Idle));
+  r2.stop();
+  t.ok(r2.is(Multitasker.Done));
+
   t.end();
 });

@@ -2,31 +2,58 @@
 
 import { strict } from 'assert';
 
-const Idle = 1;
-const Running = 2;
-const Stopping = 3;
-const Done = 4;
+const ASAP = 1;
+const BLOCK = -1;
+const IDLE = 1;
+const RUNNING = 2;
+const STOPPING = 3;
+const DONE = 4;
 
 const { apply, has } = Reflect;
 
+class Task {
+  constructor(runtime, fn, args) {
+    this.runtime = runtime;
+    this.fn = fn;
+    this.args = args;
+    this.promise = new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    });
+  }
+
+  async run() {
+    this.runtime._inflight++;
+
+    try {
+      this.resolve(await apply(this.fn, this.runtime._context, this.args));
+    } catch (x) {
+      this.reject(x);
+    } finally {
+      this.runtime._inflight--;
+      this.runtime._schedule();
+    }
+  }
+}
+
 export default class Multitasker {
   static get Asap() {
-    return 1;
+    return ASAP;
   }
   static get Block() {
-    return -1;
+    return BLOCK;
   }
   static get Idle() {
-    return Idle;
+    return IDLE;
   }
   static get Running() {
-    return Running;
+    return RUNNING;
   }
   static get Stopping() {
-    return Stopping;
+    return STOPPING;
   }
   static get Done() {
-    return Done;
+    return DONE;
   }
 
   // ---------------------------------------------------------------------------
@@ -38,16 +65,27 @@ export default class Multitasker {
       this._context.multitasker = this;
     }
 
-    this._status = Idle;
+    this._status = IDLE;
     this._inflight = 0;
     this._asap = []; // Tasks that take absolute precedence.
     this._ready = []; // Tasks that are ready.
     this._blocked = []; // Tasks that are delayed until later.
 
+    this._idle = {};
+    this._idle.promise = new Promise(resolve => (this._idle.resolve = resolve));
     this._stop = {};
     this._stop.promise = new Promise(resolve => (this._stop.resolve = resolve));
     this._done = {};
     this._done.promise = new Promise(resolve => (this._done.resolve = resolve));
+  }
+
+  handleWalk(handleFile) {
+    return {
+      handleNext: (handler, path, virtualPath) =>
+        this.enqueue(ASAP, handler, path, virtualPath),
+      handleFile: (path, virtualPath) =>
+        this.enqueue(handleFile, path, virtualPath),
+    };
   }
 
   is(...validStatusValues) {
@@ -58,33 +96,30 @@ export default class Multitasker {
   }
 
   enqueue(...args) {
-    strict.ok(this.is(Idle, Running));
+    strict.ok(this.is(IDLE, RUNNING));
 
     let fn;
-    let queue = this._ready;
+    let priority = 0;
     if (typeof args[0] === 'function') {
       fn = args.shift();
     } else if (typeof args[1] === 'function') {
-      const priority = args.shift();
+      priority = args.shift();
       fn = args.shift();
-
-      if (priority > 0) {
-        queue = this._asap;
-      } else if (priority < 0) {
-        queue = this._blocked;
-      }
     } else {
       throw new Error(`Invalid invocation enqueue(${args})`);
     }
 
-    const task = { fn, args };
-    task.promise = new Promise((resolve, reject) => {
-      task.resolve = resolve;
-      task.reject = reject;
-    });
-    queue.push(task);
-
-    this._schedule();
+    const task = new Task(this, fn, args);
+    if (priority < 0) {
+      this._blocked.push(task);
+    } else if (priority > 0) {
+      this._asap.push(task);
+    } else {
+      this._ready.push(task);
+    }
+    if (priority >= 0) {
+      this._schedule();
+    }
     return task.promise;
   }
 
@@ -95,7 +130,7 @@ export default class Multitasker {
   }
 
   unblock() {
-    strict.ok(this.is(Idle, Running));
+    strict.ok(this.is(IDLE, RUNNING));
 
     this._ready.push(...this._blocked);
     this._blocked.length = 0;
@@ -105,14 +140,22 @@ export default class Multitasker {
   // ---------------------------------------------------------------------------
 
   stop() {
-    if (this.is(Stopping, Done)) return false;
-    this._status = Stopping;
+    if (this.is(STOPPING, DONE)) return this._done.promise;
+
     this._asap.length = 0;
     this._ready.length = 0;
     this._blocked.length = 0;
-    this._stop.resolve();
-    this._schedule();
-    return true;
+
+    if (this.is(IDLE)) {
+      this._status = DONE;
+      this._stop.resolve();
+      this._done.resolve();
+    } else {
+      this._status = STOPPING;
+      this._stop.resolve();
+    }
+
+    return this._done.promise;
   }
 
   onstop(fn) {
@@ -125,7 +168,7 @@ export default class Multitasker {
 
   // ---------------------------------------------------------------------------
 
-  hasReadyTask() {
+  hasTaskReady() {
     return Boolean(this._asap.length || this._ready.length);
   }
 
@@ -134,35 +177,27 @@ export default class Multitasker {
   }
 
   _schedule() {
-    if (this.is(Idle) && this.hasReadyTask()) {
-      this._status = Running;
-      this._idle = {};
-      this._idle.promise = new Promise(
-        resolve => (this._idle.resolve = resolve)
-      );
-    }
+    // If idle, we do have capacity. Do we also have tasks ready?
+    if (this.is(IDLE) && this.hasTaskReady()) this._status = RUNNING;
 
-    while (this.is(Running) && this.hasCapacity() && this.hasReadyTask()) {
+    // Start as many ready tasks as possible.
+    while (this.is(RUNNING) && this.hasCapacity() && this.hasTaskReady()) {
       const task = this._asap.length ? this._asap.shift() : this._ready.shift();
-      this._inflight++;
-
-      Promise.resolve()
-        .then(() => {
-          return apply(task.fn, this._context, task.args);
-        })
-        .finally(() => {
-          this._inflight--;
-          this._schedule();
-        })
-        .then(task.resolve, task.reject);
+      task.run();
     }
 
     if (this._inflight === 0) {
-      if (this.is(Running)) {
-        this._status = Idle;
+      if (this.is(RUNNING)) {
+        // Transition to idle state effectively consumes promise.
+        // Therefore, we immediately replace with new promise.
+        this._status = IDLE;
         this._idle.resolve();
-      } else if (this.is(Stopping)) {
-        this._status = Done;
+        this._idle = {};
+        this._idle.promise = new Promise(
+          resolve => (this._idle.resolve = resolve)
+        );
+      } else if (this.is(STOPPING)) {
+        this._status = DONE;
         this._done.resolve();
       }
     }

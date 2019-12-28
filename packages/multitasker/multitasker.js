@@ -1,32 +1,34 @@
 /* © 2019 Robert Grimm */
 
+import { AsyncResource } from 'async_hooks';
 import { strict } from 'assert';
 
 const ASAP = 1;
 const BLOCK = -1;
-const IDLE = 1;
-const RUNNING = 2;
-const STOPPING = 3;
-const DONE = 4;
+const IDLE = Symbol('idle');
+const RUNNING = Symbol('running');
+const STOPPING = Symbol('stopping');
+const DONE = Symbol('done');
 
-const { apply, has } = Reflect;
+const { has } = Reflect;
+const { entries } = Object;
 
-class Task {
+class Task extends AsyncResource {
   constructor(runtime, fn, args) {
+    super('@grr/async/Task');
     this.runtime = runtime;
     this.fn = fn;
     this.args = args;
-    this.promise = new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-    });
+    Multitasker.newPromiseCapability(this);
   }
 
   async run() {
     this.runtime._inflight++;
 
     try {
-      this.resolve(await apply(this.fn, this.runtime._context, this.args));
+      this.resolve(
+        await this.runInAsyncScope(this.fn, this.runtime._context, this.args)
+      );
     } catch (x) {
       this.reject(x);
     } finally {
@@ -58,25 +60,31 @@ export default class Multitasker {
 
   // ---------------------------------------------------------------------------
 
-  constructor({ concurrency = 8, context = {} } = {}) {
-    this._concurrency = concurrency;
+  static newPromiseCapability(record = {}) {
+    record.promise = new Promise((resolve, reject) => {
+      record.resolve = resolve;
+      record.reject = reject;
+    });
+    return record;
+  }
+
+  // ---------------------------------------------------------------------------
+  constructor({ capacity = 8, context = {} } = {}) {
+    this._capacity = capacity;
     this._context = context;
     if (!has(this._context, 'multitasker')) {
       this._context.multitasker = this;
     }
 
-    this._status = IDLE;
+    this._state = IDLE;
     this._inflight = 0;
     this._asap = []; // Tasks that take absolute precedence.
     this._ready = []; // Tasks that are ready.
     this._blocked = []; // Tasks that are delayed until later.
 
-    this._idle = {};
-    this._idle.promise = new Promise(resolve => (this._idle.resolve = resolve));
-    this._stop = {};
-    this._stop.promise = new Promise(resolve => (this._stop.resolve = resolve));
-    this._done = {};
-    this._done.promise = new Promise(resolve => (this._done.resolve = resolve));
+    this._idle = Multitasker.newPromiseCapability();
+    this._stopping = Multitasker.newPromiseCapability();
+    this._done = Multitasker.newPromiseCapability();
   }
 
   handleWalk(handleFile) {
@@ -88,9 +96,30 @@ export default class Multitasker {
     };
   }
 
-  is(...validStatusValues) {
-    for (const status of validStatusValues) {
-      if (this._status === status) return true;
+  status() {
+    return {
+      state: this._state.description,
+      inflight: this._inflight,
+      capacity: this._capacity,
+      asap: this._asap.length,
+      ready: this._ready.length,
+      blocked: this._blocked.length,
+    };
+  }
+
+  toString() {
+    const fragments = ['Multitasker { '];
+    for (const [key, value] of entries(this.status())) {
+      if (fragments.length > 1) fragments.push(', ');
+      fragments.push(key, `: `, value);
+    }
+    fragments.push(' }');
+    return fragments.join('');
+  }
+
+  is(...states) {
+    for (const state of states) {
+      if (this._state === state) return true;
     }
     return false;
   }
@@ -147,19 +176,19 @@ export default class Multitasker {
     this._blocked.length = 0;
 
     if (this.is(IDLE)) {
-      this._status = DONE;
-      this._stop.resolve();
+      this._state = DONE;
+      this._stopping.resolve();
       this._done.resolve();
     } else {
-      this._status = STOPPING;
-      this._stop.resolve();
+      this._state = STOPPING;
+      this._stopping.resolve();
     }
 
     return this._done.promise;
   }
 
-  onstop(fn) {
-    return fn ? this._stop.promise.then(fn) : this._stop.promise;
+  onstopping(fn) {
+    return fn ? this._stopping.promise.then(fn) : this._stopping.promise;
   }
 
   ondone(fn) {
@@ -173,12 +202,12 @@ export default class Multitasker {
   }
 
   hasCapacity() {
-    return this._inflight < this._concurrency;
+    return this._inflight < this._capacity;
   }
 
   _schedule() {
     // If idle, we do have capacity. Do we also have tasks ready?
-    if (this.is(IDLE) && this.hasTaskReady()) this._status = RUNNING;
+    if (this.is(IDLE) && this.hasTaskReady()) this._state = RUNNING;
 
     // Start as many ready tasks as possible.
     while (this.is(RUNNING) && this.hasCapacity() && this.hasTaskReady()) {
@@ -190,14 +219,11 @@ export default class Multitasker {
       if (this.is(RUNNING)) {
         // Transition to idle state effectively consumes promise.
         // Therefore, we immediately replace with new promise.
-        this._status = IDLE;
+        this._state = IDLE;
         this._idle.resolve();
-        this._idle = {};
-        this._idle.promise = new Promise(
-          resolve => (this._idle.resolve = resolve)
-        );
+        this._idle = Multitasker.newPromiseCapability();
       } else if (this.is(STOPPING)) {
-        this._status = DONE;
+        this._state = DONE;
         this._done.resolve();
       }
     }

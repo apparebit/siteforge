@@ -12,7 +12,8 @@
       "cwd": "${workspaceFolder}",
       "skipFiles": [
         "<node_internals>/**"
-      ]
+      ],
+      "console": "internalConsole"
     }
   ]
 }

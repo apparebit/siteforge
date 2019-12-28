@@ -31,7 +31,7 @@ following entities can be distinguished automatically:
     clearly asynchronous. Yet, plain functions may or may not be synchronous,
     since they can always return a promise.
 
-__sequitur__ builds on this analysis as following:
+__@grr/sequitur__ builds on this analysis as following:
 
   * Methods that expect some variable number of elements accept iterables. In
     addition, `Sq.from()` also accepts generator functions and thus turns them
@@ -82,36 +82,36 @@ import Sq from '@grr/sequitur';
 
 ### Iteration Helpers
 
-#### Sq.IteratorPrototype
+##### Sq.IteratorPrototype
 
 The elusive prototype of all built-in synchronous iterators made readily
 nameable.
 
-#### Sq.AsyncIteratorPrototype
+##### Sq.AsyncIteratorPrototype
 
 The even more elusive prototype of all built-in asynchronous iterators
 made readily nameable.
 
-#### Sq.isIterable(value)
+##### Sq.isIterable(value)
 
 Determine whether the value is an iterable.
 
-#### Sq.isNonStringIterable(value)
+##### Sq.isNonStringIterable(value)
 
 Determine whether the value is an iterable but not a string.
 
-#### Sq.isAsyncIterable(value)
+##### Sq.isAsyncIterable(value)
 
 Determine whether the value is an async iterable.
 
-#### Sq.isAsyncFunction(value)
+##### Sq.isAsyncFunction(value)
 
 Determine whether the value is an async function. This method returns `true` for
 functions with `%AsyncFunction%` or `%AsyncGeneratorFunction%` as their
 prototype, with `async` case-insensitive in their name, or with a truthy `async`
 property.
 
-#### Sq.toAsyncIterable(iterable)
+##### Sq.toAsyncIterable(iterable)
 
 Convert the given synchronous iterable into an asynchronous iterable. This
 method does not return just a minimal iterator interface implementation but
@@ -126,7 +126,7 @@ handy.
 
 ### Creating Sequences
 
-#### Sq.from(value, context?)
+##### Sq.from(value, context?)
 
 Create a new sequence over the elements of the given iterable or generator
 function. Otherwise, if the value is `null` or `undefined`, create an empty
@@ -158,18 +158,18 @@ strict.deepEqual(
 })();
 ```
 
-#### Sq.fromString(value, context?)
+##### Sq.fromString(value, context?)
 
 Create a new sequence just like `Sq.from()`, but treat strings as iterables.
 
-#### Sq.of(...elements)
+##### Sq.of(...elements)
 
 Create a new synchronous sequence over the elements.
 
 
 ### Synchronous Sequences over Integers
 
-#### Sq.count(start = 0, step = 1, context?)
+##### Sq.count(start = 0, step = 1, context?)
 
 Create a new synchronous sequence over integers that starts with and increments
 by the given numbers. The parameters must either both be integral JavaScript
@@ -178,35 +178,35 @@ numbers or big integers.
 
 ### Synchronous Sequences over Properties
 
-#### Sq.keys(object, context?)
+##### Sq.keys(object, context?)
 
 Create a new synchronous sequence over the object's keys. This method invokes
 the corresponding instance method if the object is an array, map, or set.
 
-#### Sq.values(object, context?)
+##### Sq.values(object, context?)
 
 Create a new synchronous sequence over the object's values. This method invokes
 the corresponding instance method if the object is an array, map, or set.
 
-#### Sq.entries(object, context?)
+##### Sq.entries(object, context?)
 
 Create a new synchronous sequence over the object's key, value pairs. This
 method invokes the corresponding instance method if the object is an array, map,
 or set.
 
-#### Sq.descriptors(object, context?)
+##### Sq.descriptors(object, context?)
 
 Create a new synchronous sequence over the object's own property descriptors.
 
 
 ### Combining Sequences
 
-#### Sq.concat(...iterables)
+##### Sq.concat(...iterables)
 
 Create a new sequence that concatenates the elements of the given iterables in
 order.
 
-#### Sq.zip(...iterables)
+##### Sq.zip(...iterables)
 
 Create a new sequence that zips the elements of the given iterables in order and
 ends with the shortest iterable.
@@ -214,15 +214,15 @@ ends with the shortest iterable.
 
 ### Changing Context
 
-#### Sq.prototype.with(context)
+##### Sq.prototype.with(context)
 
 Update the context of this sequence with the given value and return `this` for
 chaining operators.
 
 
-### Slouching Towards Asynchronous
+### Slouching Towards Asynchrony
 
-#### Sq.prototype.toAsync()
+##### Sq.prototype.toAsync()
 
 Return a new asynchronous version of this sequence if it is synchronous. Just
 return `this` if the sequence is asynchronous already.
@@ -250,23 +250,23 @@ strict.equal(s2.context, 'context');
 strict.equal(s3.context, 'context');
 ```
 
-#### Sq.prototype.take(count)
+##### Sq.prototype.take(count)
 
 Limit the sequence to at most the given number of elements.
 
-#### Sq.prototype.filter(fn)
+##### Sq.prototype.filter(fn)
 
 Filter out any elements that do not match the given predicate.
 
-#### Sq.prototype.map(fn)
+##### Sq.prototype.map(fn)
 
 Transform each element into another with the given transform.
 
-#### Sq.prototype.tap(fn)
+##### Sq.prototype.tap(fn)
 
 Process each element for some side-effect while leaving the sequence as is.
 
-#### Sq.prototype.flatMap(fn)
+##### Sq.prototype.flatMap(fn)
 
 Transform each element into an iterable, whose elements take its place.
 Returning `undefined` or `null` is the same as returning an empty iterable and
@@ -275,24 +275,24 @@ over a single value. If the sequence is synchronous, the returned iterable must
 also be synchronous. If the sequence is asynchronous, the returned iterable may
 be synchronous or asynchronous.
 
-#### Sq.prototype.flatten()
+##### Sq.prototype.flatten()
 
 Flatten any nested iterables, no matter how deeply nested. If the sequence is
 synchronous, only synchronous iterables are flattened. If the sequence is
 asynchronous, both synchronous and asynchronous iterables are flattened. In
 either case, *strings are treated a non-iterable*.
 
-#### Sq.prototype.concat(...iterables)
+##### Sq.prototype.concat(...iterables)
 
 Concatenate the elements in this sequence with those in the given iterables in
 order.
 
-#### Sq.prototype.zip(...iterables)
+##### Sq.prototype.zip(...iterables)
 
 Zip the elements in this sequence with those in the given iterables in order.
 The new sequence is as long as the shortest of its inputs.
 
-#### Sq.prototype.run(generatorFunction)
+##### Sq.prototype.run(generatorFunction)
 
 Create a new sequence with the elements of the generator created by the given
 generator function. The two arguments passed to each invocation are this
@@ -304,12 +304,12 @@ sequence and its context.
 Each of the following eager and terminal operators immediately starts consuming
 this sequence in the described way.
 
-#### Sq.prototype.each(fn = noop)
+##### Sq.prototype.each(fn = noop)
 
 Invoke the given callback on each element. The `noop` default callback serves to
 make `each()` the designed method when consuming a sequence for side-effect.
 
-#### Sq.prototype.reduce(fn, initial)
+##### Sq.prototype.reduce(fn, initial)
 
 Reduce the sequence with the given callback and initial accumulator value. The
 order of arguments to the callback is consistent with the built-in array
@@ -333,20 +333,20 @@ strict.deepEqual(
 );
 ```
 
-#### Sq.prototype.collect(into = [])
+##### Sq.prototype.collect(into = [])
 
 Collect the elements in an array or a set.
 
-#### Sq.prototype.collectEntries(into = {})
+##### Sq.prototype.collectEntries(into = {})
 
 Collect the key, value pairs as configurable, enumerable, and writable
 properties of an object or as entries of a map.
 
-#### Sq.prototype.collectDescriptors(into = {})
+##### Sq.prototype.collectDescriptors(into = {})
 
 Collect the property descriptors as properties of an object.
 
-#### Sq.prototype.join(separator = '')
+##### Sq.prototype.join(separator = '')
 
 Join the string representations of each element with the given separator. Note
 that the default separator is the empty string and not the comma as for

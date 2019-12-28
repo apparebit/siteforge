@@ -1,0 +1,23 @@
+{
+  "name": "@grr/options",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "options.js",
+  "description": "Obtaining options from command line or configuration file alike",
+  "keywords": [
+    "options",
+    "flags",
+    "configuration",
+    "command line arguments",
+    "command line flags",
+    "getopt",
+    "configuration file",
+    "manifest"
+  ],
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

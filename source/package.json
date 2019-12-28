@@ -22,6 +22,7 @@
     "@babel/core": "7.7.7",
     "@grr/html": "1.0.0",
     "@grr/multitasker": "*",
+    "@grr/options": "*",
     "@grr/proact": "*",
     "@grr/sequitur": "1.0.0",
     "babel-minify": "0.5.1",

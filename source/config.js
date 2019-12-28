@@ -7,7 +7,7 @@ import {
   FilePath,
   optionsFromObject,
   optionsFromArguments,
-} from './tooling/options.js';
+} from '@grr/options';
 
 import Error from './tooling/error.js';
 import { join, resolve } from 'path';

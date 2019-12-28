@@ -12,16 +12,21 @@ const task = (
     return t.promise;
   }
 ) => {
-  fn.promise = new Promise((resolve, reject) => {
-    fn.resolve = resolve;
-    fn.reject = reject;
-  });
   defineProperty(fn, 'name', {
     configurable,
     value: `T${index}`,
   });
-  return fn;
+  return Multitasker.newPromiseCapability(fn);
 };
+
+function nextTick(fn) {
+  return new Promise(resolve => {
+    setImmediate(() => {
+      fn();
+      resolve();
+    });
+  });
+}
 
 tap.test('@grr/multitasker', async t => {
   function t1() {
@@ -29,6 +34,12 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(this['@type'], 'context');
     return t1.promise;
   }
+
+  // The following battery of tests exhaustively covers the methods and states
+  // of a multitasker. It relies on functions that appear asynchronous but
+  // perform no actual work, i.e., complete when a promise is explicitly
+  // settled. But that also means there is no outstanding request and, if not
+  // carefully scheduled, Node.js' event loop may just exit.
 
   task(1, t1);
   const t2 = task(2);
@@ -38,7 +49,7 @@ tap.test('@grr/multitasker', async t => {
   const t6 = task(6);
 
   const runner = new Multitasker({
-    concurrency: 2,
+    capacity: 2,
     context: { '@type': 'context' },
   });
 
@@ -46,7 +57,7 @@ tap.test('@grr/multitasker', async t => {
 
   t.ok(runner.hasCapacity());
   t.notOk(runner.hasTaskReady());
-  t.strictEqual(runner._status, Multitasker.Idle);
+  t.ok(runner.is(Multitasker.Idle));
   t.strictEqual(runner._inflight, 0);
   t.strictEqual(runner._ready.length, 0);
   t.strictEqual(runner._asap.length, 0);
@@ -54,71 +65,83 @@ tap.test('@grr/multitasker', async t => {
 
   const p1 = runner.enqueue(t1).then(v => t.strictEqual(v, 'T1'));
 
-  t.ok(runner.hasCapacity());
-  t.notOk(runner.hasTaskReady());
-  t.strictEqual(runner._status, Multitasker.Running);
-  t.strictEqual(runner._inflight, 1);
-  t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._asap.length, 0);
-  t.strictEqual(runner._blocked.length, 0);
+  await nextTick(() => {
+    t.ok(runner.hasCapacity());
+    t.notOk(runner.hasTaskReady());
+    t.ok(runner.is(Multitasker.Running));
+    t.strictEqual(runner._inflight, 1);
+    t.strictEqual(runner._ready.length, 0);
+    t.strictEqual(runner._asap.length, 0);
+    t.strictEqual(runner._blocked.length, 0);
+  });
 
   const p2 = runner.enqueue(t2);
 
-  t.notOk(runner.hasCapacity());
-  t.notOk(runner.hasTaskReady());
-  t.ok(runner.is(Multitasker.Running));
-  t.strictEqual(runner._inflight, 2);
-  t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._asap.length, 0);
-  t.strictEqual(runner._blocked.length, 0);
+  await nextTick(() => {
+    t.notOk(runner.hasCapacity());
+    t.notOk(runner.hasTaskReady());
+    t.ok(runner.is(Multitasker.Running));
+    t.strictEqual(runner._inflight, 2);
+    t.strictEqual(runner._ready.length, 0);
+    t.strictEqual(runner._asap.length, 0);
+    t.strictEqual(runner._blocked.length, 0);
+  });
 
   const p3 = runner
     .enqueue(Multitasker.Asap, t3)
     .then(v => t.strictEqual(v, 'T3'));
 
-  t.notOk(runner.hasCapacity());
-  t.ok(runner.hasTaskReady());
-  t.ok(runner.is(Multitasker.Running));
-  t.strictEqual(runner._inflight, 2);
-  t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._asap.length, 1);
-  t.strictEqual(runner._blocked.length, 0);
+  await nextTick(() => {
+    t.notOk(runner.hasCapacity());
+    t.ok(runner.hasTaskReady());
+    t.ok(runner.is(Multitasker.Running));
+    t.strictEqual(runner._inflight, 2);
+    t.strictEqual(runner._ready.length, 0);
+    t.strictEqual(runner._asap.length, 1);
+    t.strictEqual(runner._blocked.length, 0);
+  });
 
   const p4 = runner
     .enqueue(Multitasker.Block, t4)
     .then(v => t.strictEqual(v, 'T4'));
 
-  t.notOk(runner.hasCapacity());
-  t.ok(runner.hasTaskReady());
-  t.ok(runner.is(Multitasker.Running));
-  t.strictEqual(runner._inflight, 2);
-  t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._asap.length, 1);
-  t.strictEqual(runner._blocked.length, 1);
+  await nextTick(() => {
+    t.notOk(runner.hasCapacity());
+    t.ok(runner.hasTaskReady());
+    t.ok(runner.is(Multitasker.Running));
+    t.strictEqual(runner._inflight, 2);
+    t.strictEqual(runner._ready.length, 0);
+    t.strictEqual(runner._asap.length, 1);
+    t.strictEqual(runner._blocked.length, 1);
+  });
 
   const p5 = runner
     .enqueue(Multitasker.Block, t5)
     .then(v => t.strictEqual(v, 'T5'));
   runner.enqueue(Multitasker.Block, t6).then(v => t.strictEqual(v, 'T6'));
 
-  t.notOk(runner.hasCapacity());
-  t.ok(runner.hasTaskReady());
-  t.ok(runner.is(Multitasker.Running));
-  t.strictEqual(runner._inflight, 2);
-  t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._asap.length, 1);
-  t.strictEqual(runner._blocked.length, 3);
+  await nextTick(() => {
+    t.notOk(runner.hasCapacity());
+    t.ok(runner.hasTaskReady());
+    t.ok(runner.is(Multitasker.Running));
+    t.strictEqual(runner._inflight, 2);
+    t.strictEqual(runner._ready.length, 0);
+    t.strictEqual(runner._asap.length, 1);
+    t.strictEqual(runner._blocked.length, 3);
+  });
 
   t1.resolve(t1.name);
   await p1;
 
-  t.notOk(runner.hasCapacity());
-  t.notOk(runner.hasTaskReady());
-  t.ok(runner.is(Multitasker.Running));
-  t.strictEqual(runner._inflight, 2);
-  t.strictEqual(runner._asap.length, 0);
-  t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._blocked.length, 3);
+  await nextTick(() => {
+    t.notOk(runner.hasCapacity());
+    t.notOk(runner.hasTaskReady());
+    t.ok(runner.is(Multitasker.Running));
+    t.strictEqual(runner._inflight, 2);
+    t.strictEqual(runner._asap.length, 0);
+    t.strictEqual(runner._ready.length, 0);
+    t.strictEqual(runner._blocked.length, 3);
+  });
 
   t2.reject(new Error('boo'));
   try {
@@ -128,16 +151,22 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(x.message, 'boo');
   }
 
-  t.ok(runner.hasCapacity());
-  t.notOk(runner.hasTaskReady());
-  t.ok(runner.is(Multitasker.Running));
-  t.strictEqual(runner._inflight, 1);
-  t.strictEqual(runner._asap.length, 0);
-  t.strictEqual(runner._ready.length, 0);
-  t.strictEqual(runner._blocked.length, 3);
+  await nextTick(() => {
+    t.ok(runner.hasCapacity());
+    t.notOk(runner.hasTaskReady());
+    t.ok(runner.is(Multitasker.Running));
+    t.strictEqual(runner._inflight, 1);
+    t.strictEqual(runner._asap.length, 0);
+    t.strictEqual(runner._ready.length, 0);
+    t.strictEqual(runner._blocked.length, 3);
+  });
 
   t.resolves(runner.onidle());
-  const pidle = runner.onidle(() => {
+  t.resolves(runner.onidle(() => t.pass()));
+  t3.resolve(t3.name);
+  await p3;
+
+  await nextTick(() => {
     t.ok(runner.hasCapacity());
     t.notOk(runner.hasTaskReady());
     t.ok(runner.is(Multitasker.Idle));
@@ -145,9 +174,11 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 0);
     t.strictEqual(runner._blocked.length, 3);
+  });
 
-    runner.unblock();
+  runner.unblock();
 
+  await nextTick(() => {
     t.notOk(runner.hasCapacity());
     t.ok(runner.hasTaskReady());
     t.ok(runner.is(Multitasker.Running));
@@ -155,11 +186,14 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 1);
     t.strictEqual(runner._blocked.length, 0);
+  });
 
-    t.resolves(runner.onstop());
-    const done = runner.stop();
-    t.strictEqual(runner.stop(), done);
+  t.resolves(runner.onstopping());
+  t.resolves(runner.onstopping(() => t.pass()));
+  const done = runner.stop();
+  t.strictEqual(runner.stop(), done);
 
+  await nextTick(() => {
     t.notOk(runner.hasCapacity());
     t.notOk(runner.hasTaskReady());
     t.ok(runner.is(Multitasker.Stopping));
@@ -167,36 +201,24 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._ready.length, 0);
     t.strictEqual(runner._blocked.length, 0);
-
-    t4.resolve(t4.name);
-    t5.resolve(t5.name);
   });
 
-  const pstop = runner.onstop(() => t.pass());
+  t4.resolve(t4.name);
+  t5.resolve(t5.name);
+  await p4;
+  await p5;
 
-  t3.resolve(t3.name);
-  await p3;
-
-  // At this point, there are no tasks in the ready queue. The above
-  // runner.onidle should very much trigger
-
-  // Some time later, the queue should enter the Stopping state and eventually
-  // reach the Done state. The art here is waiting on sufficiently many
-  // promises, so that no test is executed after the t.end() below. That means
-  // including outstandings tasks (with exception of the one that gets dropped
-  // while stopping), outstanding eventhandlers (the onidle and onstop callbacks), and the
-  // multitasking instance itself.
-
+  t.resolves(runner.ondone());
   t.resolves(runner.ondone(() => t.pass()));
-  await Promise.all([p4, p5, pidle, pstop, runner.ondone()]);
+  await runner.ondone();
 
   t.strictEqual(runner._inflight, 0);
   t.ok(runner.is(Multitasker.Done));
 
-  // An idle multitasker, when stopped, transitions directly to the done state.
-  // That transition skips the stop state but still triggers the stop promise.
+  // When stopped, an idle multitasker directly transitions to the done state.
+  // Make sure that it fulfills both onstop() and ondone().
   const r2 = new Multitasker();
-  t.resolves(r2.onstop());
+  t.resolves(r2.onstopping());
   t.resolves(r2.ondone());
   t.ok(r2.is(Multitasker.Idle));
   r2.stop();

@@ -1,0 +1,17 @@
+{
+  "name": "@grr/fs",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "fs.js",
+  "description": "An assortment of promising file system helpers",
+  "keywords": [
+    "file system",
+    "promises"
+  ],
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

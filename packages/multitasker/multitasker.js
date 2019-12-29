@@ -27,7 +27,7 @@ class Task extends AsyncResource {
 
     try {
       this.resolve(
-        await this.runInAsyncScope(this.fn, this.runtime._context, this.args)
+        await this.runInAsyncScope(this.fn, this.runtime._context, ...this.args)
       );
     } catch (x) {
       this.reject(x);

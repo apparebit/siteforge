@@ -1,0 +1,19 @@
+{
+  "name": "@grr/glob",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "glob.js",
+  "description": "Convert file globs to regular expressions",
+  "keywords": [
+    "glob",
+    "wildcard",
+    "pattern matching",
+    "regular expression"
+  ],
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

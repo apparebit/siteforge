@@ -2,9 +2,13 @@
 
 import cssnano from 'cssnano';
 import postcss from 'postcss';
-import { readFile, retryAfterNoEntity, writeFile } from '../tooling/fs.js';
+import {
+  readFile,
+  retryAfterNoEntity,
+  writeFile,
+  writeVersionedFile,
+} from '@grr/fs';
 import { extractRightsNotice, withRightsNotice } from '../tooling/text.js';
-import { writeVersionedFile } from '../tooling/versioning.js';
 
 const css = postcss([
   cssnano({

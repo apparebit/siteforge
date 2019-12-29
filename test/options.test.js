@@ -12,7 +12,7 @@ import {
 import { EOL } from 'os';
 import { escapeRegex } from '../source/tooling/text.js';
 import tap from 'tap';
-import { toDirectory } from '../source/tooling/fs.js';
+import { toDirectory } from '@grr/fs';
 
 const { assign, keys: keysOf } = Object;
 const __directory = toDirectory(import.meta.url);

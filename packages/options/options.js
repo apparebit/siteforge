@@ -1,7 +1,7 @@
 /* © 2019 Robert Grimm */
 
 import { EOL } from 'os';
-import { glob } from './fs.js';
+import glob from '@grr/glob';
 import { resolve } from 'path';
 
 const configurable = true;

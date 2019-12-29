@@ -6,7 +6,7 @@ import buildHTAccess from './task/build-htaccess.js';
 import configure from './config.js';
 import deploy from './task/deploy.js';
 import { EOL } from 'os';
-import { rmdir } from './tooling/fs.js';
+import { rmdir } from '@grr/fs';
 import validateMarkup from './task/validate-markup.js';
 
 const { apply } = Reflect;

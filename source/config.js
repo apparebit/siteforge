@@ -10,9 +10,10 @@ import {
 } from '@grr/options';
 
 import Error from './tooling/error.js';
+import glob from '@grr/glob';
 import { join, resolve } from 'path';
 import Logger from './tooling/logger.js';
-import { glob, readFile, toDirectory } from './tooling/fs.js';
+import { readFile, toDirectory } from '@grr/fs';
 
 const { assign } = Object;
 const __directory = toDirectory(import.meta.url);

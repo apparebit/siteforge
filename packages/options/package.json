@@ -1,6 +1,6 @@
 {
   "name": "@grr/options",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "main": "options.js",
   "description": "Obtaining options from command line or configuration file alike",
@@ -17,6 +17,9 @@
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
+  "dependencies": {
+    "@grr/glob": "0.1.0"
+  },
   "engines": {
     "node": ">= 12.0.0"
   }

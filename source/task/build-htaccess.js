@@ -2,7 +2,7 @@
 
 import { createHash } from 'crypto';
 import { join, resolve } from 'path';
-import { readFile, toDirectory, writeFile } from '../tooling/fs.js';
+import { readFile, toDirectory, writeFile } from '@grr/fs';
 import run from '../tooling/run.js';
 
 const BUILD_HTACCESS = resolve(

@@ -4,7 +4,7 @@ import { basename, dirname, extname, join } from 'path';
 import buildMarkup from './build-markup.js';
 import buildScript from './build-script.js';
 import buildStyle from './build-style.js';
-import { copyFile } from '../tooling/fs.js';
+import { copyFile } from '@grr/fs';
 import Error from '../tooling/error.js';
 import { escapeRegex } from '../tooling/text.js';
 import Walk from '../tooling/walk.js';

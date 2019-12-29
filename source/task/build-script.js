@@ -1,9 +1,13 @@
 /* © 2019 Robert Grimm */
 
 import minify from 'babel-minify';
-import { readFile, retryAfterNoEntity, writeFile } from '../tooling/fs.js';
+import {
+  readFile,
+  retryAfterNoEntity,
+  writeFile,
+  writeVersionedFile,
+} from '@grr/fs';
 import { extractRightsNotice, withRightsNotice } from '../tooling/text.js';
-import { writeVersionedFile } from '../tooling/versioning.js';
 
 export default async function script(from, to, vpath) {
   const original = await readFile(from);

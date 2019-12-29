@@ -1,6 +1,6 @@
 /* © 2019 Robert Grimm */
 
-import { readFile, retryAfterNoEntity, writeFile } from '../tooling/fs.js';
+import { readFile, retryAfterNoEntity, writeFile } from '@grr/fs';
 
 export default async function buildMarkup(
   { from, to, vpath },

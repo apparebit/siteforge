@@ -1,21 +1,23 @@
 /* © 2019 Robert Grimm */
 
-import { rmdir, toDirectory } from '../source/tooling/fs.js';
+import { rmdir, toDirectory } from '@grr/fs';
 import { join } from 'path';
 import tap from 'tap';
 
 const ROOT = join(toDirectory(import.meta.url), '..');
 const COVERAGE_DATA = join(ROOT, '.coverage');
-//const COVERATE_REPORT = join(ROOT, 'coverage');
 
 (async function run() {
   await rmdir(COVERAGE_DATA, { recursive: true });
-  await import('./tooling.test.js');
-  await import('./sequitur.test.js');
-  await import('./multitasker.test.js');
-  await import('./reloader.test.js');
+  //await import('./fs.test.js');
+  await import('./glob.test.js');
   await import('./html.test.js');
+  await import('./multitasker.test.js');
+  await import('./options.test.js');
   await import('./proact.test.js');
+  await import('./reloader.test.js');
+  await import('./sequitur.test.js');
+  await import('./tooling.test.js');
 
   tap.on('end', () => {
     let color, slogan;

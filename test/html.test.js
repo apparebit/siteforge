@@ -3,7 +3,7 @@
 import { join } from 'path';
 import { default as Model, prepareModelData } from '@grr/html';
 import tap from 'tap';
-import { toDirectory } from '../source/tooling/fs.js';
+import { toDirectory } from '@grr/fs';
 
 const __directory = toDirectory(import.meta.url);
 const __package = join(__directory, '../package.json');

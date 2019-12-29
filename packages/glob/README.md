@@ -2,11 +2,19 @@
 
 ##### glob(...patterns)
 
-Convert file path patterns into the corresponding predicate. One pattern string
-may contain several patterns separated by a vertical bar `|`. If a path segment
-is `**`, it matches zero or more path segments. If a path segment contains `*`,
-it matches any number of characters. If a path segment contains `?`, it matches
-any single character.
+Convert the given file path patterns into a predicate function, with the
+implementation using a regular expression for performance. This package supports
+basic file patterns but no more, since their familiarity and concision make for
+a better user experience than regular expressions. But if you need character
+classes or brace expansion, you are better off using regular expressions
+directly and not some restricted version with a different surface syntax. For
+that same reason, it is unlikely that this package will ever support more than a
+vertical bar `|` for separating alternatives within the same pattern string, a
+double star `**` as path segment for matching arbitrary path segments including
+none, a star `*` for matching zero or more characters within a path segment, and
+a question mark `?` for matching one character within a path segment. Patterns
+can match a literal star or question mark by preceding the character with a
+backslash.
 
 ---
 

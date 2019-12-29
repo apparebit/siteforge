@@ -85,6 +85,13 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(runner._ready.length, 0);
     t.strictEqual(runner._asap.length, 0);
     t.strictEqual(runner._blocked.length, 0);
+    t.strictEqual(
+      runner.toString(),
+      'Multitasker { ' +
+        'state: running, inflight: 2, capacity: 2, ' +
+        'asap: 0, ready: 0, blocked: 0' +
+        ' }'
+    );
   });
 
   const p3 = runner
@@ -99,6 +106,14 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(runner._ready.length, 0);
     t.strictEqual(runner._asap.length, 1);
     t.strictEqual(runner._blocked.length, 0);
+    t.strictSame(runner.status(), {
+      state: 'running',
+      inflight: 2,
+      capacity: 2,
+      asap: 1,
+      ready: 0,
+      blocked: 0,
+    });
   });
 
   const p4 = runner

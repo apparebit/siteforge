@@ -47,7 +47,7 @@ HTML—capturing the rules from the
 [HTML](https://html.spec.whatwg.org), [WAI-ARIA](https://w3c.github.io/aria/),
 and [OpenGraph](https://ogp.me) standards.
 
-### Project Prehistory
+### Prehistory
 
 This project is based, in part, on experiences with two earlier and by now
 discarded prototypes. But whereas tooling came first for those earlier two
@@ -61,22 +61,79 @@ websites. It also serves as a end-to-end test for the tool and its usability.
 
 ## The Packages of site:forge
 
-In addition to the tool for generating websites itself, this repository also
-includes the source code for several packages that are more generally useful.
+In addition to the tool for generating websites itself, found in the `source`
+directory, this repository also includes the source code for several packages
+that are more generally useful, in the `packages` directory. In refactoring
+site:forge's runtime from a monolithic assortment of modules into distinct
+packages with well-defined interfaces, I carefully minimized any dependencies
+between these packages. At times, that meant implementing the same helper
+functionality more than once. But I consider that an acceptable trade-off, since
+site:forge explicitly seeks to avoid framework lock-in.
 
-  * __@grr/sequitur__ provides expressive and lazy sequences that may just be
-    synchronous or asynchronous.
-  * __@grr/multitasker__ performs concurrent, asynchronous task execution in an
-    orderly and context-aware manner. While the package necessarily deals in
-    promises, it mostly focuses on the promise-producing tasks. After all, they
-    actually get shit done.
-  * __@grr/reloader__ provides a module hook that enables hot module reloading,
-    but only for modules in select directories and at select times.
-  * __@grr/html__ provides a model for well-formed HTML based on HTML5,
-    WAI-ARIA, and the Open Graph Protocol.
-  * __@grr/proact__ implements the proactive view system, notably a template tag
-    for creating virtual DOM fragments and a render function for validating and
-    emitting HTML.
+In building out these packages, I mostly wrote the code from scratch and reused
+only few, carefully vetted, existing packages. That is largely a personal
+reaction to the state of the npm ecosystem. In my opinion, it features too many
+packages that comprise only a single, straight-forward function. Furthermore,
+even packages that contain more functionality often take modularization to
+dubious extremes, with each module containing just one function. This is not to
+argue that a module having only a default export necessarily is a bad idea.
+Quite the contrary: A narrow, well-designed interface can be a feature in and of
+itself. Nonetheless, many npm packages have gone a bit far with this trend
+towards ever smaller code units and I'm leveraging the site:forge project as an
+opportunity for exploring a different balance.
+
+A nice side-effect of revisiting seemingly familiar topics, such as command line
+argument parsing, are opportunities for redefining the task at hand and thereby
+enabling more powerful and easier to use APIs. In the case of command line
+argument parsing, I realized that command line arguments are just one source of
+a tool's configuration state. Consequently, the `@grr/options` package relies on
+the same schema declaration for parsing command line arguments or the equivalent
+records from a `package.json` manifest. The package still has two distinct entry
+points, `optionsFromObject()` and `optionsFromArguments()`. But both functions
+share the same underlying data model, take almost the same arguments, perform
+the same validations on the raw data, and produce the same kind of configuration
+state.
+
+Another consideration in factoring functionality into distinct packages has been
+unit testing. While code coverage of the existing unit tests has not yet reached
+100% for all packages, it generally comes very close already and my goal is to
+get to 100% eventually. Furthermore, test coverage for the packages is far
+better than for site:forge itself. However, the latter benefits significantly
+from end-to-end testing as Apparebit's static site generator.
+
+_Oops!_ It does appear that I have more and more strongly felt opinions about
+view components and package management than I expected. But I believe we covered
+the substance thereof and are ready for switching gears. So without further ado,
+here are site:forge's packages so far:
+
+  * [__@grr/glob__](packages/glob) implements wildcard patterns for file system
+    paths by translating them into predicate functions. Unlike many other npm
+    packages, `@grr/glob` does not compete on features and is purposefully
+    minimal.
+  * [__@grr/fs__](packages/fs) is a grab bag of regular and empowered helper
+    functions for performing file I/O. Some are just easier to import,
+    promisified file operations from Node.js' own `fs` module. Some come with
+    their own superpowers, including the ability to fix `ENOENT` errors on the
+    fly, to rename files depending on their content, and to easily walk the file
+    system hierarchy.
+  * [__@grr/options__](packages/options) helps determine a tool's configuration
+    based on command line arguments and `package.json` manifest alike, with both
+    sources being subjected to the same validations based on the same schema.
+  * [__@grr/sequitur__](packages/sequitur) provides expressive and lazy
+    sequences that may just be synchronous or asynchronous.
+  * [__@grr/multitasker__](packages/multitasker) performs concurrent,
+    asynchronous task execution in an orderly and context-aware manner. While
+    the package necessarily deals in promises, it mostly focuses on the
+    promise-producing tasks. After all, they actually get shit done.
+  * [__@grr/reloader__](packages/reloader) provides a module hook that enables
+    hot module reloading, but only for modules in select directories and at
+    select times. Since Node.js module hook API will likely change in the
+    future, this package must be considered experimental.
+  * [__@grr/html__](packages/html) provides a model for well-formed HTML based
+    on HTML5, WAI-ARIA, and the Open Graph Protocol.
+  * [__@grr/proact__](packages/proact) implements the proactive view system,
+    notably a template tag for creating virtual DOM fragments and a render
+    function for validating and emitting HTML.
 
 ---
 

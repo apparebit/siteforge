@@ -22,19 +22,17 @@ class Task extends AsyncResource {
     Multitasker.newPromiseCapability(this);
   }
 
-  async run() {
+  run() {
     this.runtime._inflight++;
-
-    try {
-      this.resolve(
-        await this.runInAsyncScope(this.fn, this.runtime._context, ...this.args)
-      );
-    } catch (x) {
-      this.reject(x);
-    } finally {
-      this.runtime._inflight--;
-      this.runtime._schedule();
-    }
+    return Promise.resolve()
+      .then(() =>
+        this.runInAsyncScope(this.fn, this.runtime._context, ...this.args)
+      )
+      .then(this.resolve, this.reject)
+      .then(() => {
+        this.runtime._inflight--;
+        this.runtime._schedule();
+      });
   }
 }
 

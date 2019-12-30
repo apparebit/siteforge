@@ -163,34 +163,39 @@ tap.test('@grr/fs', t => {
 
     const expectedFiles = [
       '/multitasker/LICENSE',
-      '/multitaskermultitasker.js',
-      '/multitaskerpackage.json',
-      '/multitaskerREADME.md',
-      '/proact/index.js',
+      '/multitasker/README.md',
+      '/multitasker/multitasker.js',
+      '/multitasker/package.json',
       '/proact/LICENSE',
-      '/proact/package.json',
       '/proact/README.md',
+      '/proact/index.js',
+      '/proact/package.json',
       '/proact/render.js',
       '/proact/vdom.js',
     ];
 
     const actualFiles = [];
-    const handleFile = (path, vpath) => actualFiles.push({ path, vpath });
+    const handleFile = (path, virtualPath) => {
+      actualFiles.push({ path, virtualPath });
+    };
 
-    const metrics = await walk(root, {
+    const { ondone, metrics } = await walk(root, {
       isExcluded,
       ...multitasker.handleWalk(handleFile),
     });
+    await ondone;
 
-    console.log(metrics);
+    const cap = Multitasker.newPromiseCapability();
+    setTimeout(cap.resolve, 10 * 1000);
+    await cap.promise;
 
-    t.strictEqual(metrics.directory, 3);
-    t.strictEqual(metrics.entry, 15);
-    t.strictEqual(metrics.file, 10);
-    t.strictEqual(metrics.status, 12);
-    t.strictEqual(metrics.symlink, 0);
+    t.strictEqual(metrics.readdir, 3);
+    t.strictEqual(metrics.entries, 18);
+    t.strictEqual(metrics.lstat, 12);
+    t.strictEqual(metrics.realpath, 0);
+    t.strictEqual(metrics.files, 10);
     t.strictSame(
-      actualFiles.map(({ vpath }) => vpath),
+      actualFiles.map(({ virtualPath }) => virtualPath).sort(),
       expectedFiles
     );
 

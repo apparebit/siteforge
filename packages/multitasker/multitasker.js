@@ -24,15 +24,24 @@ class Task extends AsyncResource {
 
   run() {
     this.runtime._inflight++;
-    return Promise.resolve()
-      .then(() =>
-        this.runInAsyncScope(this.fn, this.runtime._context, ...this.args)
-      )
-      .then(this.resolve, this.reject)
-      .then(() => {
-        this.runtime._inflight--;
-        this.runtime._schedule();
-      });
+    return (
+      Promise.resolve()
+        // Execute the task within the correct asynchronous scope.
+        .then(() =>
+          this.runInAsyncScope(this.fn, this.runtime._context, ...this.args)
+        )
+        // Settle the task's promise, which was returned by enqueue().
+        .then(this.resolve, this.reject)
+        // Clean up: Destroy the task and schedule the next one.
+        .then(() => {
+          this.fn = null;
+          this.args = null;
+          this.emitDestroy();
+
+          this.runtime._inflight--;
+          this.runtime._schedule();
+        })
+    );
   }
 }
 

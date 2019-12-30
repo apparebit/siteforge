@@ -13,7 +13,8 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "console": "internalConsole"
+      "console": "internalConsole",
+      "runtimeArgs": ["--async-stack-traces", "--detailed-error-stack-trace"]
     }
   ]
 }

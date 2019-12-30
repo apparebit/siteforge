@@ -263,19 +263,21 @@ export async function walk(
       metrics.realpath++;
       path = await realpath(path);
       if (isExcluded(path) || isRevisit(path)) {
-        return { ondone: Promise.resolve() };
+        return { ondone: Promise.resolve(), path, virtualPath, skipped: true };
       }
     }
 
-    let ondone;
     if (status.isDirectory()) {
       // Wait for processDirectory() to read directory and schedule entries.
-      ({ ondone } = await processDirectory(path, virtualPath));
+      const { ondone } = await processDirectory(path, virtualPath);
+      return { ondone, path, virtualPath, directory: true };
     } else if (status.isFile()) {
       metrics.files++;
-      ondone = Promise.resolve(handleFile(path, virtualPath));
+      const ondone = Promise.resolve(handleFile(path, virtualPath));
+      return { ondone, path, virtualPath, file: true };
+    } else {
+      return { ondone: Promise.resolve(), path, virtualPath, other: true };
     }
-    return { ondone };
   };
 
   const processDirectory = async (directory, virtualDirectory) => {

@@ -226,11 +226,11 @@ export async function walk(
   }
 
   const metrics = {
-    directory: 0,
-    entry: 0,
-    file: 0,
-    status: 0,
-    symlink: 0,
+    readdir: 0,
+    entries: 0,
+    lstat: 0,
+    realpath: 0,
+    files: 0,
   };
 
   const visited = new Set();
@@ -242,9 +242,9 @@ export async function walk(
 
   const readEntries = async path => {
     try {
-      metrics.directory++;
+      metrics.readdir++;
       const entries = await readdir(path);
-      metrics.entry += entries.length;
+      metrics.entries += entries.length;
       return entries.sort();
     } catch (x) {
       if (ignoreNoEnt && x.code === 'ENOENT') return [];
@@ -253,35 +253,34 @@ export async function walk(
   };
 
   const processEntry = async (path, virtualPath) => {
-    console.log('process entry', virtualPath);
     let status;
 
     while (true) {
-      metrics.status++;
+      metrics.lstat++;
       status = await lstat(path);
       if (!status.isSymbolicLink()) break;
 
-      console.log('follow symlink', path);
-      metrics.symlink++;
+      metrics.realpath++;
       path = await realpath(path);
-      if (isExcluded(path) || isRevisit(path)) return null;
+      if (isExcluded(path) || isRevisit(path)) {
+        return { ondone: Promise.resolve() };
+      }
     }
 
+    let ondone;
     if (status.isDirectory()) {
-      console.log('directory', virtualPath);
-      return processDirectory(path, virtualPath);
+      // Wait for processDirectory() to read directory and schedule entries.
+      ({ ondone } = await processDirectory(path, virtualPath));
     } else if (status.isFile()) {
-      console.log('file', virtualPath);
-      metrics.file++;
-      return handleFile(path, virtualPath);
-    } else {
-      return null;
+      metrics.files++;
+      ondone = Promise.resolve(handleFile(path, virtualPath));
     }
+    return { ondone };
   };
 
   const processDirectory = async (directory, virtualDirectory) => {
     const entries = await readEntries(directory);
-    console.log('process entries', entries);
+
     const promises = [];
     for (const entry of entries) {
       const path = join(directory, entry);
@@ -292,9 +291,10 @@ export async function walk(
         );
       }
     }
-    return Promise.all(promises);
+
+    return { ondone: Promise.allSettled(promises) };
   };
 
-  await processDirectory(resolve(root), '/');
-  return metrics;
+  const { ondone } = await processDirectory(resolve(root), '/');
+  return { ondone, metrics };
 }

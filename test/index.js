@@ -9,7 +9,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
 
 (async function run() {
   await rmdir(COVERAGE_DATA, { recursive: true });
-  //await import('./fs.test.js');
+  await import('./fs.test.js');
   await import('./glob.test.js');
   await import('./html.test.js');
   await import('./multitasker.test.js');

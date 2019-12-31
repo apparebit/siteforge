@@ -1,20 +1,31 @@
 # site:forge
 
-## The Case for Proactive View Components
+A static website generator.
 
-__site:forge__ is a static website generator centered around *proactive view
-components*, that is, components that are rendered well ahead of time. By
-limiting itself to that use case, site:forge can eschew much of the complexity
-and framework lock-in of a [Gatsby](https://www.gatsbyjs.org),
-[Next.js](https://nextjs.org), or [Nuxt.js](https://nuxtjs.org). The trade-off
-is that site:forge also lacks their seamless integration between server-side and
-client-side execution environments. In fact, despite the view components,
-site:forge's more focused and thereby leaner approach to static website
-generation is closer to a [Metalsmith](https://metalsmith.io) or
-[11ty](https://www.11ty.dev). Yet, site:forge dispenses with their fondness for
-small-ish, often awkward, and at times obscure domain-specific languages.
-Instead, it standardizes on JavaScript as the only language for expressing
-business and view logic alike.
+## 1. The Case for site:forge
+
+When reading other people's code, I often wish there was more documentation on
+the motivation for a particular design or software architecture. After all, we
+routinely make trade-offs while developing code and understanding those
+trade-offs as well as other, non-technical factors that nonetheless influence
+our work most certainly helps in understanding the resulting artifact. With that
+in mind, there are two topics that have an outsize impact on site:forge.
+
+
+### 1.1 Proactive View Components
+
+site:forge is based on *proactive view components*, that is, components that are
+rendered well ahead of time. By limiting the tool to that use case, site:forge
+can eschew much of the complexity and framework lock-in of a
+[Gatsby](https://www.gatsbyjs.org), [Next.js](https://nextjs.org), or
+[Nuxt.js](https://nuxtjs.org). The trade-off is that site:forge also lacks their
+seamless integration between server-side and client-side execution environments.
+In fact, despite the view components, site:forge's more focused and thereby
+leaner approach to static website generation is closer to a
+[Metalsmith](https://metalsmith.io) or [11ty](https://www.11ty.dev). Yet,
+site:forge dispenses with their fondness for small-ish, often awkward, and at
+times obscure domain-specific languages. Instead, it standardizes on JavaScript
+as the only language for expressing business and view logic alike.
 
 As far as users are concerned, the goal is to replace templating and styling
 languages with tagged templates for verbatim content and vanilla JavaScript for
@@ -47,7 +58,7 @@ HTML—capturing the rules from the
 [HTML](https://html.spec.whatwg.org), [WAI-ARIA](https://w3c.github.io/aria/),
 and [OpenGraph](https://ogp.me) standards.
 
-### Prehistory
+#### Prehistory
 
 This project is based, in part, on experiences with two earlier and by now
 discarded prototypes. But whereas tooling came first for those earlier two
@@ -59,32 +70,37 @@ remains focused on features that are useful when building small to medium sized
 websites. It also serves as a end-to-end test for the tool and its usability.
 
 
-## The Packages of site:forge
+### 1.2 The Limits of Modularity
 
-In addition to the tool for generating websites itself, found in the `source`
-directory, this repository also includes the source code for several packages
-that are more generally useful, in the `packages` directory. In refactoring
-site:forge's runtime from a monolithic assortment of modules into distinct
-packages with well-defined interfaces, I carefully minimized any dependencies
-between these packages. At times, that meant implementing the same helper
-functionality more than once. But I consider that an acceptable trade-off, since
-site:forge explicitly seeks to avoid framework lock-in.
+In addition to the tool for generating websites itself (found in
+[`source`](source)), this repository also includes the source code for several
+other packages that are more generally useful (found in [`packages`](packages)).
+While I started with a single unified codebase, I began breaking out packages
+soon thereafter. In refactoring site:forge from an assortment of modules into a
+more structured application with distinct packages and well-defined internal
+interfaces, I carefully minimized any dependencies between these packages. At
+times, that meant implementing variations of the same helper functionality more
+than once. But I consider that an acceptable trade-off. As discussed above,
+site:forge explicitly seeks to avoid framework lock-in and so I could hardly
+create my own framework, which can only be consumed as a framework.
 
-In building out these packages, I mostly wrote the code from scratch and reused
-only few, carefully vetted, existing packages. That is largely a personal
-reaction to the state of the npm ecosystem. In my opinion, it features too many
-packages that comprise only a single, straight-forward function. Furthermore,
-even packages that contain more functionality often take modularization to
-dubious extremes, with each module containing just one function. This is not to
-argue that a module having only a default export necessarily is a bad idea.
-Quite the contrary: A narrow, well-designed interface can be a feature in and of
-itself. Nonetheless, many npm packages have gone a bit far with this trend
-towards ever smaller code units and I'm leveraging the site:forge project as an
-opportunity for exploring a different balance.
+I am also writing most of the code for site:forge myself, falling back onto
+existing packages in a few well-considered cases only. That is somewhat of an
+allergic reaction to the state of the npm ecosystem at large. In my experience,
+there are altogether too many packages that comprise a single, straight-forward
+function only. Furthermore, even packages that provide more substantial
+functionality often take modularization to dubious extremes, with each module
+containing just one function. This is not to argue that a module having only a
+default export necessarily is a bad idea. Quite the contrary: A narrow,
+well-designed interface can be a feature in and of itself. Nonetheless, many npm
+packages have taken this trend towards small modules and packages to
+unproductive extremes, incurring significant storage, maintenance, and
+compliance overheads. I'm thus treating site:forge as an opportunity for
+exploring a different balance with a coarser granularity.
 
 A nice side-effect of revisiting seemingly familiar topics, such as command line
 argument parsing, are opportunities for redefining the task at hand and thereby
-enabling more powerful and easier to use APIs. In the case of command line
+enabling simpler and also more powerful APIs. In the case of command line
 argument parsing, I realized that command line arguments are just one source of
 a tool's configuration state. Consequently, the `@grr/options` package relies on
 the same schema declaration for parsing command line arguments or the equivalent
@@ -97,14 +113,20 @@ state.
 Another consideration in factoring functionality into distinct packages has been
 unit testing. While code coverage of the existing unit tests has not yet reached
 100% for all packages, it generally comes very close already and my goal is to
-get to 100% eventually. Furthermore, test coverage for the packages is far
-better than for site:forge itself. However, the latter benefits significantly
-from end-to-end testing as Apparebit's static site generator.
+get to 100% eventually. But unit tests are only feasible where there is a unit
+of code to test, with a clearly defined interface to boot. In practice, that
+means that command line tools often don't have comprehensive unit and/or
+integration tests. Since I am guilty of just that omission myself, the breaking
+out of packages helps with more targeted testing. And I'm claiming my use of
+site:forge for my own website as the definitive integration test. After all, if
+I don't like the results, I am likely to fix the tool.
 
-_Oops!_ It does appear that I have more and more strongly felt opinions about
-view components and package management than I expected. But I believe we covered
-the substance thereof and are ready for switching gears. So without further ado,
-here are site:forge's packages so far:
+
+## 2. The Diversity of a Monorepo
+
+In addition to @grr/siteforge, the static website generator itself, this
+monorepo hosts a number of packages. For now, none of them have been released to
+npm yet. The packages are:
 
   * [__@grr/glob__](packages/glob) implements wildcard patterns for file system
     paths by translating them into predicate functions. Unlike many other npm

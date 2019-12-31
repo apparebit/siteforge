@@ -25,7 +25,7 @@ const multitasker = new Multitasker();
 multitasker.enqueue(fn, ...args);
 
 // Wait until all tasks have completed.
-await multitasker.onidle();
+await multitasker.idle();
 
 // Or, forcibly terminate.
 await multitasker.stop();
@@ -87,7 +87,7 @@ patched into the context under that name.
 ##### Multitasker.prototype.handleWalk(handleFile)
 
 Adapt this multitasker to do the scheduling for a file system walk with the
-given file handler. This method returns on object with suitable `handleNext`
+given file handler. This method returns an object with suitable `handleNext`
 and `handleFile` properties.
 
 
@@ -95,9 +95,9 @@ and `handleFile` properties.
 
 The state of a multitasker can be polled with the `is()`, `hasTaskReady()`,
 `hasCapacity()`, and `status()` methods. An application can also be notified of
-infrequent and unpredictable state changes with the `onidle()`, `onstopping()`,
-and `ondone()` methods. Finally, a custom `toString()` provides a succinct
-textual representation of a multitasker's state for debugging.
+infrequent and unpredictable state changes with the `idle()`, `stopping()`, and
+`done()` methods. Finally, a custom `toString()` provides a succinct textual
+representation of a multitasker's state for debugging.
 
 ##### Multitasker.prototype.is(...states)
 
@@ -118,17 +118,17 @@ Return a record with the current status for this multitasker, including its
 `asap` tasks pending, the number of `ready` tasks, and the number of `blocked`
 tasks.
 
-##### Multitasker.prototype.onidle(fn?)
+##### Multitasker.prototype.idle(fn?)
 
 Chain the callback to a promise that fulfills when this multitasker reaches the
 idle state again and return the resulting promise. If no callback is provided,
 this method returns the former promise, thus facilitating the following idiom:
 
 ```js
-await multitasker.onidle();
+await multitasker.idle();
 ```
 
-##### Multitasker.prototype.onstopping(fn?)
+##### Multitasker.prototype.stopping(fn?)
 
 Chain the callback to a promise that fulfills when the `stop()` method is first
 invoked on this multitasker and return the resulting promise. If no callback is
@@ -136,17 +136,17 @@ provided, this method returns the former promise, thus facilitating the
 following idiom:
 
 ```js
-await multitasker.onstopping();
+await multitasker.stopping();
 ```
 
-##### Multitasker.prototype.ondone(fn?)
+##### Multitasker.prototype.done(fn?)
 
 Chain the callback to a promise that fulfills when this multitasker has shut
 down and return the resulting promise. If no callback is provided, this method
 returns the former promise, thus facilitating the following idiom:
 
 ```js
-await multitasker.ondone();
+await multitasker.done();
 ```
 
 ##### Multitasker.prototype.toString()
@@ -180,7 +180,7 @@ requires blocking semantics, it must wait for the multitasker to become idle
 before unblocking:
 
 ```js
-await multitasker.onidle();
+await multitasker.idle();
 multitasker.unblock();
 ```
 
@@ -188,7 +188,7 @@ multitasker.unblock();
 
 Terminate the multitasker. After this method has been invoked, no new tasks will
 be scheduled and a best effort attempt will be made at terminating on-going
-tasks early. This method returns the same promise as `ondone()`, which fulfills
+tasks early. This method returns the same promise as `done()`, which fulfills
 when this multitasker has stopped. In other words, stopping a multitasker and
 waiting for it to be done is as simple as:
 

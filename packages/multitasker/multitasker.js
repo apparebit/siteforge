@@ -161,7 +161,7 @@ export default class Multitasker {
 
   // ---------------------------------------------------------------------------
 
-  onidle(fn) {
+  idle(fn) {
     return fn ? this._idle.promise.then(fn) : this._idle.promise;
   }
 
@@ -194,11 +194,11 @@ export default class Multitasker {
     return this._done.promise;
   }
 
-  onstopping(fn) {
+  stopping(fn) {
     return fn ? this._stopping.promise.then(fn) : this._stopping.promise;
   }
 
-  ondone(fn) {
+  done(fn) {
     return fn ? this._done.promise.then(fn) : this._done.promise;
   }
 

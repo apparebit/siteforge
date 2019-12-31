@@ -176,8 +176,8 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(runner._blocked.length, 3);
   });
 
-  t.resolves(runner.onidle());
-  t.resolves(runner.onidle(() => t.pass()));
+  t.resolves(runner.idle());
+  t.resolves(runner.idle(() => t.pass()));
   t3.resolve(t3.name);
   await p3;
 
@@ -203,8 +203,8 @@ tap.test('@grr/multitasker', async t => {
     t.strictEqual(runner._blocked.length, 0);
   });
 
-  t.resolves(runner.onstopping());
-  t.resolves(runner.onstopping(() => t.pass()));
+  t.resolves(runner.stopping());
+  t.resolves(runner.stopping(() => t.pass()));
   const done = runner.stop();
   t.strictEqual(runner.stop(), done);
 
@@ -223,9 +223,9 @@ tap.test('@grr/multitasker', async t => {
   await p4;
   await p5;
 
-  t.resolves(runner.ondone());
-  t.resolves(runner.ondone(() => t.pass()));
-  await runner.ondone();
+  t.resolves(runner.done());
+  t.resolves(runner.done(() => t.pass()));
+  await runner.done();
 
   t.strictEqual(runner._inflight, 0);
   t.ok(runner.is(Multitasker.Done));
@@ -233,8 +233,8 @@ tap.test('@grr/multitasker', async t => {
   // When stopped, an idle multitasker directly transitions to the done state.
   // Make sure that it fulfills both onstop() and ondone().
   const r2 = new Multitasker();
-  t.resolves(r2.onstopping());
-  t.resolves(r2.ondone());
+  t.resolves(r2.stopping());
+  t.resolves(r2.done());
   t.ok(r2.is(Multitasker.Idle));
   r2.stop();
   t.ok(r2.is(Multitasker.Done));

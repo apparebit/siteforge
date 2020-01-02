@@ -81,7 +81,7 @@ tap.test('@grr/html', async t => {
   );
 
   let model = fakeModel();
-  t.strictEqual(
+  t.equal(
     prepareModelData(model).elements.get('one').children.elements[0],
     'two'
   );
@@ -109,7 +109,7 @@ tap.test('@grr/html', async t => {
 
   // eslint-disable-next-line require-atomic-updates
   model = await Model.load();
-  t.strictEqual(await Model.load(), model);
+  t.equal(await Model.load(), model);
 
   // Simple Predicates on Attributes and Events
   // ------------------------------------------
@@ -180,10 +180,10 @@ tap.test('@grr/html', async t => {
   );
 
   const a = model.elementForName('a');
-  t.strictEqual(model.elementForName('a'), a);
-  t.strictEqual(a.constructor.name, 'Element');
-  t.strictEqual(a.name, 'a');
-  t.strictEqual(a.model, model);
+  t.equal(model.elementForName('a'), a);
+  t.equal(a.constructor.name, 'Element');
+  t.equal(a.name, 'a');
+  t.equal(a.model, model);
   t.strictSame(a.attributes, [
     'download',
     'href',
@@ -216,14 +216,14 @@ tap.test('@grr/html', async t => {
     /Element <img> should not have children/u
   );
 
-  t.strictEqual(model.elementForName('p').child('em').name, 'em');
+  t.equal(model.elementForName('p').child('em').name, 'em');
 
   t.throws(
     () => a.child('em', 'img'),
     /Closest enclosing non-transparent element <img> should not have children/u
   );
 
-  t.strictEqual(a.child('em', 'ins', 'p').name, 'em');
+  t.equal(a.child('em', 'ins', 'p').name, 'em');
 
   t.throws(
     () => model.elementForName('h1').child('section'),
@@ -237,10 +237,10 @@ tap.test('@grr/html', async t => {
 
   // Looking up attributes
 
-  t.strictEqual(a.attribute('data-data').instance, '*');
-  t.strictEqual(a.attribute('onclick').instance, 'eventHandler');
+  t.equal(a.attribute('data-data').instance, '*');
+  t.equal(a.attribute('onclick').instance, 'eventHandler');
 
-  t.strictEqual(
+  t.equal(
     model.elementForName('body').attribute('onoffline').instance,
     'eventHandler'
   );
@@ -255,14 +255,11 @@ tap.test('@grr/html', async t => {
     /Event handler "onclick" is not a valid attribute on <body>/u
   );
 
-  t.strictEqual(
-    a.attribute('aria-hidden').effectiveInstance,
-    'true/false/undefined'
-  );
-  t.strictEqual(a.attribute('class').separator, 'space');
+  t.equal(a.attribute('aria-hidden').effectiveInstance, 'true/false/undefined');
+  t.equal(a.attribute('class').separator, 'space');
   const href = a.attribute('href');
-  t.strictEqual(href.instance, 'url');
-  t.strictEqual(a.attribute('href'), href);
+  t.equal(href.instance, 'url');
+  t.equal(a.attribute('href'), href);
 
   t.throws(
     () => a.attribute('autoplay'),
@@ -322,10 +319,10 @@ tap.test('@grr/html', async t => {
     ['spellcheck', 'true/false'],
     ['translate', 'yes/no'],
   ].forEach(([name, instance]) =>
-    t.strictEqual(model.attributes.get(name).effectiveInstance, instance)
+    t.equal(model.attributes.get(name).effectiveInstance, instance)
   );
 
-  t.strictEqual(
+  t.equal(
     model.attributes.get('autocomplete').cases.form.effectiveInstance,
     'on/off'
   );

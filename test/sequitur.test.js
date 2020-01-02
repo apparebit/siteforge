@@ -28,12 +28,12 @@ tap.test('@grr/sequitur', t => {
   t.test('Helping with Iteration', async t => {
     // Two prototypes
     const IteratorPrototype = getPrototypeOf(getPrototypeOf([][ITERATOR]()));
-    t.strictEqual(Sq.IteratorPrototype, IteratorPrototype);
+    t.equal(Sq.IteratorPrototype, IteratorPrototype);
 
     const AsyncIteratorPrototype = getPrototypeOf(
       getPrototypeOf(async function*() {}.prototype)
     );
-    t.strictEqual(Sq.AsyncIteratorPrototype, AsyncIteratorPrototype);
+    t.equal(Sq.AsyncIteratorPrototype, AsyncIteratorPrototype);
 
     // Four predicates
     t.notOk(Sq.isIterable(Sq.from(asyncGen)));
@@ -75,14 +75,14 @@ tap.test('@grr/sequitur', t => {
     for await (const element of iterable) {
       sum += element;
     }
-    t.strictEqual(sum, 6);
+    t.equal(sum, 6);
 
     iterable = Sq.of(1, 2, 3, 4, 5).toAsync();
     sum = 0;
     for await (const element of iterable) {
       sum += element;
     }
-    t.strictEqual(sum, 15);
+    t.equal(sum, 15);
 
     // Make sure that return() is passed through.
     const log = [];
@@ -204,7 +204,7 @@ tap.test('@grr/sequitur', t => {
     t.strictSame(list, [0, 5, 10, 15]);
 
     const notSync = Sq.of(1, 2, 3).toAsync();
-    t.strictEqual(notSync.toAsync(), notSync);
+    t.equal(notSync.toAsync(), notSync);
 
     t.end();
   });
@@ -228,7 +228,7 @@ tap.test('@grr/sequitur', t => {
     Sq.values(object).each(el => list.push(el));
     t.strictSame(list, [1, 2]);
 
-    t.strictEqual(
+    t.equal(
       Sq.values(
         new Map([
           ['a', 1],
@@ -352,7 +352,7 @@ tap.test('@grr/sequitur', t => {
       await Sq.of(1, 2, 3)
         .with(BATON)
         .run(function*(input, context) {
-          t.strictEqual(context, BATON);
+          t.equal(context, BATON);
 
           for (const element of input) {
             yield 2 * element;
@@ -368,7 +368,7 @@ tap.test('@grr/sequitur', t => {
         .with(BATON)
         .toAsync()
         .run(async function*(input, context) {
-          t.strictEqual(context, BATON);
+          t.equal(context, BATON);
 
           for await (const element of input) {
             yield [
@@ -422,10 +422,10 @@ tap.test('@grr/sequitur', t => {
     const asyncSeq = Sq.toAsyncIterable(syncSeq);
     const alsoAsyncSeq = syncSeq.toAsync();
 
-    t.strictEqual(apply(toString, sq, []), '[object Sq]');
-    t.strictEqual(apply(toString, syncSeq, []), '[object Sequence]');
-    t.strictEqual(apply(toString, asyncSeq, []), '[object async Sequence]');
-    t.strictEqual(apply(toString, alsoAsyncSeq, []), '[object async Sequence]');
+    t.equal(apply(toString, sq, []), '[object Sq]');
+    t.equal(apply(toString, syncSeq, []), '[object Sequence]');
+    t.equal(apply(toString, asyncSeq, []), '[object async Sequence]');
+    t.equal(apply(toString, alsoAsyncSeq, []), '[object async Sequence]');
 
     t.ok(typeof syncSeq[ITERATOR] === 'function');
     t.notOk(typeof asyncSeq[ITERATOR] === 'function');
@@ -456,28 +456,28 @@ tap.test('@grr/sequitur', t => {
 
   t.test('Providing Context', t => {
     function double(el) {
-      t.strictEqual(this, BATON);
+      t.equal(this, BATON);
       return el * el;
     }
 
     function isOnePlus(el) {
-      t.strictEqual(this, BATON);
+      t.equal(this, BATON);
       return el > 1;
     }
 
     const s1 = Sq.from([1, 2, 3], BATON);
     const s2 = s1.map(double).filter(isOnePlus);
-    t.strictEqual(s1.context, BATON);
-    t.strictEqual(s2.context, BATON);
+    t.equal(s1.context, BATON);
+    t.equal(s2.context, BATON);
 
     const s3 = Sq.of(1, 2, 3);
     // Since with() updates the context
-    t.strictEqual(s3.context, undefined);
+    t.equal(s3.context, undefined);
 
     const s4 = s3.with(BATON);
     const s5 = s4.map(double).filter(isOnePlus);
-    t.strictEqual(s4.context, BATON);
-    t.strictEqual(s5.context, BATON);
+    t.equal(s4.context, BATON);
+    t.equal(s5.context, BATON);
 
     t.strictSame(s2.collect(), s5.collect());
 

@@ -32,17 +32,17 @@ tap.test('tooling/options', t => {
 
   const check = options => {
     t.strictSame(options._, ['whatever', 'everwhat']);
-    t.strictEqual(options.help, 1);
+    t.equal(options.help, 1);
     t.notOk(has(options, 'name'));
-    t.strictEqual(options.path, __directory);
-    t.strictEqual(options.quiet, 3);
-    t.strictEqual(options.round, 665);
-    t.strictEqual(options.verbose, 2);
+    t.equal(options.path, __directory);
+    t.equal(options.quiet, 3);
+    t.equal(options.round, 665);
+    t.equal(options.verbose, 2);
     t.notOk(has(options, 'version'));
-    t.strictEqual(options.volume, -1);
-    t.strictEqual(options.wetRun, 2);
-    t.strictEqual(options['dry-run'], 1);
-    t.strictEqual(keysOf(options).length, 9);
+    t.equal(options.volume, -1);
+    t.equal(options.wetRun, 2);
+    t.equal(options['dry-run'], 1);
+    t.equal(keysOf(options).length, 9);
   };
 
   // prettier-ignore
@@ -153,18 +153,18 @@ tap.test('tooling/options', t => {
 
   options.quiet = 0;
   options.verbose = 665;
-  t.strictEqual(options.volume, 665);
+  t.equal(options.volume, 665);
   options.volume = 42;
-  t.strictEqual(options.volume, 42);
+  t.equal(options.volume, 42);
 
   const errors = [];
   const report = msg => {
     errors.push(msg);
   };
-  t.strictEqual(FileGlob(42, report), undefined);
-  t.strictEqual(FileGlob([42], report), undefined);
-  t.strictEqual(FileGlob('<**>', report), undefined);
-  t.strictEqual(typeof FileGlob('**/boo', report), 'function');
+  t.equal(FileGlob(42, report), undefined);
+  t.equal(FileGlob([42], report), undefined);
+  t.equal(FileGlob('<**>', report), undefined);
+  t.equal(typeof FileGlob('**/boo', report), 'function');
   t.strictSame(errors, [
     'is not a valid file glob',
     'is not an array of valid file globs',

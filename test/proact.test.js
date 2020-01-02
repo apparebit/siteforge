@@ -44,13 +44,13 @@ const theQuestion = h('div', { class: 'highlight' }, ultimate);
 tap.test('@grr/proact/vdom.js', async t => {
   const props = { class: ['logo', 'positive'], role: 'presentation' };
   const logo = h('div', props, h('span'), h('span'), h('span'));
-  t.strictEqual(logo, props);
-  t.strictEqual(logo.type, 'div');
+  t.equal(logo, props);
+  t.equal(logo.type, 'div');
   t.strictSame(logo.children, Array(3).fill(h('span')));
 
-  t.strictEqual(tag(logo), 'div');
-  t.strictEqual(tag(logo.children[0]), 'span');
-  t.strictEqual(tag(h(() => {})), 'ViewComponent');
+  t.equal(tag(logo), 'div');
+  t.equal(tag(logo.children[0]), 'span');
+  t.equal(tag(h(() => {})), 'ViewComponent');
 
   t.ok(isInternalProperty('children'));
   t.ok(isInternalProperty('type'));
@@ -113,12 +113,12 @@ tap.test('@grr/proact/vdom.js', async t => {
 // =============================================================================
 
 tap.test('@grr/proact/render.js', async t => {
-  t.strictEqual(escapeAttribute(`totally-fine`), `totally-fine`);
-  t.strictEqual(escapeAttribute(`totally fine`), `"totally fine"`);
-  t.strictEqual(escapeAttribute(`totally & fine`), `"totally &amp; fine"`);
+  t.equal(escapeAttribute(`totally-fine`), `totally-fine`);
+  t.equal(escapeAttribute(`totally fine`), `"totally fine"`);
+  t.equal(escapeAttribute(`totally & fine`), `"totally &amp; fine"`);
 
-  t.strictEqual(escapeText(`Nothing to see here!`), `Nothing to see here!`);
-  t.strictEqual(escapeText(`"'&'"`), `&#34;&#39;&amp;&#39;&#34;`);
+  t.equal(escapeText(`Nothing to see here!`), `Nothing to see here!`);
+  t.equal(escapeText(`"'&'"`), `&#34;&#39;&amp;&#39;&#34;`);
 
   t.ok(isValidComment('This is a comment.'));
 
@@ -140,12 +140,12 @@ tap.test('@grr/proact/render.js', async t => {
     steps.push(step);
   }
 
-  t.strictEqual(
+  t.equal(
     steps.join(''),
     '<div class=highlight><span>And the answer is 42!</span></div>'
   );
 
-  t.strictEqual(
+  t.equal(
     await Sq.from(
       render(
         html`

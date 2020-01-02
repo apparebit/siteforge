@@ -49,7 +49,7 @@ function testConfig(input, expected) {
 
 tap.test('@grr/reloader/config -> { debug }', t => {
   // noop
-  t.strictEqual(
+  t.equal(
     config({
       env: { RELOADER_SCOPES: 'test' },
       println: s => s,
@@ -60,7 +60,7 @@ tap.test('@grr/reloader/config -> { debug }', t => {
   );
 
   // plain
-  t.strictEqual(
+  t.equal(
     config({
       env: { RELOADER_SCOPES: 'test', DEBUG: 'reloader' },
       println: s => s,
@@ -71,7 +71,7 @@ tap.test('@grr/reloader/config -> { debug }', t => {
   );
 
   // styled
-  t.strictEqual(
+  t.equal(
     config({
       env: { RELOADER_SCOPES: 'test', DEBUG: 'reloader' },
       println: s => s,
@@ -88,14 +88,11 @@ tap.test('@grr/reloader/config -> { debug }', t => {
 
 tap.test('@grr/reloader/config -> { epoch }', t => {
   const { epoch } = config({ env: { RELOADER_SCOPES: 'test' } });
-  t.strictEqual(
-    global[Symbol.for('@grr/reloader/epoch/current')],
-    epoch.current
-  );
-  t.strictEqual(global[Symbol.for('@grr/reloader/epoch/next')], epoch.next);
-  t.strictEqual(epoch.current(), 0);
-  t.strictEqual(epoch.next(), 1);
-  t.strictEqual(epoch.current(), 1);
+  t.equal(global[Symbol.for('@grr/reloader/epoch/current')], epoch.current);
+  t.equal(global[Symbol.for('@grr/reloader/epoch/next')], epoch.next);
+  t.equal(epoch.current(), 0);
+  t.equal(epoch.next(), 1);
+  t.equal(epoch.current(), 1);
   t.end();
 });
 

@@ -1,0 +1,365 @@
+/* © 2019 Robert Grimm */
+
+import {
+  default as Executor,
+  newPromiseCapability,
+  rethrow,
+  Task,
+} from '@grr/async';
+import { readFile } from '@grr/fs';
+import tap from 'tap';
+
+const { apply } = Reflect;
+const configurable = true;
+const { defineProperty, prototype } = Object;
+const { toString } = prototype;
+
+const prepareTask = (
+  index,
+  fn = function task() {
+    return task.promise;
+  }
+) => {
+  defineProperty(fn, 'name', {
+    configurable,
+    value: `Task${index}`,
+  });
+  return newPromiseCapability(fn);
+};
+
+function soon(fn = () => {}) {
+  return new Promise(resolve => {
+    setImmediate(() => {
+      fn();
+      resolve();
+    });
+  });
+}
+
+tap.test('@grr/async', t => {
+  // ---------------------------------------------------------------------------
+
+  t.test('rethrow()', t => {
+    // It took a few iterations to get this test right: plan() announces that
+    // there is one test, expectUncaughtException() announces an uncaught
+    // exception and its message, and rethrow() does the throwing some time in
+    // the future. I couldn't get it to work reliably without plan() and with
+    // more complex awaiting of promises.
+    t.plan(1);
+    t.expectUncaughtException({ message: 'rethrow' });
+    rethrow(new Error('rethrow'));
+  });
+
+  // ---------------------------------------------------------------------------
+
+  t.test('Task', async t => {
+    const tusk = new Task(readFile, null, './test/index.js', 'utf8');
+    t.equal(apply(toString, tusk, []), '[object @grr/async/Task]');
+    const content = await tusk.run();
+    t.throws(
+      () => tusk.run(),
+      /Task readFile\('\.\/test\/index.js', 'utf8'\) has already run/u
+    );
+    t.equal(content, await readFile('./test/index.js', 'utf8'));
+    t.end();
+  });
+
+  // ---------------------------------------------------------------------------
+
+  t.test('Executor', async t => {
+    // The following tests use six simulated asynchronous functions that return
+    // a promise each but require explicit manual settlement. In other words,
+    // this function mostly contains code that does nothing noteworthy and so
+    // Node.js is much tempted to exit the event loop and therefore process. The
+    // reason it currently doesn't is careful engineering. So beware of that
+    // pitfall when changing the code below.
+
+    function task1() {
+      t.equal(typeof this, 'object');
+      t.equal(this['@type'], 'context');
+      return task1.promise;
+    }
+
+    prepareTask(1, task1);
+    const task2 = prepareTask(2);
+    const task3 = prepareTask(3);
+    const task4 = prepareTask(4);
+    const task5 = prepareTask(5);
+    const task6 = prepareTask(6);
+
+    const runner = new Executor({
+      capacity: 2,
+      context: { '@type': 'context' },
+    });
+
+    t.equal(apply(toString, runner, []), '[object @grr/async/Executor]');
+
+    t.throws(
+      () => runner.run(665),
+      /First argument to run\(\) must be function/u
+    );
+
+    t.ok(runner.hasCapacity());
+    t.notOk(runner.hasTaskReady());
+    t.ok(runner.isIdle());
+    t.notOk(runner.isBusy());
+    t.notOk(runner.isStopping());
+    t.strictSame(runner.status(), {
+      state: 'idle',
+      ready: 0,
+      inflight: 0,
+      capacity: 2,
+      completed: 0,
+    });
+
+    const p1 = runner.run(task1).then(v => t.equal(v, 'Task1'));
+
+    await soon(() => {
+      t.ok(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 0,
+        inflight: 1,
+        capacity: 2,
+        completed: 0,
+      });
+    });
+
+    const p2 = runner.run(task2).then(
+      () => t.fail(),
+      x => t.equal(x.message, 'boo')
+    );
+
+    await soon(() => {
+      t.notOk(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 0,
+        inflight: 2,
+        capacity: 2,
+        completed: 0,
+      });
+      t.equal(
+        runner.toString(),
+        `@grr/async/Executor { state: 'busy', ready: 0, inflight: 2, capacity: 2, completed: 0 }`
+      );
+    });
+
+    const p3 = runner.run(task3).then(v => t.equal(v, 'Task3'));
+
+    await soon(() => {
+      t.notOk(runner.hasCapacity());
+      t.ok(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 1,
+        inflight: 2,
+        capacity: 2,
+        completed: 0,
+      });
+    });
+
+    task1.resolve(task1.name);
+    await p1;
+
+    await soon(() => {
+      t.notOk(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 0,
+        inflight: 2,
+        capacity: 2,
+        completed: 1,
+      });
+    });
+
+    task2.reject(new Error('boo'));
+    await p2;
+
+    await soon(() => {
+      t.ok(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 0,
+        inflight: 1,
+        capacity: 2,
+        completed: 2,
+      });
+    });
+
+    t.resolves(runner.onIdle());
+    task3.resolve(task3.name);
+    await p3;
+
+    await soon(() => {
+      t.ok(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.ok(runner.isIdle());
+      t.notOk(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'idle',
+        ready: 0,
+        inflight: 0,
+        capacity: 2,
+        completed: 3,
+      });
+    });
+
+    const p4 = runner.run(task4).then(v => t.equal(v, 'Task4'));
+
+    await soon(() => {
+      t.ok(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 0,
+        inflight: 1,
+        capacity: 2,
+        completed: 3,
+      });
+    });
+
+    const p5 = runner.run(task5).then(v => t.equal(v, 'Task5'));
+
+    await soon(() => {
+      t.notOk(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 0,
+        inflight: 2,
+        capacity: 2,
+        completed: 3,
+      });
+    });
+
+    const p6 = runner.run(task6).then(v => t.equal(v, 'Task6'));
+
+    await soon(() => {
+      t.notOk(runner.hasCapacity());
+      t.ok(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 1,
+        inflight: 2,
+        capacity: 2,
+        completed: 3,
+      });
+    });
+
+    task4.resolve(task4.name);
+    await p4;
+
+    await soon(() => {
+      t.notOk(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.ok(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'busy',
+        ready: 0,
+        inflight: 2,
+        capacity: 2,
+        completed: 4,
+      });
+    });
+
+    const stopped = runner.stop();
+    t.equal(runner.onStopped(), stopped);
+
+    await soon(() => {
+      t.notOk(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.notOk(runner.isBusy());
+      t.ok(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'stopping',
+        ready: 0,
+        inflight: 2,
+        capacity: 2,
+        completed: 4,
+      });
+    });
+
+    task5.resolve(task5.name);
+    await p5;
+
+    await soon(() => {
+      t.ok(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.notOk(runner.isBusy());
+      t.ok(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'stopping',
+        ready: 0,
+        inflight: 1,
+        capacity: 2,
+        completed: 5,
+      });
+    });
+
+    t.resolves(stopped);
+    t.resolves(runner.onStopped());
+
+    task6.resolve(task6.name);
+    await p6;
+
+    await soon(() => {
+      t.ok(runner.hasCapacity());
+      t.notOk(runner.hasTaskReady());
+      t.notOk(runner.isIdle());
+      t.notOk(runner.isBusy());
+      t.notOk(runner.isStopping());
+      t.strictSame(runner.status(), {
+        state: 'stopped',
+        ready: 0,
+        inflight: 0,
+        capacity: 2,
+        completed: 6,
+      });
+    });
+
+    // When stopped, an idle Executor transitions directly to the stopped state.
+    const r2 = new Executor();
+    t.resolves(r2.onStopped());
+    t.ok(r2.isIdle());
+    await r2.stop();
+    t.ok(r2.isStopped());
+
+    t.end();
+  });
+
+  t.end();
+});

@@ -1,9 +1,9 @@
 {
-  "name": "@grr/multitasker",
+  "name": "@grr/async",
   "version": "1.0.0",
   "type": "module",
-  "main": "multitasker.js",
-  "description": "Concurrent execution of asynchronous tasks with concurrency limit and simple priorities",
+  "main": "async.js",
+  "description": "execute a configurable number of asynchronous tasks in parallel, while also queueing any tasks beyond that limit for first-come, first-serve execution later on",
   "keywords": [
     "task",
     "task runner",

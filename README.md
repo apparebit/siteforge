@@ -143,10 +143,10 @@ npm yet. The packages are:
     sources being subjected to the same validations based on the same schema.
   * [__@grr/sequitur__](packages/sequitur) provides expressive and lazy
     sequences that may just be synchronous or asynchronous.
-  * [__@grr/multitasker__](packages/multitasker) performs concurrent,
-    asynchronous task execution in an orderly and context-aware manner. While
-    the package necessarily deals in promises, it mostly focuses on the
-    promise-producing tasks. After all, they actually get shit done.
+  * [__@grr/async__](packages/async) performs concurrent, asynchronous task
+    execution in an orderly and context-aware manner. While the package
+    necessarily deals in promises, it mostly focuses on the promise-producing
+    tasks. They are the ones that get shit done.
   * [__@grr/reloader__](packages/reloader) provides a module hook that enables
     hot module reloading, but only for modules in select directories and at
     select times. Since Node.js module hook API will likely change in the

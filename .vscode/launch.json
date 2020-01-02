@@ -14,7 +14,10 @@
         "<node_internals>/**"
       ],
       "console": "internalConsole",
-      "runtimeArgs": ["--async-stack-traces", "--detailed-error-stack-trace"]
+      "runtimeArgs": ["--async-stack-traces", "--detailed-error-stack-trace"],
+      "env": {
+        "NODE_ENV": "test"
+      }
     }
   ]
 }

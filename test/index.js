@@ -18,6 +18,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./reloader.test.js');
   await import('./sequitur.test.js');
   await import('./tooling.test.js');
+  await import('./walk.js');
 
   tap.on('end', () => {
     let color, slogan;

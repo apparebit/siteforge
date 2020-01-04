@@ -1,0 +1,22 @@
+{
+  "name": "@grr/walk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "walk.js",
+  "description": "These boots are made for walking all over the file system",
+  "keywords": [
+    "file system walk",
+    "file system traversal",
+    "file system scan",
+    "directory scan",
+    "recursive directory scan",
+    "file tree",
+    "file hierarchy"
+  ],
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

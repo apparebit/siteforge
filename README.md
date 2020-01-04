@@ -126,31 +126,48 @@ I don't like the results, I am likely to fix the tool.
 
 In addition to @grr/siteforge, the static website generator itself, this
 monorepo hosts a number of packages. For now, none of them have been released to
-npm yet. The packages are:
+npm yet. The nine packages, organized roughly by focus, are:
 
-  * [__@grr/glob__](packages/glob) implements wildcard patterns for file system
-    paths by translating them into predicate functions. Unlike many other npm
-    packages, `@grr/glob` does not compete on features and is purposefully
-    minimal.
-  * [__@grr/fs__](packages/fs) is a grab bag of regular and empowered helper
-    functions for performing file I/O. Some are just easier to import,
-    promisified file operations from Node.js' own `fs` module. Some come with
-    their own superpowers, including the ability to fix `ENOENT` errors on the
-    fly, to rename files depending on their content, and to easily walk the file
-    system hierarchy.
-  * [__@grr/options__](packages/options) helps determine a tool's configuration
-    based on command line arguments and `package.json` manifest alike, with both
-    sources being subjected to the same validations based on the same schema.
+### Synchronous, Asynchronous, Concurrent
+
   * [__@grr/sequitur__](packages/sequitur) provides expressive and lazy
     sequences that may just be synchronous or asynchronous.
+
   * [__@grr/async__](packages/async) performs concurrent, asynchronous task
     execution in an orderly and context-aware manner. While the package
     necessarily deals in promises, it mostly focuses on the promise-producing
     tasks. They are the ones that get shit done.
+
+### Configuration
+
+  * [__@grr/options__](packages/options) helps determine a tool's configuration
+    based on command line arguments and `package.json` manifest alike, with both
+    sources being subjected to the same validations based on the same schema.
   * [__@grr/reloader__](packages/reloader) provides a module hook that enables
     hot module reloading, but only for modules in select directories and at
     select times. Since Node.js module hook API will likely change in the
     future, this package must be considered experimental.
+
+### File Storage
+
+  * [__@grr/fs__](packages/fs) is a grab bag of regular and empowered helper
+    functions for file I/O. Some are just easier to import, promisified file
+    operations from Node.js' own `fs` module. Some come with their own
+    superpowers, including the ability to fix `ENOENT` errors on the fly.
+  * [__@grr/glob__](packages/glob) implements wildcard patterns for file system
+    paths by translating them into predicate functions. Unlike many other npm
+    packages, __@grr/glob__ does not compete on features and is purposefully
+    minimal.
+  * [__@grr/walk__](packages/walk) looks like a straight-forward recursive
+    directory scan. But that simplicity was hard fought for, including rewriting
+    this package as well as __@grr/async__ from scratch when we could see the
+    finish line—but not reach it due to a brittle API. More importantly, the
+    simplicity doesn't get in the way of flexibility or performance, especially
+    when pairing with __@grr/async__ for concurrency—or any other library that
+    catches your fancy.
+
+### Web
+
   * [__@grr/html__](packages/html) provides a model for well-formed HTML based
     on HTML5, WAI-ARIA, and the Open Graph Protocol.
   * [__@grr/proact__](packages/proact) implements the proactive view system,

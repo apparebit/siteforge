@@ -1,6 +1,13 @@
 # site:forge
 
-A static website generator.
+site:forge is a static website generator. It is file-centric. It also includes
+its own view components, but leaves anything unnecessary by the wayside. As
+result, view components really are nothing more than functions that take a
+`props` object as well as a `context` object and return a vDOM fragmen,
+synchronously or asynchronously. In my experience so far, that appears to be the
+sweet spot between cutting edge frameworks, e.g., React.js, and cuttings on the
+floor, i.e., ad-hoc templating libraries, at least for smaller and content-heavy
+web sites.
 
 ## 1. The Case for site:forge
 
@@ -152,19 +159,19 @@ npm yet. The nine packages, organized roughly by focus, are:
 
   * [__@grr/fs__](packages/fs) is a grab bag of regular and empowered helper
     functions for file I/O. Some are just easier to import, promisified file
-    operations from Node.js' own `fs` module. Some come with their own
+    operations from Node.js' own _fs_ module. Some come with their own
     superpowers, including the ability to fix `ENOENT` errors on the fly.
   * [__@grr/glob__](packages/glob) implements wildcard patterns for file system
     paths by translating them into predicate functions. Unlike many other npm
-    packages, __@grr/glob__ does not compete on features and is purposefully
+    packages, @grr/glob does not compete on features and is purposefully
     minimal.
   * [__@grr/walk__](packages/walk) looks like a straight-forward recursive
     directory scan. But that simplicity was hard fought for, including rewriting
-    this package as well as __@grr/async__ from scratch when we could see the
-    finish line—but not reach it due to a brittle API. More importantly, the
-    simplicity doesn't get in the way of flexibility or performance, especially
-    when pairing with __@grr/async__ for concurrency—or any other library that
-    catches your fancy.
+    this package as well as @grr/async from scratch when we could see the finish
+    line—but not reach it due to a brittle API. More importantly, the simplicity
+    doesn't get in the way of flexibility or performance, especially when
+    pairing with @grr/async for concurrency—or any other library that catches
+    your fancy.
 
 ### Web
 

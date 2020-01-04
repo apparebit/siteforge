@@ -2,6 +2,8 @@
 
 import {
   default as Executor,
+  delay,
+  looped,
   newPromiseCapability,
   rethrow,
   Task,
@@ -36,7 +38,38 @@ function soon(fn = () => {}) {
   });
 }
 
-tap.test('@grr/async', t => {
+tap.test('@grr/async', async t => {
+  // ---------------------------------------------------------------------------
+
+  const output = [];
+
+  // In JavaScript, the outcome of this race amongst four functions that each
+  // delay visible side-effects via a different mechanism is entirely
+  // predictable and deterministic.
+  await Promise.all(
+    [
+      // A timer delay goes once around the event loop.
+      async function delaying() {
+        await delay(0);
+        output.push('delay');
+      },
+      // A promise callback is run as a microtask.
+      function promising() {
+        return Promise.resolve().then(() => output.push('promise'));
+      },
+      // The next event loop tick, brilliantly called setImmediate().
+      async function looping() {
+        await looped();
+        output.push('looped');
+      },
+      // The next microtask (yup), brilliantly called nextTick().
+      function ticking() {
+        process.nextTick(() => output.push('tick'));
+      },
+    ].map(fn => fn())
+  );
+  t.strictSame(output, ['promise', 'tick', 'looped', 'delay']);
+
   // ---------------------------------------------------------------------------
 
   t.test('rethrow()', t => {

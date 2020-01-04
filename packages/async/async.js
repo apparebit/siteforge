@@ -34,6 +34,14 @@ export function newPromiseCapability(container = {}) {
   return container;
 }
 
+export function looped() {
+  return new Promise(resolve => setImmediate(resolve, 'tick'));
+}
+
+export function delay(ms = 0) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // -----------------------------------------------------------------------------
 
 export class Task extends AsyncResource {

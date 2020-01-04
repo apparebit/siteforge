@@ -1,6 +1,6 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
-import Executor from '@grr/async';
+import { default as Executor, newPromiseCapability, looped } from '@grr/async';
 import { basename, join } from 'path';
 import walk from '@grr/walk';
 import tap from 'tap';
@@ -201,6 +201,99 @@ tap.test('@grr/walk', async t => {
     '/dir/dir/file',
     '/dir/file',
   ]);
+
+  // ---------------------------------------------------------------------------
+  // Low-Level Error Handling
+
+  const makePuppet = () => {
+    return function puppet(...args) {
+      puppet.in = args;
+      puppet.out = newPromiseCapability();
+      return puppet.out.promise;
+    };
+  };
+
+  const mockdir = makePuppet();
+  const mockstat = makePuppet();
+  mockdir();
+  mockstat();
+  const traceData = [];
+  const trace = (...args) => traceData.push(args);
+
+  // ---------------------------------------- Low-Level Walk #1
+
+  ({ on, done } = walk(root, {
+    ignoreNoEnt: true,
+    readdir: mockdir,
+    lstat: mockstat,
+  }));
+
+  on('directory', trace);
+  on('file', trace);
+  on('symlink', trace);
+
+  done.then(
+    () => t.fail(),
+    x => t.equal(x.message, 'hell')
+  );
+
+  await looped();
+  mockdir.out.resolve(['a', 'b', 'c']);
+
+  await looped();
+  let x = new Error('heaven');
+  x.code = 'ENOENT';
+  let last = mockstat.out;
+  mockstat.out.reject(x);
+
+  await looped();
+  x = new Error('hell');
+  x.code = 'EHELL';
+  t.notEqual(mockstat.out, last);
+  mockstat.out.reject(x);
+
+  await looped();
+
+  // ---------------------------------------- Low-Level Walk #2
+
+  ({ done } = walk(root, {
+    ignoreNoEnt: true,
+    readdir: mockdir,
+  }));
+
+  on('directory', trace);
+  on('file', trace);
+  on('symlink', trace);
+
+  await looped();
+  x = new Error('oops');
+  x.code = 'ENOENT';
+  last = mockdir.out;
+  mockdir.out.reject(x);
+
+  // ---------------------------------------- Low-Level Walk #3
+
+  ({ done } = walk(root, {
+    ingoreNoEnt: true,
+    readdir: mockdir,
+  }));
+
+  on('directory', trace);
+  on('file', trace);
+  on('symlink', trace);
+
+  await looped();
+  x = new Error('boom');
+  x.code = 'EBOOM';
+  t.notEqual(mockdir.out, last);
+  mockdir.out.reject(x);
+
+  try {
+    await done;
+    t.fail();
+  } catch (x) {
+    t.equal(x.message, 'boom');
+  }
 
   t.end();
 });

@@ -394,6 +394,24 @@ tap.test('@grr/async', async t => {
     await r2.stop();
     t.ok(r2.isStopped());
 
+    // An executor's run() method accepts the closure for sure but also
+    // optionally the receiver and the arguments.
+    const r3 = new Executor();
+
+    function append1(b, c) {
+      return String(this) + String(b) + String(c);
+    }
+    function append2(a, b, c) {
+      return String(a) + String(b) + String(c);
+    }
+
+    t.equal(await r3.run(append1, 1, 2, 3), '123');
+
+    // The second argument is the receiver, always. So the following run()
+    /// results in an invocation with the latter two arguments for `a` and `b`
+    // and the default `undefined` for `c`.
+    t.equal(await r3.run(append2, 1, 2, 3), '23undefined');
+
     t.end();
   });
 

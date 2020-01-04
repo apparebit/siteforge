@@ -53,7 +53,7 @@ tap.test('@grr/async', t => {
   // ---------------------------------------------------------------------------
 
   t.test('Task', async t => {
-    const tusk = new Task(readFile, null, './test/index.js', 'utf8');
+    let tusk = new Task(readFile, null, './test/index.js', 'utf8');
     t.equal(apply(toString, tusk, []), '[object @grr/async/Task]');
     const content = await tusk.run();
     t.throws(
@@ -61,6 +61,9 @@ tap.test('@grr/async', t => {
       /Task readFile\('\.\/test\/index.js', 'utf8'\) has already run/u
     );
     t.equal(content, await readFile('./test/index.js', 'utf8'));
+
+    tusk = new Task(() => {}, null, 665, Symbol('boo'), 'hello');
+    t.equal(tusk.toString(), `function(665, @@boo, 'hello')`);
     t.end();
   });
 
@@ -130,7 +133,7 @@ tap.test('@grr/async', t => {
     });
 
     const p2 = runner.run(task2).then(
-      () => t.fail(),
+      () => t.fail('should reject'),
       x => t.equal(x.message, 'boo')
     );
 

@@ -9,6 +9,17 @@ const STOPPED = Symbol('stopped');
 const STOPPING = Symbol('stopping');
 const { toStringTag } = Symbol;
 
+const format = value => {
+  const type = typeof value;
+  if (type === 'string') {
+    return `'${value}'`;
+  } else if (type === 'symbol') {
+    return `@@${value.description}`;
+  } else {
+    return String(value);
+  }
+};
+
 export function rethrow(error) {
   setImmediate(() => {
     throw error;
@@ -60,18 +71,10 @@ export class Task extends AsyncResource {
   }
 
   toString() {
-    return `${this._fn.name || 'unknown'}(${this._args
-      .map(a => {
-        const type = typeof a;
-        if (type === 'string') {
-          return `'${a}'`;
-        } else if (type === 'symbol') {
-          return `@@${a.description}`;
-        } else {
-          return String(a);
-        }
-      })
-      .join(', ')})`;
+    let s = this._receiver != null ? format(this._receiver) + '.' : '';
+    return (
+      s + `${this._fn.name || 'function'}(${this._args.map(format).join(', ')})`
+    );
   }
 
   get [toStringTag]() {
@@ -118,7 +121,7 @@ export default class Executor {
     return this._ready.length;
   }
 
-  run(fn, ...args) {
+  run(fn, that, ...args) {
     strict.ok(
       typeof fn === 'function',
       'First argument to run() must be function'
@@ -126,7 +129,7 @@ export default class Executor {
     if (this.isIdle()) this._state = BUSY;
     strict.ok(this.isBusy());
 
-    const task = new Task(fn, this._context, ...args);
+    const task = new Task(fn, that == null ? this._context : that, ...args);
     if (this.hasCapacity()) {
       this._run(task);
     } else {

@@ -9,15 +9,15 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
 
 (async function run() {
   await rmdir(COVERAGE_DATA, { recursive: true });
-  await import('./async.test.js');
-  await import('./fs.test.js');
-  await import('./glob.test.js');
-  await import('./html.test.js');
-  await import('./options.test.js');
-  await import('./proact.test.js');
-  await import('./reloader.test.js');
-  await import('./sequitur.test.js');
-  await import('./tooling.test.js');
+  await import('./async.js');
+  await import('./fs.js');
+  await import('./glob.js');
+  await import('./html.js');
+  await import('./options.js');
+  await import('./proact.js');
+  await import('./reloader.js');
+  await import('./sequitur.js');
+  await import('./tooling.js');
   await import('./walk.js');
 
   tap.on('end', () => {

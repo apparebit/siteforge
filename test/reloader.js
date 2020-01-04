@@ -181,7 +181,7 @@ tap.test('@grr/reloader/resolve', async t => {
   const modMain = pkgdir + 'main.js';
   const modHookPath = './packages/reloader/hook.js';
   const modHook = new URL(modHookPath, modMain).href;
-  const modTestPath = './test/reloader.test.js';
+  const modTestPath = './test/reloader.js';
   const modTest = import.meta.url;
   const defaultResolver = (specifier, parentModuleURL) => ({
     specifier,

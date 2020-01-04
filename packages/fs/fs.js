@@ -1,6 +1,6 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
-import { basename, dirname, extname, join, posix, resolve } from 'path';
+import { basename, dirname, extname, posix } from 'path';
 import { createHash } from 'crypto';
 import { promises } from 'fs';
 import { fileURLToPath } from 'url';
@@ -51,19 +51,16 @@ export function toDirectory(url) {
 
 /**
  * Make the given path look "cool". Taking a cue from [cool
- * URLs](https://www.w3.org/Provider/Style/URI), this function handles the
- * mechanics of making paths look cool:  It removes `index.htm` and `index.html`
- * from paths for HTML documents with that name and the extensions `.htm` and
- * `.html` from the paths for all other HTML documents. Furthermore, it removes
- * the trailing slash from all paths. Trailing slashes only make paths more
- * complex without adding expressivity to the web. Unfortunately, in the absence
- * of index file and trailing slash, browsers resolve relative URLs off the
- * parent directory and not the page itself. Though that is simple enough to
- * overcome with tooling that rewrites relative to absolute URLs. Thankfully,
- * the practice of using `.htm` as a file extension for HTML documents seems to
- * be largely confined to Windows users. That is not surprising, given that
- * three letters were a historical MS-DOS limit. But it also is more reason for
- * removing `.htm` from cool paths.
+ * URLs](https://www.w3.org/Provider/Style/URI), this function removes
+ * `index.htm` and `index.html` from paths for HTML documents and the extensions
+ * `.htm` and `.html` from the paths for all other HTML documents. It also
+ * removes the trailing slash from all paths, as they make paths more complex
+ * without adding expressivity. Unfortunately, in the absence of an index file
+ * and trailing slash, browsers resolve relative URLs off the parent directory
+ * and not the page itself. Hence, they should be rewritten to absolute URLs.
+ * The practice of using `.htm` appears largely confined to Windows users. It
+ * would be a grave mistake to ignore it in a function that removes the
+ * extension.
  */
 export function toCoolPath(path) {
   // Node.js' path.posix.parse() eliminates any trailing slash without trace.
@@ -158,145 +155,4 @@ export function writeVersionedFile(path, data, options = {}) {
     await writeFile(path, data, options);
     return path;
   }, versionedPath);
-}
-
-// -----------------------------------------------------------------------------
-
-/**
- * Walk the file system tree rooted at the given directory. The walk may include
- * resources more than once if the file system supports hard links. The walk may
- * also include resources outside the tree if the file system supports symbolic
- * links. This function does protect against getting stuck in a cycle, e.g.,
- * when a symbolic link points to one of its ancestral directories, by tracking
- * the [real path](http://man7.org/linux/man-pages/man3/realpath.3.html) of the
- * file system entities visited so far.
- *
- * When invoked with just a directory argument, this function does very little,
- * i.e., performs no I/O. For an actual walk to happen, it requires meaningful
- * `handleNext` and `handleFile` callbacks that schedule the corresponding
- * asynchronous operations. With @grr/multitasker's `handleWalk()` method that
- * becomes as easy as:
- *
- * ```js
- * walk(root, { isExcluded, ...multitasker.handleWalk(handleFile) });
- * ```
- *
- * Nonetheless, the default implementation for both handlers is a noop, since
- * doing otherwise would have created a hard dependency on that package. The
- * `handleNext` callback schedules the next unit of work and is invoked as:
- *
- * ```js
- * handleNext(handler, path, virtualPath);
- * ```
- *
- * The work is performed by executing `handler(path, virtualPath)`. The
- * `handleFile` callback actually processes a file and is invoked as:
- *
- * ```js
- * handleFile(path, virtualPath);
- * ```
- *
- * Both callbacks are expected to return a promise that only resolves when the
- * work has actually been performed. The `handler` passed to `handleNext` does
- * observe this contract.
- *
- * As the handlers illustrate, this function identifies each file system entity
- * by _two_ paths. The first is the real path, which is also used to protect
- * against cycles in the walk. The second is the virtual path, which takes
- * symbolic links at name value. For example, when `a/b/link` is a symbolic link
- * to directory `c/d`, the first, real path is `c/d` and the second, virtual
- * path is `/a/b/link`. If file `c/d/file` is visited next, then the first, real
- * path is `c/d/file` and the second, virtual path is `/a/b/link/file`. To
- * ensure predictable results, this function processes directory entries sorted
- * by their UTF-16 code points. Otherwise, a directory with a file `file` and a
- * symbolic link `link` to that same file would either yield `file` or `link`
- * depending on which order `readdir` happens to return entries.
- */
-export async function walk(
-  root,
-  {
-    isExcluded = isDotFile,
-    ignoreNoEnt = false,
-    handleNext = () => {},
-    handleFile = () => {},
-  } = {}
-) {
-  if (typeof root !== 'string') {
-    throw new Error(`Root for file system walk "${root}" is not a path`);
-  }
-
-  const metrics = {
-    readdir: 0,
-    entries: 0,
-    lstat: 0,
-    realpath: 0,
-    files: 0,
-  };
-
-  const visited = new Set();
-  const isRevisit = path => {
-    const hasVisited = visited.has(path);
-    if (!hasVisited) visited.add(path);
-    return hasVisited;
-  };
-
-  const readEntries = async path => {
-    try {
-      metrics.readdir++;
-      const entries = await readdir(path);
-      metrics.entries += entries.length;
-      return entries.sort();
-    } catch (x) {
-      if (ignoreNoEnt && x.code === 'ENOENT') return [];
-      throw x;
-    }
-  };
-
-  const processEntry = async (path, virtualPath) => {
-    let status;
-
-    while (true) {
-      metrics.lstat++;
-      status = await lstat(path);
-      if (!status.isSymbolicLink()) break;
-
-      metrics.realpath++;
-      path = await realpath(path);
-      if (isExcluded(path) || isRevisit(path)) {
-        return { ondone: Promise.resolve(), path, virtualPath, skipped: true };
-      }
-    }
-
-    if (status.isDirectory()) {
-      // Wait for processDirectory() to read directory and schedule entries.
-      const { ondone } = await processDirectory(path, virtualPath);
-      return { ondone, path, virtualPath, directory: true };
-    } else if (status.isFile()) {
-      metrics.files++;
-      const ondone = Promise.resolve(handleFile(path, virtualPath));
-      return { ondone, path, virtualPath, file: true };
-    } else {
-      return { ondone: Promise.resolve(), path, virtualPath, other: true };
-    }
-  };
-
-  const processDirectory = async (directory, virtualDirectory) => {
-    const entries = await readEntries(directory);
-
-    const promises = [];
-    for (const entry of entries) {
-      const path = join(directory, entry);
-      if (!isExcluded(path) && !isRevisit(path)) {
-        const virtualPath = join(virtualDirectory, entry);
-        promises.push(
-          Promise.resolve(handleNext(processEntry, path, virtualPath))
-        );
-      }
-    }
-
-    return { ondone: Promise.allSettled(promises) };
-  };
-
-  const { ondone } = await processDirectory(resolve(root), '/');
-  return { ondone, metrics };
 }

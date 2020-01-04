@@ -6,6 +6,8 @@
   "description": "An assortment of promising file system helpers",
   "keywords": [
     "file system",
+    "read/write",
+    "I/O",
     "promises"
   ],
   "repository": "https://github.com/apparebit/siteforge",

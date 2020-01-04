@@ -9,20 +9,18 @@ import {
   rmdir,
   toCoolPath,
   toDirectory,
-  walk,
   withTrailingSlash,
   writeVersionedFile,
 } from '@grr/fs';
 
-import { basename, join } from 'path';
+import { join } from 'path';
 import { createHash } from 'crypto';
-import Multitasker from '@grr/multitasker';
 import tap from 'tap';
 import { tmpdir } from 'os';
 
 const APPAREBIT = 'https://apparebit.com';
 const __directory = toDirectory(import.meta.url);
-const DOT = '.'.charCodeAt(0);
+//const DOT = '.'.charCodeAt(0);
 
 tap.test('@grr/fs', t => {
   // ---------------------------------------------------------------------------
@@ -123,108 +121,6 @@ tap.test('@grr/fs', t => {
     actual = await writeVersionedFile(path, data, 'utf8');
     t.strictEqual(actual, vp);
     t.strictEqual(await readFile(vp, 'utf8'), data);
-
-    t.end();
-  });
-
-  // ---------------------------------------------------------------------------
-  t.test('walk()', async t => {
-    t.comment('If @grr/multitasker has errors, fix them first!');
-
-    const multitasker = new Multitasker();
-
-    t.rejects(
-      () =>
-        walk(
-          42,
-          multitasker.handleWalk(() => {})
-        ),
-      /Root for file system walk "42" is not a path/u
-    );
-
-    const root = join(__directory, '..', 'packages');
-    const multitaskerDir = join(root, 'multitasker');
-    const multitaskerPrefix = multitaskerDir + '/';
-    const proactDir = join(root, 'proact');
-    const proactPrefix = proactDir + '/';
-
-    const isExcluded = path => {
-      if (
-        path === multitaskerDir ||
-        path.startsWith(multitaskerPrefix) ||
-        path === proactDir ||
-        path.startsWith(proactPrefix)
-      ) {
-        const file = basename(path);
-        if (file.charCodeAt(0) !== DOT) return false;
-      }
-      return true;
-    };
-
-    const expectedFiles = [
-      '/multitasker/LICENSE',
-      '/multitasker/README.md',
-      '/multitasker/multitasker.js',
-      '/multitasker/package.json',
-      '/proact/LICENSE',
-      '/proact/README.md',
-      '/proact/index.js',
-      '/proact/package.json',
-      '/proact/render.js',
-      '/proact/vdom.js',
-    ];
-
-    const actualFiles = [];
-    const handleFile = (path, virtualPath) => {
-      actualFiles.push({ path, virtualPath });
-    };
-
-    const { ondone, metrics } = await walk(root, {
-      isExcluded,
-      ...multitasker.handleWalk(handleFile),
-    });
-    await ondone;
-
-    const cap = Multitasker.newPromiseCapability();
-    setTimeout(cap.resolve, 10 * 1000);
-    await cap.promise;
-
-    t.strictEqual(metrics.readdir, 3);
-    t.strictEqual(metrics.entries, 18);
-    t.strictEqual(metrics.lstat, 12);
-    t.strictEqual(metrics.realpath, 0);
-    t.strictEqual(metrics.files, 10);
-    t.strictSame(
-      actualFiles.map(({ virtualPath }) => virtualPath).sort(),
-      expectedFiles
-    );
-
-    //   const root = t.testdir({
-    //     file: 'file',
-    //     dir: {
-    //       file: 'nested file',
-    //       dir: {
-    //         file: 'deeply nested file',
-    //         backToTheTop: t.fixture('symlink', '../..'),
-    //         backToTheFirstFile: t.fixture('symlink', '../../file'),
-    //       },
-    //     },
-    //   });
-
-    //   count = 0;
-    //   let expected = 'file';
-    //   for await (const { type, path } of Walk.walk(root, { isExcluded: null })) {
-    //     t.strictEqual(type, 'file');
-
-    //     let actual = relative(root, path);
-    //     if (actual.endsWith('2')) actual = actual.slice(0, -1);
-    //     t.strictEqual(actual, expected);
-
-    //     if (count <= 1) {
-    //       expected = 'dir/' + expected;
-    //     }
-    //     count++;
-    //   }
 
     t.end();
   });

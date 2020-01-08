@@ -1,3 +1,5 @@
+/* © 2019-2020 Robert Grimm */
+
 import { AsyncResource } from 'async_hooks';
 import { inspect } from 'util';
 import { strict } from 'assert';

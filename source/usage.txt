@@ -45,3 +45,5 @@ The following options apply to the deploy task:
 The default volume is 0. At that level, the output of error(), warning(), and
 notice() is visible, though info() and debug() are suppressed.
 
+site:forge is © 2019-2020 Robert Grimm
+

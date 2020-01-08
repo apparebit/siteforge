@@ -1,4 +1,4 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
 import {
   default as Executor,

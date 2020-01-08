@@ -1,6 +1,6 @@
 /* © 2019-2020 Robert Grimm */
 
-import { default as Executor, newPromiseCapability, looped } from '@grr/async';
+import { didPoll, default as Executor, newPromiseCapability } from '@grr/async';
 import { basename, join } from 'path';
 import walk from '@grr/walk';
 import tap from 'tap';
@@ -237,22 +237,22 @@ tap.test('@grr/walk', async t => {
     x => t.equal(x.message, 'hell')
   );
 
-  await looped();
+  await didPoll();
   mockdir.out.resolve(['a', 'b', 'c']);
 
-  await looped();
+  await didPoll();
   let x = new Error('heaven');
   x.code = 'ENOENT';
   let last = mockstat.out;
   mockstat.out.reject(x);
 
-  await looped();
+  await didPoll();
   x = new Error('hell');
   x.code = 'EHELL';
   t.notEqual(mockstat.out, last);
   mockstat.out.reject(x);
 
-  await looped();
+  await didPoll();
 
   // ---------------------------------------- Low-Level Walk #2
 
@@ -265,7 +265,7 @@ tap.test('@grr/walk', async t => {
   on('file', trace);
   on('symlink', trace);
 
-  await looped();
+  await didPoll();
   x = new Error('oops');
   x.code = 'ENOENT';
   last = mockdir.out;
@@ -282,7 +282,7 @@ tap.test('@grr/walk', async t => {
   on('file', trace);
   on('symlink', trace);
 
-  await looped();
+  await didPoll();
   x = new Error('boom');
   x.code = 'EBOOM';
   t.notEqual(mockdir.out, last);

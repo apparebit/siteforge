@@ -2,18 +2,11 @@
 
 This package enables concurrent execution of more than one asynchronous task.
 Since it also enforces an upper concurrency limit, tasks may not always execute
-right away but only after having been queued for a while. I originally started
-with a version that supported different task priorities but found it brittle in
-practice, so reverted to this more straight-forward design and implementation.
-Any undocumented feature is likely to suddenly vanish as soon as private class
-members work reliably enough. Node.js 13.5.0 had one remaining bug in my
-testing.
+right away but only after some delay.
 
 ## Overview
 
-While this package also exports some helper functionality and the
-default-exported executor has a fair number of methods, basic usage is quite
-straight-forward:
+Basic usage of this package's default-exported main class is straight-forward:
 
 ```js
 // Import the package.
@@ -36,10 +29,25 @@ await runner.stop();
 
 ## Helpers
 
+These helper functions and class are exported by name.
+
+##### didPoll()
+
+Return a promise that resolves after the event loop is done polling and hence
+has executed I/O event handlers, i.e., via `setImmediate()`.
+
+```js
+await didPoll();
+```
+
+##### delay(ms = 0)
+
+Return a promise that resolves after the given delay.
+
 ##### rethrow(error)
 
-Throw the given error again, but do so upon the next iteration of the event
-loop, i.e., via `setImmediate`.
+Throw the given error again, but do so after the event loop is done polling,
+i.e., via `setImmediate`.
 
 ##### newPromiseCapability(container = {})
 
@@ -48,7 +56,7 @@ and its `resolve` and `reject` settlement handlers.
 
 ##### Task(fn, receiver, ...args)
 
-Create a new task with the given function, receiver (`this`), and arguments.
+Create a new task with the given function, `this` receiver, and arguments.
 
 ##### Task.prototype.get()
 
@@ -78,29 +86,30 @@ the context under that name.
 ### State Inspection
 
 The internal fields of an executor can be polled with the `isIdle()`,
-`isBusy()`, `isStopping()`, `isStopped()`, `hasCapacity()`, `hasTaskReady()`,
-`status()`, and `toString()` methods. An executor can also notify applications
-of significant state changes with the `onIdle()` and `onStopped()` methods, both
-of which return a promise that resolves when the condition next becomes true.
+`isRunning()`, `isStopping()`, `hasStopped()`, `hasCapacity()`,
+`hasTaskReady()`, `status()`, and `toString()` methods. An executor can also
+notify applications of significant state changes with the `onIdle()` and
+`onStopped()` methods, both of which return a promise that resolves when the
+condition next becomes true.
 
 ##### Executor.prototype.isIdle()
 
 Determine whether the executor is idle. An idle executor has no tasks queued up
-and is not running any tasks. It becomes busy after receiving some tasks to
+and is not running any tasks. It becomes running after receiving some tasks to
 execute via `run()`. It becomes stopped after a call to `stop()`.
 
-##### Executor.prototype.isBusy()
+##### Executor.prototype.isRunning()
 
-Determine whether the executor is busy. A busy executor is running at least one
-task. It becomes idle again if the last running task completes and has no tasks
-queued up. It becomes stopping after a call to `stop()`.
+Determine whether the executor is running. A running executor is executing at
+least one task. It becomes idle again if the last running task completes and has
+no tasks queued up. It becomes stopping after a call to `stop()`.
 
 ##### Executor.prototype.isStopping()
 
 Determine whether the executor is stopping. A stopping executor does not accept
 new tasks but allows running tasks to finish.
 
-##### Executor.prototype.isStopped()
+##### Executor.prototype.hasStopped()
 
 Determine whether the executor is stopped. A stopped executor is done for. It
 does not accept new tasks, it has not tasks queued up, and it is not executing
@@ -137,9 +146,13 @@ Return the string tag for this type, which is `@grr/async/Executor`.
 Return a promise that resolves when the executor next becomes idle. If an
 handler on the returned promise calls this method, it receives a new promise
 that is resolved when the executor next _becomes_ idle, i.e., it first needs to
-go busy again.
+be running again.
 
-##### Executor.prototype.onStopped()
+##### Executor.prototype.onStop()
+
+Return a promise that resolves when `stop()` has been invoked.
+
+##### Executor.prototype.onDidStop()
 
 Return a promise that resolves when the executor has stopped.
 

@@ -2,7 +2,7 @@ import { AsyncResource } from 'async_hooks';
 import { inspect } from 'util';
 import { strict } from 'assert';
 
-const BUSY = Symbol('busy');
+const RUNNING = Symbol('running');
 const { has } = Reflect;
 const IDLE = Symbol('idle');
 const STOPPED = Symbol('stopped');
@@ -34,8 +34,8 @@ export function newPromiseCapability(container = {}) {
   return container;
 }
 
-export function looped() {
-  return new Promise(resolve => setImmediate(resolve, 'tick'));
+export function didPoll() {
+  return new Promise(resolve => setImmediate(resolve, 'didPoll'));
 }
 
 export function delay(ms = 0) {
@@ -102,22 +102,23 @@ export default class Executor {
     this._context = context;
     if (!has(this._context, 'executor')) this._context.executor = this;
     this._idle = newPromiseCapability();
-    this._stopped = newPromiseCapability();
+    this._stop = newPromiseCapability();
+    this._didStop = newPromiseCapability();
   }
 
   isIdle() {
     return this._state === IDLE;
   }
 
-  isBusy() {
-    return this._state === BUSY;
+  isRunning() {
+    return this._state === RUNNING;
   }
 
   isStopping() {
     return this._state === STOPPING;
   }
 
-  isStopped() {
+  hasStopped() {
     return this._state === STOPPED;
   }
 
@@ -129,13 +130,25 @@ export default class Executor {
     return this._ready.length;
   }
 
+  onIdle() {
+    return this._idle.promise;
+  }
+
+  onStop() {
+    return this._stop.promise;
+  }
+
+  onDidStop() {
+    return this._didStop.promise;
+  }
+
   run(fn, that, ...args) {
     strict.ok(
       typeof fn === 'function',
       'First argument to run() must be function'
     );
-    if (this.isIdle()) this._state = BUSY;
-    strict.ok(this.isBusy());
+    if (this.isIdle()) this._state = RUNNING;
+    strict.ok(this.isRunning());
 
     const task = new Task(fn, that == null ? this._context : that, ...args);
     if (this.hasCapacity()) {
@@ -148,7 +161,7 @@ export default class Executor {
   }
 
   async _run(task) {
-    strict.ok(this.isBusy());
+    strict.ok(this.isRunning());
     this._inflight++;
     try {
       await task.run();
@@ -163,19 +176,19 @@ export default class Executor {
 
   _schedule() {
     if (this.isIdle() && this.hasTaskReady()) {
-      this._state = BUSY;
+      this._state = RUNNING;
     }
-    while (this.isBusy() && this.hasTaskReady() && this.hasCapacity()) {
+    while (this.isRunning() && this.hasTaskReady() && this.hasCapacity()) {
       this._run(this._ready.shift());
     }
     if (this._inflight === 0) {
-      if (this.isBusy()) {
+      if (this.isRunning()) {
         this._state = IDLE;
         this._idle.resolve();
         this._idle = newPromiseCapability();
       } else if (this.isStopping()) {
         this._state = STOPPED;
-        this._stopped.resolve();
+        this._didStop.resolve();
       }
     }
   }
@@ -183,20 +196,14 @@ export default class Executor {
   stop() {
     if (this.isIdle()) {
       this._state = STOPPED;
-      this._stopped.resolve();
-    } else if (this.isBusy()) {
+      this._stop.resolve();
+      this._didStop.resolve();
+    } else if (this.isRunning()) {
       this._state = STOPPING;
+      this._stop.resolve();
     }
     this._ready.length = 0;
-    return this._stopped.promise;
-  }
-
-  onIdle() {
-    return this._idle.promise;
-  }
-
-  onStopped() {
-    return this._stopped.promise;
+    return this._didStop.promise;
   }
 
   status() {

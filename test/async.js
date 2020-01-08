@@ -3,7 +3,7 @@
 import {
   default as Executor,
   delay,
-  looped,
+  didPoll,
   newPromiseCapability,
   rethrow,
   Task,
@@ -58,9 +58,9 @@ tap.test('@grr/async', async t => {
         return Promise.resolve().then(() => output.push('promise'));
       },
       // The next event loop tick, brilliantly called setImmediate().
-      async function looping() {
-        await looped();
-        output.push('looped');
+      async function polling() {
+        await didPoll();
+        output.push('didPoll');
       },
       // The next microtask (yup), brilliantly called nextTick().
       function ticking() {
@@ -68,7 +68,7 @@ tap.test('@grr/async', async t => {
       },
     ].map(fn => fn())
   );
-  t.strictSame(output, ['promise', 'tick', 'looped', 'delay']);
+  t.strictSame(output, ['promise', 'tick', 'didPoll', 'delay']);
 
   // ---------------------------------------------------------------------------
 
@@ -138,7 +138,7 @@ tap.test('@grr/async', async t => {
     t.ok(runner.hasCapacity());
     t.notOk(runner.hasTaskReady());
     t.ok(runner.isIdle());
-    t.notOk(runner.isBusy());
+    t.notOk(runner.isRunning());
     t.notOk(runner.isStopping());
     t.strictSame(runner.status(), {
       state: 'idle',
@@ -154,10 +154,10 @@ tap.test('@grr/async', async t => {
       t.ok(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 0,
         inflight: 1,
         capacity: 2,
@@ -174,10 +174,10 @@ tap.test('@grr/async', async t => {
       t.notOk(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 0,
         inflight: 2,
         capacity: 2,
@@ -185,7 +185,7 @@ tap.test('@grr/async', async t => {
       });
       t.equal(
         runner.toString(),
-        `@grr/async/Executor { state: 'busy', ready: 0, inflight: 2, capacity: 2, completed: 0 }`
+        `@grr/async/Executor { state: 'running', ready: 0, inflight: 2, capacity: 2, completed: 0 }`
       );
     });
 
@@ -195,10 +195,10 @@ tap.test('@grr/async', async t => {
       t.notOk(runner.hasCapacity());
       t.ok(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 1,
         inflight: 2,
         capacity: 2,
@@ -213,10 +213,10 @@ tap.test('@grr/async', async t => {
       t.notOk(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 0,
         inflight: 2,
         capacity: 2,
@@ -231,10 +231,10 @@ tap.test('@grr/async', async t => {
       t.ok(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 0,
         inflight: 1,
         capacity: 2,
@@ -250,7 +250,7 @@ tap.test('@grr/async', async t => {
       t.ok(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.ok(runner.isIdle());
-      t.notOk(runner.isBusy());
+      t.notOk(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
         state: 'idle',
@@ -267,10 +267,10 @@ tap.test('@grr/async', async t => {
       t.ok(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 0,
         inflight: 1,
         capacity: 2,
@@ -284,10 +284,10 @@ tap.test('@grr/async', async t => {
       t.notOk(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 0,
         inflight: 2,
         capacity: 2,
@@ -301,10 +301,10 @@ tap.test('@grr/async', async t => {
       t.notOk(runner.hasCapacity());
       t.ok(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 1,
         inflight: 2,
         capacity: 2,
@@ -319,10 +319,10 @@ tap.test('@grr/async', async t => {
       t.notOk(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.ok(runner.isBusy());
+      t.ok(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
-        state: 'busy',
+        state: 'running',
         ready: 0,
         inflight: 2,
         capacity: 2,
@@ -330,14 +330,14 @@ tap.test('@grr/async', async t => {
       });
     });
 
-    const stopped = runner.stop();
-    t.equal(runner.onStopped(), stopped);
+    const didStop = runner.stop();
+    t.equal(runner.onDidStop(), didStop);
 
     await soon(() => {
       t.notOk(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.notOk(runner.isBusy());
+      t.notOk(runner.isRunning());
       t.ok(runner.isStopping());
       t.strictSame(runner.status(), {
         state: 'stopping',
@@ -355,7 +355,7 @@ tap.test('@grr/async', async t => {
       t.ok(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.notOk(runner.isBusy());
+      t.notOk(runner.isRunning());
       t.ok(runner.isStopping());
       t.strictSame(runner.status(), {
         state: 'stopping',
@@ -366,8 +366,8 @@ tap.test('@grr/async', async t => {
       });
     });
 
-    t.resolves(stopped);
-    t.resolves(runner.onStopped());
+    t.resolves(didStop);
+    t.resolves(runner.onDidStop());
 
     task6.resolve(task6.name);
     await p6;
@@ -376,7 +376,7 @@ tap.test('@grr/async', async t => {
       t.ok(runner.hasCapacity());
       t.notOk(runner.hasTaskReady());
       t.notOk(runner.isIdle());
-      t.notOk(runner.isBusy());
+      t.notOk(runner.isRunning());
       t.notOk(runner.isStopping());
       t.strictSame(runner.status(), {
         state: 'stopped',
@@ -388,11 +388,13 @@ tap.test('@grr/async', async t => {
     });
 
     // When stopped, an idle Executor transitions directly to the stopped state.
+    // Nonetheless, both onStop() and onDidStop() resolve.
     const r2 = new Executor();
-    t.resolves(r2.onStopped());
+    t.resolves(r2.onStop());
+    t.resolves(r2.onDidStop());
     t.ok(r2.isIdle());
     await r2.stop();
-    t.ok(r2.isStopped());
+    t.ok(r2.hasStopped());
 
     // An executor's run() method accepts the closure for sure but also
     // optionally the receiver and the arguments.

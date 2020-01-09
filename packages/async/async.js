@@ -4,12 +4,15 @@ import { AsyncResource } from 'async_hooks';
 import { inspect } from 'util';
 import { strict } from 'assert';
 
-const RUNNING = Symbol('running');
+const configurable = true;
+const { defineProperty } = Object;
 const { has } = Reflect;
 const IDLE = Symbol('idle');
+const RUNNING = Symbol('running');
 const STOPPED = Symbol('stopped');
 const STOPPING = Symbol('stopping');
 const { toStringTag } = Symbol;
+const writable = true;
 
 const format = value => {
   const type = typeof value;
@@ -47,10 +50,10 @@ export function delay(ms = 0) {
 // -----------------------------------------------------------------------------
 
 export class Task extends AsyncResource {
-  constructor(fn, receiver, ...args) {
+  constructor(fn, that, ...args) {
     super('@grr/async/Task');
     this._fn = fn;
-    this._receiver = receiver;
+    this._that = that;
     this._args = args;
     this._didRun = false;
 
@@ -71,9 +74,7 @@ export class Task extends AsyncResource {
     this._didRun = true;
 
     try {
-      this._resolve(
-        this.runInAsyncScope(this._fn, this._receiver, ...this._args)
-      );
+      this._resolve(this.runInAsyncScope(this._fn, this._that, ...this._args));
     } catch (x) {
       this._reject(x);
     }
@@ -81,7 +82,7 @@ export class Task extends AsyncResource {
   }
 
   toString() {
-    let s = this._receiver != null ? format(this._receiver) + '.' : '';
+    let s = this._that != null ? format(this._that) + '.' : '';
     return (
       s + `${this._fn.name || 'function'}(${this._args.map(format).join(', ')})`
     );
@@ -106,6 +107,12 @@ export default class Executor {
     this._idle = newPromiseCapability();
     this._stop = newPromiseCapability();
     this._didStop = newPromiseCapability();
+
+    defineProperty(this, 'run', {
+      configurable,
+      writable,
+      value: this.run.bind(this),
+    });
   }
 
   isIdle() {

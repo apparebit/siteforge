@@ -189,7 +189,8 @@ tap.test('@grr/async', async t => {
       );
     });
 
-    const p3 = runner.run(task3).then(v => t.equal(v, 'Task3'));
+    const { run } = runner;
+    const p3 = run(task3).then(v => t.equal(v, 'Task3'));
 
     await soon(() => {
       t.notOk(runner.hasCapacity());
@@ -261,7 +262,7 @@ tap.test('@grr/async', async t => {
       });
     });
 
-    const p4 = runner.run(task4).then(v => t.equal(v, 'Task4'));
+    const p4 = run(task4).then(v => t.equal(v, 'Task4'));
 
     await soon(() => {
       t.ok(runner.hasCapacity());
@@ -295,7 +296,7 @@ tap.test('@grr/async', async t => {
       });
     });
 
-    const p6 = runner.run(task6).then(v => t.equal(v, 'Task6'));
+    const p6 = run(task6).then(v => t.equal(v, 'Task6'));
 
     await soon(() => {
       t.notOk(runner.hasCapacity());

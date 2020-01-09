@@ -161,12 +161,25 @@ Return a promise that resolves when the executor has stopped.
 
 To actually do something useful, this class implements two more methods.
 
-##### Executor.prototype.run(fn, ...args)
+##### Executor.prototype.run(fn, receiver, ...args)
 
-Eventually run the given task by calling the function on the configured receiver
-and the given arguments. The task runs immediately, if there are fewer running
-tasks than the configured maximum. It runs after some indeterminate queueing
-delay otherwise.
+Run the given task by calling the function on the effective receiver and the
+given arguments. The task starts running immediately, if there are fewer running
+tasks than the configured maximum. Otherwise, it runs only after all tasks
+scheduled through prior invocations of this method have started running and
+enough have finished running so that at most the configured maximum minus one
+tasks are still running. If the given receiver is neither `null` nor
+`undefined`, then that argument is the effective receiver. Otherwise, the
+effective receiver is the one configured for this executor.
+
+Most code should not instantiate executors, since that is a resource allocation
+decision with process-wide consequences. For the same reason, most code does not
+need access to the full interface of this class but only to this method. To
+simplify passing this method to components that schedule further tasks, the
+constructor binds this method to the newly created instance and makes the result
+available under the `run` property of the instance. That property is
+configurable and writeable but not enumerable, just like the prototype's `run`
+property.
 
 ##### Executor.prototype.stop()
 

@@ -31,6 +31,18 @@ export default function walk(
 
   // ---------------------------------------------------------------------------
 
+  // BASIC STATISTICS: The counts of asynchronous I/O operations and event
+  // notifications are a reasonable starting point. Latency might also be
+  // interesting.
+
+  const metrics = {
+    readdir: 0,
+    entries: 0,
+    lstat: 0,
+    realpath: 0,
+    file: 0,
+  };
+
   // PROMISE of TERMINATION: The developer experience for distinct `end` and
   // `exit` events is far less compelling than a promise for termination. It
   // covers both successful and unsuccessful runs and integrates with
@@ -52,7 +64,7 @@ export default function walk(
   const readInEntries = entries => (activeEntries += entries.length);
   const doneWithEntry = () => {
     activeEntries--;
-    if (activeEntries === 0) resolveWalk();
+    if (activeEntries === 0) resolveWalk(metrics);
   };
 
   // FORCED TERMINATION: Whether you call it abort(), cancel(), or stop(), the
@@ -70,18 +82,6 @@ export default function walk(
   const visited = new Set();
   const hasVisited = path => visited.has(path);
   const willVisit = path => visited.add(path);
-
-  // BASIC STATISTICS: The counts of asynchronous I/O operations and event
-  // notifications are a reasonable starting point. Latency might also be
-  // interesting.
-
-  const metrics = {
-    readdir: 0,
-    entries: 0,
-    lstat: 0,
-    realpath: 0,
-    file: 0,
-  };
 
   // ---------------------------------------------------------------------------
 

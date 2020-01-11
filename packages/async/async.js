@@ -4,15 +4,12 @@ import { AsyncResource } from 'async_hooks';
 import { inspect } from 'util';
 import { strict } from 'assert';
 
-const configurable = true;
-const { defineProperty } = Object;
 const { has } = Reflect;
 const IDLE = Symbol('idle');
 const RUNNING = Symbol('running');
 const STOPPED = Symbol('stopped');
 const STOPPING = Symbol('stopping');
 const { toStringTag } = Symbol;
-const writable = true;
 
 const format = value => {
   const type = typeof value;
@@ -52,6 +49,10 @@ export function delay(ms = 0) {
 export class Task extends AsyncResource {
   constructor(fn, that, ...args) {
     super('@grr/async/Task');
+    this.reset(fn, that, ...args);
+  }
+
+  reset(fn, that, ...args) {
     this._fn = fn;
     this._that = that;
     this._args = args;
@@ -107,12 +108,6 @@ export default class Executor {
     this._idle = newPromiseCapability();
     this._stop = newPromiseCapability();
     this._didStop = newPromiseCapability();
-
-    defineProperty(this, 'run', {
-      configurable,
-      writable,
-      value: this.run.bind(this),
-    });
   }
 
   isIdle() {
@@ -151,6 +146,10 @@ export default class Executor {
     return this._didStop.promise;
   }
 
+  start(fn, that, ...args) {
+    return { done: this.run(fn, that, ...args) };
+  }
+
   run(fn, that, ...args) {
     strict.ok(
       typeof fn === 'function',
@@ -184,9 +183,6 @@ export default class Executor {
   }
 
   _schedule() {
-    if (this.isIdle() && this.hasTaskReady()) {
-      this._state = RUNNING;
-    }
     while (this.isRunning() && this.hasTaskReady() && this.hasCapacity()) {
       this._run(this._ready.shift());
     }

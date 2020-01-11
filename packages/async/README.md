@@ -159,27 +159,37 @@ Return a promise that resolves when the executor has stopped.
 
 ### Task Execution
 
-To actually do something useful, this class implements two more methods.
+The following methods actually do something useful, i.e., add tasks for
+execution and stop execution altogether.
+
+##### Executor.prototype.start(fn, receiver, ...args)
+
+Start the given task without waiting for promises and return an object whose
+`done` property is a promise for the task's result. This method is equivalent
+to:
+
+```js
+start(...args) {
+  return { done: this.run(...args) };
+}
+```
+
+By boxing the promise for the task's result, this method ensures that an
+awaiting caller does not wait until the task completes, which might be a while.
+That makes this method the perfect callback for scheduling tasks, after binding
+the instance of course.
 
 ##### Executor.prototype.run(fn, receiver, ...args)
 
 Run the given task by calling the function on the effective receiver and the
-given arguments. The task starts running immediately, if there are fewer running
-tasks than the configured maximum. Otherwise, it runs only after all tasks
-scheduled through prior invocations of this method have started running and
-enough have finished running so that at most the configured maximum minus one
-tasks are still running. If the given receiver is neither `null` nor
-`undefined`, then that argument is the effective receiver. Otherwise, the
-effective receiver is the one configured for this executor.
-
-Most code should not instantiate executors, since that is a resource allocation
-decision with process-wide consequences. For the same reason, most code does not
-need access to the full interface of this class but only to this method. To
-simplify passing this method to components that schedule further tasks, the
-constructor binds this method to the newly created instance and makes the result
-available under the `run` property of the instance. That property is
-configurable and writeable but not enumerable, just like the prototype's `run`
-property.
+given arguments and return a promise for the result. The task starts running
+immediately, if there are fewer running tasks than the configured maximum.
+Otherwise, it runs only after all tasks scheduled through prior invocations of
+this method have started running and enough have finished running so that at
+most the configured maximum minus one tasks are still running. If the given
+receiver is neither `null` nor `undefined`, then that argument is the effective
+receiver. Otherwise, the effective receiver is the one configured for this
+executor.
 
 ##### Executor.prototype.stop()
 

@@ -97,6 +97,10 @@ tap.test('@grr/async', async t => {
 
     tusk = new Task(() => {}, null, 665, Symbol('boo'), 'hello');
     t.equal(tusk.toString(), `function(665, @@boo, 'hello')`);
+    t.equal(
+      new Task({}.toString, {}, 665).toString(),
+      `[object Object].toString(665)`
+    );
     t.end();
   });
 
@@ -189,7 +193,7 @@ tap.test('@grr/async', async t => {
       );
     });
 
-    const { run } = runner;
+    const run = runner.run.bind(runner);
     const p3 = run(task3).then(v => t.equal(v, 'Task3'));
 
     await soon(() => {
@@ -408,7 +412,7 @@ tap.test('@grr/async', async t => {
       return String(a) + String(b) + String(c);
     }
 
-    t.equal(await r3.run(append1, 1, 2, 3), '123');
+    t.equal(await r3.start(append1, 1, 2, 3).done, '123');
 
     // The second argument is the receiver, always. So the following run()
     /// results in an invocation with the latter two arguments for `a` and `b`

@@ -1,149 +1,144 @@
 # site:forge
 
-site:forge is a static website generator. It is file-centric. It also includes
-its own view components, but leaves anything unnecessary by the wayside. As
-result, view components really are nothing more than functions that take a
-`props` object as well as a `context` object and return a vDOM fragmen,
-synchronously or asynchronously. In my experience so far, that appears to be the
-sweet spot between cutting edge frameworks, e.g., React.js, and cuttings on the
-floor, i.e., ad-hoc templating libraries, at least for smaller and content-heavy
-web sites.
+When reading other people's code, I often wish there was more documentation on
+the motivation for a particular design or software architecture. After all, we
+routinely make trade-offs while developing software based on functional
+requirements, resource constraints, and technical experience. They all clearly
+impact the resulting artifact but they usually aren't spelled out anywhere.
+That's too bad because the trope that good code documents itself is nonsense.
+Even cleanly layed out code—with descriptive names and reasonable abstractions
+but without cute little hacks and other obscure incantations—captures just one
+possible solution to a problem that, without documentation, is largely unknown.
 
 ## 1. The Case for site:forge
 
-When reading other people's code, I often wish there was more documentation on
-the motivation for a particular design or software architecture. After all, we
-routinely make trade-offs while developing code and understanding those
-trade-offs as well as other, non-technical factors that nonetheless influence
-our work most certainly helps in understanding the resulting artifact. With that
-in mind, there are two topics that have an outsize impact on site:forge.
+site:forge results from me playing with Node.js at home, outside of work, and is
+my third iteration on the topic of static website generation. I discarded each
+of the previous two artifacts somewhere midway to a working prototype because I
+was still learning the intricacies of the platform and the established way of
+writing code for Node.js was rapidly transitioning from CommonJS to EMS for
+grouping related functionality in modules and from event handlers to promises to
+async/await for writing idiomatic asynchronous code. Now that this transition is
+complete, I believe it is time for a static website generator that leverage the
+language to its maximum potential, including by treating async/await as the
+default and resorting to promises or raw event handlers only in appropriate
+corner cases.
 
+Furthermore, three goals, or more precisely _guidelines_, emerged out of these
+experiments:
 
-### 1.1 Proactive View Components
+ 1. __Avoid ad-hoc and domain-specific languages__, including templating
+    languages such as [Handlebars](https://handlebarsjs.com) or
+    [Mustache](http://mustache.github.io), alternative markup languages such as
+    [HAML](https://github.com/tj/haml.js), or extended dialects of CSS such as
+    [less](http://lesscss.org) or [SASS](https://sass-lang.com). Instead build
+    on JavaScript as the universal execution substrate. The many domain-specific
+    niche languages only serve to fragment the ecosystem and to increase our
+    dependency on complex and brittle build tools. Furthermore, any claimed
+    benefit of being more accessible to non-developers is easily lost due to
+    ill-considered language design choices. For example, Shopify's
+    [Liquid](https://shopify.github.io/liquid/) is supposed to be a "safe,
+    customer-facing template language." Yet it bizarrely evaluates operators
+    [from right to left without
+    precedence](https://shopify.github.io/liquid/basics/operators/).
 
-site:forge is based on *proactive view components*, that is, components that are
-rendered well ahead of time. By limiting the tool to that use case, site:forge
-can eschew much of the complexity and framework lock-in of a
-[Gatsby](https://www.gatsbyjs.org), [Next.js](https://nextjs.org), or
-[Nuxt.js](https://nuxtjs.org). The trade-off is that site:forge also lacks their
-seamless integration between server-side and client-side execution environments.
-In fact, despite the view components, site:forge's more focused and thereby
-leaner approach to static website generation is closer to a
-[Metalsmith](https://metalsmith.io) or [11ty](https://www.11ty.dev). Yet,
-site:forge dispenses with their fondness for small-ish, often awkward, and at
-times obscure domain-specific languages. Instead, it standardizes on JavaScript
-as the only language for expressing business and view logic alike.
+ 2. __Encapsulate reusable snippets of content in view components__. Each page
+    having at most one view and no human viewers yet makes rendering way ahead
+    of time that much simpler than rendering on the client. In particular, there
+    is no need for placeholder content, reconciliation, state management, or
+    effects. We thus can get away with little more than a rather basic [virtual
+    DOM](https://github.com/sethvincent/awesome-virtual-dom) (vDOM) that allows
+    instantiation via tagged templates and also renders to HTML. Components
+    simply are functions that take `props` and `context` as arguments and return
+    one or more vDOM nodes.
 
-As far as users are concerned, the goal is to replace templating and styling
-languages with tagged templates for verbatim content and vanilla JavaScript for
-logic. That is not to argue for a free-for-all mixing business logic and view
-components. Users should still follow well-established best practices and keep
-those two concerns separate. Doing so should keep noticeable differences between
-site:forge and template-based website generators manageable. site:forge's
-approach does, however, offer one significant advantage: There is no custom code
-written in some ad-hoc language and running in some subpar interpreter. It's all
-modern JavaScript executing in a modern runtime environment, with all the
-sophisticated performance optimizations that entails. This does assume that
-users can build on (some) familiarity with programming. But that is increasingly
-a requirement for any (white collar) profession. At the same time, skills honed
-while writing view components for this website generator are more easily
-transferable than expertise with a particular templating or styling language.
+    Such _proactive_ view components have a number of advantages: Very much like
+    templates, they let developers write HTML mostly. Only now, markup is
+    encapsulated by tagged templates and intra-component logic is expressed in
+    standard JavaScript instead of some ad-hoc language. Since tagged templates
+    are parsed by default, proactive view components are more robust. They also
+    nicely accommodate global validation and transformation, for example to
+    check for standards compliance, to rewrite internal anchor links, or to
+    force a new browsing context for external anchor links. Finally, proactive
+    view components are considerably more lightweight than familiar, client-side
+    frameworks such as [React.js](https://reactjs.org) or
+    [Vue.js](https://vuejs.org). Yet the narrow API of proactive view components
+    also allows for a straight-forward implementation based on top of one of
+    these frameworks, if seamless integration with the client is a requirement.
 
-site:forge's view components also are far more lightweight than
-[React.js](https://reactjs.org) or [Vue.js](https://vuejs.org). They just are
-functions that take a component's properties and context as arguments and then
-produce nodes belonging to site:forge's pared down, ahead-of-time [virtual
-DOM](https://github.com/sethvincent/awesome-virtual-dom). That is feasible
-because many of the more sophisticated features of the above frameworks are
-neither necessary nor even useful when creating content well before deployment
-to the server. Notably, there is no need for view reconciliation or state
-management. At the same time, using a virtual DOM entails two important
-benefits: First, content is syntactically well-formed by construction. Second,
-content can be more easily validated. As a proof of potential, site:forge
-already includes a [mechanized model](packages/html/README.md) for
-HTML—capturing the rules from the
-[HTML](https://html.spec.whatwg.org), [WAI-ARIA](https://w3c.github.io/aria/),
-and [OpenGraph](https://ogp.me) standards.
+ 3. __Develop components with modern JavaScript__. It's not enough to rely on
+    the built-in module system for structuring code and on async/await as well
+    as asynchronous iterators for handling I/O. It's high time to also ditch
+    transpilation to ancient dialects of JavaScript and CommonJS. It only adds
+    complexity to the build process and incurs significant runtime overheads as
+    well, notably when reifying the state machines behind generators and the
+    queues behind asynchronous iterators. Meanwhile, Node.js and evergreen
+    browsers (which are named as such because they automatically update to the
+    latest version) are closely following the evolving JavaScript standard for
+    new constructs and additions to the standard library. Furthermore, the
+    biggest obstacle to eliminating transpilation—Node.js' lack of native ESM
+    support—was finally addressed with version 12. In light of the rather
+    contentious process getting there, which required consensus not just amongst
+    Node.js contributors but also stakeholders from the JavaScript and web
+    standards camps, the result is most welcome and technically outstanding.
 
-#### Prehistory
+ 4. __Carve out targeted, complementary, yet loosely-coupled packages__. The
+    full-on embrace of modern JavaScript without transpilation is a great
+    opportunity to reflect on how we break functionality into packages, which
+    are then distributed via npm's registry and thereby become part of the
+    commons. For instance, site:forge's `node_modules` directory, as of January
+    12, 2020, contains 480 packages and requires 205 MB of disk space. Since I
+    have been exceedingly conservative in onboarding dependencies, almost all of
+    this package bloat is due to development dependencies. But for many other
+    libraries and tools, that same package bloat also holds in production.
 
-This project is based, in part, on experiences with two earlier and by now
-discarded prototypes. But whereas tooling came first for those earlier two
-attempts, the website takes precedence for this third iteration. In fact,
-site:forge started out as a few ad-hoc scripts to build and deploy Apparebit. I
-expect that I will alternate focus between website and website generator for the
-forseeable future and thereby hope to ensure that site:forge's development
-remains focused on features that are useful when building small to medium sized
-websites. It also serves as a end-to-end test for the tool and its usability.
+    The cause are two opposing but equally corrosive practices, namely the
+    creation of tiny packages that contain only a single, mostly trivial
+    function and of humongous packages that just keep growing and growing, even
+    if most of their functionality is of limited use. A quick look at the
+    current `node_modules` reveals plenty of examples for either extreme.
+    Amongst tiny packages counts `is-obj`, which implements the obvious
+    predicate for a value being a JavaScript object. While I can appreciate the
+    temptation to abstract over this idiom, I also find that it performs
+    redundant operations in practice, that is, unless I inline the equivalent
+    code.
 
-
-### 1.2 The Limits of Modularity
-
-In addition to the tool for generating websites itself (found in
-[`source`](source)), this repository also includes the source code for several
-other packages that are more generally useful (found in [`packages`](packages)).
-While I started with a single unified codebase, I began breaking out packages
-soon thereafter. In refactoring site:forge from an assortment of modules into a
-more structured application with distinct packages and well-defined internal
-interfaces, I carefully minimized any dependencies between these packages. At
-times, that meant implementing variations of the same helper functionality more
-than once. But I consider that an acceptable trade-off. As discussed above,
-site:forge explicitly seeks to avoid framework lock-in and so I could hardly
-create my own framework, which can only be consumed as a framework.
-
-I am also writing most of the code for site:forge myself, falling back onto
-existing packages in a few well-considered cases only. That is somewhat of an
-allergic reaction to the state of the npm ecosystem at large. In my experience,
-there are altogether too many packages that comprise a single, straight-forward
-function only. Furthermore, even packages that provide more substantial
-functionality often take modularization to dubious extremes, with each module
-containing just one function. This is not to argue that a module having only a
-default export necessarily is a bad idea. Quite the contrary: A narrow,
-well-designed interface can be a feature in and of itself. Nonetheless, many npm
-packages have taken this trend towards small modules and packages to
-unproductive extremes, incurring significant storage, maintenance, and
-compliance overheads. I'm thus treating site:forge as an opportunity for
-exploring a different balance with a coarser granularity.
-
-A nice side-effect of revisiting seemingly familiar topics, such as command line
-argument parsing, are opportunities for redefining the task at hand and thereby
-enabling simpler and also more powerful APIs. In the case of command line
-argument parsing, I realized that command line arguments are just one source of
-a tool's configuration state. Consequently, the `@grr/options` package relies on
-the same schema declaration for parsing command line arguments or the equivalent
-records from a `package.json` manifest. The package still has two distinct entry
-points, `optionsFromObject()` and `optionsFromArguments()`. But both functions
-share the same underlying data model, take almost the same arguments, perform
-the same validations on the raw data, and produce the same kind of configuration
-state.
-
-Another consideration in factoring functionality into distinct packages has been
-unit testing. While code coverage of the existing unit tests has not yet reached
-100% for all packages, it generally comes very close already and my goal is to
-get to 100% eventually. But unit tests are only feasible where there is a unit
-of code to test, with a clearly defined interface to boot. In practice, that
-means that command line tools often don't have comprehensive unit and/or
-integration tests. Since I am guilty of just that omission myself, the breaking
-out of packages helps with more targeted testing. And I'm claiming my use of
-site:forge for my own website as the definitive integration test. After all, if
-I don't like the results, I am likely to fix the tool.
+    Amongst humongous packages are seven libraries and two command line tools
+    from the [Istanbul project](https://istanbul.js.org) for determining test
+    coverage. That is despite site:forge relying on facilities built into
+    [Node.js](https://medium.com/the-node-js-collection/rethinking-javascript-test-coverage-5726fb272949)
+    and [V8](https://v8.dev/blog/javascript-code-coverage) for collecting
+    coverage data and only delegating to one of those two tools, `c8`, for
+    reporting. I suspect that the current test runtime, [Node
+    Tap](https://node-tap.org), pulled in some of those libraries as well as the
+    second tool, `nyc`. But again, site:forge relies on Node Tap only for
+    assertions and accounting, since having been burned by `nyc` and `tap`
+    introducing bugs into test runs started reducing their use. The goal then
+    should be to develop supporting development and runtime code from scratch,
+    carefully consider internal interfaces, and eventually factor proven
+    components into their own packages.
 
 
 ## 2. The Diversity of a Monorepo
 
-In addition to @grr/siteforge, the static website generator itself, this
-monorepo hosts a number of packages. For now, none of them have been released to
-npm yet. The nine packages, organized roughly by focus, are:
+In addition to the static website generator [__@grr/siteforge__](source) itself,
+this monorepo also hosts the constituent components. For now, none of the
+packages have been released to npm, largely because the process of building a
+minimum viable site:forge and refactoring supporting functionality into separate
+packages is not yet complete. Roughly organized by focus area, the current
+component packages are:
 
 ### Synchronous, Asynchronous, Concurrent
 
   * [__@grr/sequitur__](packages/sequitur) provides expressive and lazy
-    sequences that may just be synchronous or asynchronous.
+    sequences that may just be synchronous or asynchronous. Furthermore,
+    transition from a synchronous to an asynchronous sequence is automatic.
+    Alas, the reverse is not possible.
 
   * [__@grr/async__](packages/async) performs concurrent, asynchronous task
     execution in an orderly and context-aware manner. While the package
     necessarily deals in promises, it mostly focuses on the promise-producing
-    tasks. They are the ones that get shit done.
+    tasks. After all, promise-producing tasks are the ones that get shit done.
 
 ### Configuration
 
@@ -157,21 +152,21 @@ npm yet. The nine packages, organized roughly by focus, are:
 
 ### File Storage
 
-  * [__@grr/fs__](packages/fs) is a grab bag of regular and empowered helper
-    functions for file I/O. Some are just easier to import, promisified file
-    operations from Node.js' own _fs_ module. Some come with their own
+  * [__@grr/fs__](packages/fs) is a grab bag of basic and empowered helper
+    functions for file I/O. Some exports are just easier to use, promisified
+    file operations from Node.js' own fs module. Some come with their own
     superpowers, including the ability to fix `ENOENT` errors on the fly.
   * [__@grr/glob__](packages/glob) implements wildcard patterns for file system
-    paths by translating them into predicate functions. Unlike many other npm
-    packages, @grr/glob does not compete on features and is purposefully
-    minimal.
+    paths by translating them into predicate functions. Unlike many similar npm
+    packages, `@grr/glob` does not compete on features and only supports `?` to
+    match a single character, `*` to match zero or more characters in a path
+    segment, and `**` to match zero or more path segments. If more complex
+    patterns are needed, applications should use regular expressions.
   * [__@grr/walk__](packages/walk) looks like a straight-forward recursive
-    directory scan. But that simplicity was hard fought for, including rewriting
-    this package as well as @grr/async from scratch when we could see the finish
-    line—but not reach it due to a brittle API. More importantly, the simplicity
-    doesn't get in the way of flexibility or performance, especially when
-    pairing with @grr/async for concurrency—or any other library that catches
-    your fancy.
+    directory scan and it is just that when using the package with the default
+    configuration. But then providing a callback into `@grr/async`, the scan
+    becomes concurrent and can thus leverage more of the available I/O
+    bandwidth.
 
 ### Web
 
@@ -181,6 +176,56 @@ npm yet. The nine packages, organized roughly by focus, are:
     notably a template tag for creating virtual DOM fragments and a render
     function for validating and emitting HTML.
 
+
+## 3. The Guidelines in Practice
+
+Having discussed the design guidelines and provided an overview of site:forge's
+breakdown into packages, we can now reflect on the interaction of theory and
+practice more concretely.
+
+### Loose Coupling
+
+Breaking a tool into packages while also minimizing dependencies sounds more
+difficult than it often is in practice: The basic idea is to expose hooks in a
+package's API that allow for progressive enhancement of the package's
+functionality. For instance, `@grr/walk` defaults to a serial traversal of the
+file system, performing one I/O operation after the other I/O operations.
+However, it can also perform several I/O operations concurrently—as long as it
+receives a suitable `run` callback. As it happens, `@grr/async`'s executors have
+a `start()` method with the exact same signature. Hence, making a file system
+traversal concurrent is as straight-forward as:
+
+```js
+import Executor from '@grr/async';
+import walk from '@grr/walk';
+
+const executor = new Executor();
+const control = walk(root, { run: executor.start.bind(executor) });
+// walk() exposes visited file system entities through events,
+// since an asynchronous iterator would be too limiting.
+control.on('file', (_, path, virtualPath, status) => ...);
+```
+
+At the same time, the callback's signature—which takes a function, the `this`
+receiver, and any number of arguments—is both familiar and simple enough so that
+using another npm package for the same purpose would not be any more difficult.
+
+### From Scratch
+
+By reducing reliance on existing packages, the development process also becomes
+an opportunity for not using the same old abstractions again. That has paid off
+in practice for configuration. While writing a minimal command line argument
+parser is easy enough, that really isn't the whole story for configuration. Like
+many other command line tools running on Node.js, site:forge can be configured
+via command line arguments and a `package.json` manifest alike. Since the data
+from either source must be parsed and validated, it makes eminent sense for the
+same package to implement both. That way, the code for expressing the schema and
+validating data items against it can be shared. The `@grr/options` package takes
+just that approach. While it still has two distinct entry points,
+`optionsFromObject()` and `optionsFromArguments()`, the schema and internal
+logic for enforcing it are shared. That, in turn, simplifies [ingestion of the
+configuration](source/config.js).
+
 ---
 
-site:forge is © 2019 Robert Grimm and licensed under [MIT](LICENSE) terms.
+site:forge is © 2019-2020 Robert Grimm and licensed under [MIT](LICENSE) terms.

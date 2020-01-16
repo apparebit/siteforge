@@ -94,29 +94,40 @@ experiments:
 
     The cause are two opposing but equally corrosive practices, namely the
     creation of tiny packages that contain only a single, mostly trivial
-    function and of humongous packages that just keep growing and growing, even
-    if most of their functionality is of limited use. A quick look at the
-    current `node_modules` reveals plenty of examples for either extreme.
-    Amongst tiny packages counts `is-obj`, which implements the obvious
-    predicate for a value being a JavaScript object. While I can appreciate the
-    temptation to abstract over this idiom, I also find that it performs
-    redundant operations in practice, that is, unless I inline the equivalent
-    code.
+    function and of humongous packages that seemingly only change by adding
+    code. A quick look at site:forge's `node_modules` on January 12, 2020
+    reveals plenty of examples for either extreme:
 
-    Amongst humongous packages are seven libraries and two command line tools
-    from the [Istanbul project](https://istanbul.js.org) for determining test
-    coverage. That is despite site:forge relying on facilities built into
-    [Node.js](https://medium.com/the-node-js-collection/rethinking-javascript-test-coverage-5726fb272949)
-    and [V8](https://v8.dev/blog/javascript-code-coverage) for collecting
-    coverage data and only delegating to one of those two tools, `c8`, for
-    reporting. I suspect that the current test runtime, [Node
-    Tap](https://node-tap.org), pulled in some of those libraries as well as the
-    second tool, `nyc`. But again, site:forge relies on Node Tap only for
-    assertions and accounting, since having been burned by `nyc` and `tap`
-    introducing bugs into test runs started reducing their use. The goal then
-    should be to develop supporting development and runtime code from scratch,
-    carefully consider internal interfaces, and eventually factor proven
-    components into their own packages.
+      * One such _tiny package_ is `is-obj`, which implements the obvious
+        predicate for a value being a JavaScript object. While I can appreciate
+        the temptation to abstract over this idiom, I also find that it usually
+        performs redundant operations in practice, that is, unless I inline the
+        equivalent code. But thanks to another developer with lesser impulse
+        control, the barely 140 bytes for that function's text have turned into
+        2,400 bytes across five files for the package and take up 16 kB on disk.
+
+      * One such _humongous package_ is [Istanbul](https://istanbul.js.org) for
+        determining test coverage. In fact, it is so humongous it ships in form
+        of nine actual packages, one for the `nyc` command line tool and eight
+        more for supporting libraries. All nine packages are present amongst
+        site:forge's `node_modules` despite site:forge using built-in
+        [Node.js](https://medium.com/the-node-js-collection/rethinking-javascript-test-coverage-5726fb272949)
+        and [V8](https://v8.dev/blog/javascript-code-coverage) facilities for
+        collecting coverage data and delegating to a different tool,
+        [`c8`](https://github.com/bcoe/c8), for report generation. Further
+        analysis of package manifests shows that `c8` pulls in four of
+        Istanbul's eight libaries and [Node Tap](https://node-tap.org) pulls in
+        `nyc` and all of Istanbul's libraries. That is despite site:forge
+        relying on Node Tap only for assertions and book-keeping, since its
+        newly maximalist approach towards tool design had caused test run
+        failures before.
+
+    Avoiding these two extremes requires not only developer discipline but
+    avoiding humongous packages also requires context that helps determine what
+    features are strictly necessary, what features are nice to have, and what
+    features are orthogonal. It thus helps to build tools and applications first
+    and carve out packages with well-defined interfaces only later, after
+    gaining experience with the larger codebase.
 
 
 ## 2. The Diversity of a Monorepo

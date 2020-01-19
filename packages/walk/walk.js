@@ -1,6 +1,6 @@
 /* © 2019-2020 Robert Grimm */
 
-import { basename, join, posix, resolve } from 'path';
+import { basename, join, posix } from 'path';
 import { promises } from 'fs';
 import { strict } from 'assert';
 
@@ -8,18 +8,28 @@ const { apply } = Reflect;
 const DIRECTORY = 'directory';
 const DOT = '.'.charCodeAt(0);
 const FILE = 'file';
-const { nextTick } = process;
 const { join: posixJoin } = posix;
 const SYMLINK = 'symlink';
+
+const entity = status =>
+  status.isDirectory()
+    ? 'directory'
+    : status.isFile()
+    ? 'file'
+    : status.isSymbolicLink()
+    ? 'symlink'
+    : 'unknown';
 
 export default function walk(
   root,
   {
+    debug = false,
     ignoreNoEnt = false,
     isExcluded = path => basename(path).charCodeAt(0) === DOT,
     onFile = undefined,
     run = (fn, that, ...args) => apply(fn, that, args),
     lstat = promises.lstat,
+    println = console.error,
     readdir = promises.readdir,
     realpath = promises.realpath,
   } = {}
@@ -43,6 +53,41 @@ export default function walk(
     file: 0,
   };
 
+  // TRACE key operations of walk when debugging is enabled.
+
+  const trace = (operation, ...args) => {
+    if (!debug) return;
+
+    const fragments = ['# @grr/walk: ', operation, '('];
+    const format = value => {
+      if (value != null && typeof value.isDirectory === 'function') {
+        fragments.push(`{${entity(value)}}`);
+      } else {
+        fragments.push(String(value));
+      }
+    };
+
+    let result;
+    if (operation === 'lstat') {
+      result = args.pop();
+    }
+
+    for (const [index, arg] of args.entries()) {
+      format(arg);
+      if (index < args.length - 1) {
+        fragments.push(', ');
+      }
+    }
+    fragments.push(')');
+
+    if (result) {
+      fragments.push(' -> ');
+      format(result);
+    }
+
+    println(fragments.join(''));
+  };
+
   // PROMISE of TERMINATION: The developer experience for distinct `end` and
   // `exit` events is far less compelling than a promise for termination. It
   // covers both successful and unsuccessful runs and integrates with
@@ -60,8 +105,8 @@ export default function walk(
   // long as the entries of a directory are added to the count __before__
   // removing the parent from the count.
 
-  let activeEntries = 0;
-  const readInEntries = entries => (activeEntries += entries.length);
+  let activeEntries = 1; // Account for initial processEntry().
+  const aboutToProcess = entries => (activeEntries += entries.length);
   const doneWithEntry = () => {
     activeEntries--;
     if (activeEntries === 0) resolveWalk(metrics);
@@ -107,14 +152,13 @@ export default function walk(
     return () => {
       if (!undone) {
         undone = true;
-        const index = handlers.indexOf(handler);
-        strict.ok(index >= 0);
-        handlers.splice(index, 1);
+        handlers.splice(handlers.indexOf(handler), 1);
       }
     };
   };
 
   const emit = (event, ...args) => {
+    trace('emit', event, ...args);
     strict.ok(registry.has(event));
     const handlers = registry.get(event).slice();
     for (const handler of handlers) {
@@ -134,7 +178,8 @@ export default function walk(
     while (true) {
       willVisit(path);
       metrics.lstat++;
-      status = await lstat(path);
+      status = await lstat(path, { bigint: true });
+      trace('lstat', path, virtualPath, status);
       if (aborted) return;
       if (!status.isSymbolicLink()) break;
 
@@ -181,7 +226,7 @@ export default function walk(
 
   const processDirectory = async (directory, virtualDirectory) => {
     const entries = await readEntries(directory);
-    readInEntries(entries);
+    aboutToProcess(entries);
 
     for (const entry of entries) {
       const path = join(directory, entry);
@@ -197,12 +242,10 @@ export default function walk(
 
   // ---------------------------------------------------------------------------
 
-  // Delay lift off, so that caller can attach event handlers. Also, manually
-  // emit directory event for root, albeit without the status common to others.
-  nextTick(() => {
-    root = resolve(root);
-    emit(DIRECTORY, root, '/');
-    processDirectory(root, '/');
-  });
+  // START WALK after determining root's real path. Since that operation is
+  // asynchronous, the caller of this function can register event handlers upon
+  // return. Pass real path to processEntry(), since it handles arbitrary file
+  // system entities.
+  realpath(root).then(root => processEntry(root, '/'));
   return { on, abort, done, metrics };
 }

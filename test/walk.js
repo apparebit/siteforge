@@ -1,17 +1,18 @@
 /* © 2019-2020 Robert Grimm */
 
-import { didPoll, default as Executor, newPromiseCapability } from '@grr/async';
 import { basename, join } from 'path';
+import { didPoll, default as Executor, newPromiseCapability } from '@grr/async';
+import harness from './harness.js';
+import { tmpdir } from 'os';
+import { mkdir, rmdir, symlink, toDirectory, writeFile } from '@grr/fs';
 import walk from '@grr/walk';
-import tap from 'tap';
-import { toDirectory } from '@grr/fs';
 
 const DOT = '.'.charCodeAt(0);
 const root = join(toDirectory(import.meta.url), '../packages');
 const asyncdir = join(root, 'async');
 const walkdir = join(root, 'walk');
 
-tap.test('@grr/walk', async t => {
+harness.test('@grr/walk', async t => {
   t.throws(() => walk(42), /Expected values to be strictly equal/u);
   t.throws(
     () => walk('.', { isExcluded: 665 }),
@@ -109,7 +110,7 @@ tap.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     readdir: 3,
     entries: 17,
-    lstat: 10,
+    lstat: 11,
     realpath: 0,
     file: 8,
   });
@@ -135,7 +136,7 @@ tap.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     readdir: 10,
     entries: 50,
-    lstat: 50,
+    lstat: 51,
     realpath: 0,
     file: 41,
   });
@@ -167,7 +168,7 @@ tap.test('@grr/walk', async t => {
 
   try {
     await done;
-    t.fail('should throw');
+    t.fail('should not throw');
   } catch (x) {
     t.pass('should throw');
   }
@@ -176,31 +177,76 @@ tap.test('@grr/walk', async t => {
   // ---------------------------------------------------------------------------
   // Let's Link a Little
 
-  const fixed = t.testdir({
-    file: 'file',
-    dir: {
-      file: 'nested file',
-      dir: {
-        file: 'deeply nested file',
-        backToTheTop: t.fixture('symlink', '../..'),
-        backToTheFirstFile: t.fixture('symlink', '../../file'),
+  const tmp = join(tmpdir(), 'walk.js');
+  const dir = join(tmp, 'dir');
+  const dirdir = join(dir, 'dir');
+
+  try {
+    await rmdir(tmp, { recursive: true });
+    await mkdir(dirdir);
+    await writeFile(join(tmp, 'file'), 'file', 'utf8');
+    await writeFile(join(dir, 'file'), 'nested file', 'utf8');
+    await writeFile(join(dirdir, 'file'), 'deeply nested file', 'utf8');
+    await symlink(tmp, join(dirdir, 'backToTheTop'));
+    await symlink(join(tmp, 'file'), join(dirdir, 'backToTheFirstFile'));
+
+    actualFiles.length = 0;
+    ({ done } = walk(tmp, {
+      onFile(_, __, vpath) {
+        actualFiles.push(vpath);
       },
-    },
-  });
+    }));
 
-  actualFiles.length = 0;
-  ({ done } = walk(fixed, {
-    onFile(_, __, vpath) {
-      actualFiles.push(vpath);
-    },
-  }));
+    await done;
+    t.strictSame(actualFiles.sort(), [
+      '/dir/dir/backToTheFirstFile',
+      '/dir/dir/file',
+      '/dir/file',
+    ]);
 
-  await done;
-  t.strictSame(actualFiles.sort(), [
-    '/dir/dir/backToTheFirstFile',
-    '/dir/dir/file',
-    '/dir/file',
-  ]);
+    const lines = [];
+    ({ done } = walk(tmp, {
+      debug: true,
+      println: line => lines.push(line),
+    }));
+    await done;
+
+    const pat1 = (p, vp, t) => {
+      if (!t) [vp, t] = [p, vp];
+      return new RegExp(
+        `^# @grr/walk: lstat\\([\\w/]+?/walk.js${p}, ${vp}\\) -> \\{${t}\\}$`,
+        'u'
+      );
+    };
+
+    t.match(lines[0], pat1('', '/', 'directory'));
+    t.match(lines[2], pat1('/dir', 'directory'));
+    t.match(lines[4], pat1('/dir/dir', 'directory'));
+    t.match(lines[6], pat1('/dir/dir/backToTheFirstFile', 'symlink'));
+    t.match(lines[8], pat1('/file', '/dir/dir/backToTheFirstFile', 'file'));
+    t.match(lines[10], pat1('/dir/dir/backToTheTop', 'symlink'));
+    t.match(lines[12], pat1('/dir/dir/file', 'file'));
+    t.match(lines[14], pat1('/dir/file', 'file'));
+
+    const pat2 = (p, vp, t) => {
+      if (!t) [vp, t] = [p, vp];
+      return new RegExp(
+        `^# @grr/walk: emit\\(${t}, [\\w/]+?/walk.js${p}, ${vp}, \\{${t}\\}\\)$`,
+        'u'
+      );
+    };
+
+    t.match(lines[1], pat2('', '/', 'directory'));
+    t.match(lines[3], pat2('/dir', 'directory'));
+    t.match(lines[5], pat2('/dir/dir', 'directory'));
+    t.match(lines[7], pat2('/dir/dir/backToTheFirstFile', 'symlink'));
+    t.match(lines[9], pat2('/file', '/dir/dir/backToTheFirstFile', 'file'));
+    t.match(lines[11], pat2('/dir/dir/backToTheTop', 'symlink'));
+    t.match(lines[13], pat2('/dir/dir/file', 'file'));
+    t.match(lines[15], pat2('/dir/file', 'file'));
+  } finally {
+    await rmdir(tmp, { recursive: true });
+  }
 
   // ---------------------------------------------------------------------------
   // Low-Level Error Handling
@@ -213,10 +259,26 @@ tap.test('@grr/walk', async t => {
     };
   };
 
-  const mockdir = makePuppet();
-  const mockstat = makePuppet();
-  mockdir();
-  mockstat();
+  const mockReaddir = makePuppet();
+  const mockLstat = makePuppet();
+  const mockRealpath = makePuppet();
+
+  mockReaddir();
+  mockLstat();
+  mockRealpath();
+
+  const fauxDirStatus = {
+    isDirectory() {
+      return true;
+    },
+    isFile() {
+      return false;
+    },
+    isSymbolicLink() {
+      return false;
+    },
+  };
+
   const traceData = [];
   const trace = (...args) => traceData.push(args);
 
@@ -224,8 +286,9 @@ tap.test('@grr/walk', async t => {
 
   ({ on, done } = walk(root, {
     ignoreNoEnt: true,
-    readdir: mockdir,
-    lstat: mockstat,
+    lstat: mockLstat,
+    readdir: mockReaddir,
+    realpath: mockRealpath,
   }));
 
   on('directory', trace);
@@ -233,24 +296,28 @@ tap.test('@grr/walk', async t => {
   on('symlink', trace);
 
   done.then(
-    () => t.fail(),
+    () => t.fail('should not resolve'),
     x => t.equal(x.message, 'hell')
   );
 
   await didPoll();
-  mockdir.out.resolve(['a', 'b', 'c']);
+  mockRealpath.out.resolve('/root');
+  await didPoll();
+  mockLstat.out.resolve(fauxDirStatus);
+  await didPoll();
+  mockReaddir.out.resolve(['a', 'b', 'c']);
 
   await didPoll();
   let x = new Error('heaven');
   x.code = 'ENOENT';
-  let last = mockstat.out;
-  mockstat.out.reject(x);
+  let last = mockLstat.out;
+  mockLstat.out.reject(x);
 
   await didPoll();
   x = new Error('hell');
   x.code = 'EHELL';
-  t.notEqual(mockstat.out, last);
-  mockstat.out.reject(x);
+  t.notEqual(mockLstat.out, last);
+  mockLstat.out.reject(x);
 
   await didPoll();
 
@@ -258,7 +325,9 @@ tap.test('@grr/walk', async t => {
 
   ({ done } = walk(root, {
     ignoreNoEnt: true,
-    readdir: mockdir,
+    lstat: mockLstat,
+    readdir: mockReaddir,
+    realpath: mockRealpath,
   }));
 
   on('directory', trace);
@@ -266,16 +335,25 @@ tap.test('@grr/walk', async t => {
   on('symlink', trace);
 
   await didPoll();
+  mockRealpath.out.resolve('/root');
+  await didPoll();
+  mockLstat.out.resolve(fauxDirStatus);
+
+  await didPoll();
   x = new Error('oops');
   x.code = 'ENOENT';
-  last = mockdir.out;
-  mockdir.out.reject(x);
+  last = mockReaddir.out;
+  mockReaddir.out.reject(x);
+
+  await done;
 
   // ---------------------------------------- Low-Level Walk #3
 
   ({ done } = walk(root, {
     ingoreNoEnt: true,
-    readdir: mockdir,
+    lstat: mockLstat,
+    readdir: mockReaddir,
+    realpath: mockRealpath,
   }));
 
   on('directory', trace);
@@ -283,14 +361,19 @@ tap.test('@grr/walk', async t => {
   on('symlink', trace);
 
   await didPoll();
+  mockRealpath.out.resolve('/root');
+  await didPoll();
+  mockLstat.out.resolve(fauxDirStatus);
+
+  await didPoll();
   x = new Error('boom');
   x.code = 'EBOOM';
-  t.notEqual(mockdir.out, last);
-  mockdir.out.reject(x);
+  t.notEqual(mockReaddir.out, last);
+  mockReaddir.out.reject(x);
 
   try {
     await done;
-    t.fail();
+    t.fail('should throw');
   } catch (x) {
     t.equal(x.message, 'boom');
   }

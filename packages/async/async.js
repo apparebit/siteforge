@@ -146,7 +146,7 @@ export default class Executor {
     return this._didStop.promise;
   }
 
-  start(fn, that, ...args) {
+  submit(fn, that, ...args) {
     return { done: this.run(fn, that, ...args) };
   }
 

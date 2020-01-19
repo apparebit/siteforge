@@ -162,22 +162,22 @@ Return a promise that resolves when the executor has stopped.
 The following methods actually do something useful, i.e., add tasks for
 execution and stop execution altogether.
 
-##### Executor.prototype.start(fn, receiver, ...args)
+##### Executor.prototype.submit(fn, receiver, ...args)
 
-Start the given task without waiting for promises and return an object whose
+Submit the given task without waiting for promises and return an object whose
 `done` property is a promise for the task's result. This method is equivalent
 to:
 
 ```js
-start(...args) {
+submit(...args) {
   return { done: this.run(...args) };
 }
 ```
 
 By boxing the promise for the task's result, this method ensures that an
 awaiting caller does not wait until the task completes, which might be a while.
-That makes this method the perfect callback for scheduling tasks, after binding
-the instance of course.
+That makes this method ideally suited for implementing a simple `spawn()`
+callback that supports concurrent task execution.
 
 ##### Executor.prototype.run(fn, receiver, ...args)
 

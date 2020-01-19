@@ -427,7 +427,7 @@ harness.test('@grr/async', async t => {
       return String(a) + String(b) + String(c);
     }
 
-    t.equal(await r3.start(append1, 1, 2, 3).done, '123');
+    t.equal(await r3.submit(append1, 1, 2, 3).done, '123');
 
     // The second argument is the receiver, always. So the following run()
     /// results in an invocation with the latter two arguments for `a` and `b`

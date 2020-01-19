@@ -7,15 +7,15 @@ import { fileURLToPath } from 'url';
 
 export const {
   lstat,
-  mkdir,
   readdir,
   readFile,
   realpath,
   rmdir,
+  symlink,
   writeFile,
 } = promises;
 
-const { copyFile: doCopyFile } = promises;
+const { copyFile: doCopyFile, mkdir: doMkdir } = promises;
 const { join: posixJoin, parse: parsePosixPath } = posix;
 
 const DOT = '.'.charCodeAt(0);
@@ -110,7 +110,7 @@ export async function retryAfterNoEntity(write, path) {
     return await write(path);
   } catch (x) {
     if (x.code !== 'ENOENT') throw x;
-    await mkdir(dirname(path), { recursive: true });
+    await mkdir(dirname(path));
     return write(path);
   }
 }
@@ -121,6 +121,14 @@ export async function retryAfterNoEntity(write, path) {
  */
 export function copyFile(from, to) {
   return retryAfterNoEntity(path => doCopyFile(from, path), to);
+}
+
+/**
+ * Recursively make the given directory. This function simply calls Node.js
+ * built-in version with the `recursive` option set to `true`.
+ */
+export function mkdir(path) {
+  return doMkdir(path, { recursive: true });
 }
 
 // -----------------------------------------------------------------------------

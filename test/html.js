@@ -1,8 +1,8 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
+import harness from './harness.js';
 import { join } from 'path';
 import { default as Model, prepareModelData } from '@grr/html';
-import tap from 'tap';
 import { toDirectory } from '@grr/fs';
 
 const __directory = toDirectory(import.meta.url);
@@ -61,19 +61,26 @@ const fakeModel = () => ({
   },
 });
 
-tap.test('@grr/html', async t => {
+harness.test('@grr/html', async t => {
   // Loading Model Data
   // ------------------
 
-  t.rejects(
-    () => Model.load(import.meta.url),
-    /Could not load model data from ".*?"/u
-  );
+  try {
+    await Model.load(import.meta.url);
+    t.fail('should throw');
+  } catch (x) {
+    t.match(x.message, /Could not load model data from ".*?"/u);
+  }
 
-  t.rejects(
-    () => Model.load(__package),
-    /Property "categories" is missing from model data in ".*?"/u
-  );
+  try {
+    await Model.load(__package);
+    t.fail('should throw');
+  } catch (x) {
+    t.match(
+      x.message,
+      /Property "categories" is missing from model data in ".*?"/u
+    );
+  }
 
   t.throws(
     () => prepareModelData({ categories: 665 }),

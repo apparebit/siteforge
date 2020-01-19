@@ -8,8 +8,8 @@ import {
   rethrow,
   Task,
 } from '@grr/async';
+import harness from './harness.js';
 import { readFile } from '@grr/fs';
-import tap from 'tap';
 
 const { apply } = Reflect;
 const configurable = true;
@@ -38,7 +38,7 @@ function soon(fn = () => {}) {
   });
 }
 
-tap.test('@grr/async', async t => {
+harness.test('@grr/async', async t => {
   // ---------------------------------------------------------------------------
 
   const output = [];
@@ -247,7 +247,10 @@ tap.test('@grr/async', async t => {
       });
     });
 
-    t.resolves(runner.onIdle());
+    runner.onIdle().then(
+      () => t.pass('should resolve'),
+      x => t.fail(x.message)
+    );
     task3.resolve(task3.name);
     await p3;
 
@@ -371,8 +374,14 @@ tap.test('@grr/async', async t => {
       });
     });
 
-    t.resolves(didStop);
-    t.resolves(runner.onDidStop());
+    didStop.then(
+      () => t.pass('should resolve'),
+      x => t.fail(x.message)
+    );
+    runner.onDidStop().then(
+      () => t.pass('should resolve'),
+      x => t.fail(x.message)
+    );
 
     task6.resolve(task6.name);
     await p6;
@@ -395,8 +404,14 @@ tap.test('@grr/async', async t => {
     // When stopped, an idle Executor transitions directly to the stopped state.
     // Nonetheless, both onStop() and onDidStop() resolve.
     const r2 = new Executor();
-    t.resolves(r2.onStop());
-    t.resolves(r2.onDidStop());
+    r2.onStop().then(
+      () => t.pass('should resolve'),
+      x => t.fail(x.message)
+    );
+    r2.onDidStop().then(
+      () => t.pass('should resolve'),
+      x => t.fail(x.message)
+    );
     t.ok(r2.isIdle());
     await r2.stop();
     t.ok(r2.hasStopped());

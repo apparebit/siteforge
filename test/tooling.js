@@ -1,8 +1,8 @@
 /* © 2019 Robert Grimm */
 
-import run from '../source/tooling/run.js';
-import tap from 'tap';
+import harness from './harness.js';
 import { not, once } from '../source/tooling/function.js';
+import run from '../source/tooling/run.js';
 
 import {
   escapeRegex,
@@ -14,7 +14,7 @@ import {
 // function
 // =============================================================================
 
-tap.test('tooling/function', t => {
+harness.test('tooling/function', t => {
   let counter = 0;
   const incr = () => ++counter;
   const onceMore = once(incr);
@@ -51,18 +51,29 @@ tap.test('tooling/function', t => {
 // run
 // =============================================================================
 
-tap.test('tooling/run', async t => {
+harness.test('tooling/run', async t => {
   const { stdout, stderr } = await run('printf', ['Hello, world!'], {
     stdio: 'buffer',
   });
   t.equal(stdout, 'Hello, world!');
   t.equal(stderr, '');
 
-  t.resolves(() => run('sh', ['-c', 'exit']));
-  t.rejects(
-    () => run('sh', ['-c', 'exit 42']),
-    /^Child process failed with exit code "42" \(sh -c "exit 42"\)/u
-  );
+  try {
+    await run('sh', ['-c', 'exit']);
+    t.pass('should not throw');
+  } catch (x) {
+    t.fail(x.message);
+  }
+
+  try {
+    await run('sh', ['-c', 'exit 42']);
+    t.fail('should throw');
+  } catch (x) {
+    t.match(
+      x.message,
+      /^Child process failed with exit code "42" \(sh -c "exit 42"\)/u
+    );
+  }
 
   try {
     await run('this-command-most-certainly-does-not-exist', []);
@@ -78,7 +89,7 @@ tap.test('tooling/run', async t => {
 // text
 // =============================================================================
 
-tap.test('tooling/text', t => {
+harness.test('tooling/text', t => {
   t.equal(escapeRegex('[1.1.0]'), '\\[1\\.1\\.0\\]');
 
   t.equal(extractRightsNotice(`   //  (C) Robert Grimm`), `(C) Robert Grimm`);

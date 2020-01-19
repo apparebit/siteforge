@@ -1,4 +1,4 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
 import { html, render } from '@grr/proact';
 
@@ -20,9 +20,9 @@ import {
   isValidRawText,
 } from '@grr/proact/render.js';
 
+import harness from './harness.js';
 import Model from '@grr/html';
 import Sq from '@grr/sequitur';
-import tap from 'tap';
 
 const answer = [
   null,
@@ -41,7 +41,7 @@ const theQuestion = h('div', { class: 'highlight' }, ultimate);
 
 // =============================================================================
 
-tap.test('@grr/proact/vdom.js', async t => {
+harness.test('@grr/proact/vdom.js', async t => {
   const props = { class: ['logo', 'positive'], role: 'presentation' };
   const logo = h('div', props, h('span'), h('span'), h('span'));
   t.equal(logo, props);
@@ -112,7 +112,7 @@ tap.test('@grr/proact/vdom.js', async t => {
 
 // =============================================================================
 
-tap.test('@grr/proact/render.js', async t => {
+harness.test('@grr/proact/render.js', async t => {
   t.equal(escapeAttribute(`totally-fine`), `totally-fine`);
   t.equal(escapeAttribute(`totally fine`), `"totally fine"`);
   t.equal(escapeAttribute(`totally & fine`), `"totally &amp; fine"`);

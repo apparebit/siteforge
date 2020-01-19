@@ -1,9 +1,11 @@
+/* © 2019-2020 Robert Grimm */
+
 import glob from '@grr/glob';
-import tap from 'tap';
+import harness from './harness.js';
 
 const { keys: keysOf } = Object;
 
-tap.test('@grr/glob', t => {
+harness.test('@grr/glob', t => {
   t.throws(() => glob('b**h**'));
 
   const PATHS = {

@@ -1,4 +1,4 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
 import {
   aliased,
@@ -11,14 +11,14 @@ import {
 
 import { EOL } from 'os';
 import { escapeRegex } from '../source/tooling/text.js';
-import tap from 'tap';
+import harness from './harness.js';
 import { toDirectory } from '@grr/fs';
 
 const { assign, keys: keysOf } = Object;
 const __directory = toDirectory(import.meta.url);
 const { has } = Reflect;
 
-tap.test('tooling/options', t => {
+harness.test('tooling/options', t => {
   const configuration = defaults();
   aliased(
     assign(configuration, {

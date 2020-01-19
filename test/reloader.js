@@ -1,7 +1,7 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
 import config from '@grr/reloader/config.js';
-import tap from 'tap';
+import harness from './harness.js';
 
 const { isArray } = Array;
 const { getOwnPropertyDescriptor, defineProperty } = Object;
@@ -47,7 +47,7 @@ function testConfig(input, expected) {
 
 // ===== debug() =====
 
-tap.test('@grr/reloader/config -> { debug }', t => {
+harness.test('@grr/reloader/config -> { debug }', t => {
   // noop
   t.equal(
     config({
@@ -86,7 +86,7 @@ tap.test('@grr/reloader/config -> { debug }', t => {
 
 // ===== epoch =====
 
-tap.test('@grr/reloader/config -> { epoch }', t => {
+harness.test('@grr/reloader/config -> { epoch }', t => {
   const { epoch } = config({ env: { RELOADER_SCOPES: 'test' } });
   t.equal(global[Symbol.for('@grr/reloader/epoch/current')], epoch.current);
   t.equal(global[Symbol.for('@grr/reloader/epoch/next')], epoch.next);
@@ -96,7 +96,7 @@ tap.test('@grr/reloader/config -> { epoch }', t => {
   t.end();
 });
 
-tap.test('@grr/reloader/config -> { scopes }', t => {
+harness.test('@grr/reloader/config -> { scopes }', t => {
   configTester = t;
 
   try {
@@ -176,7 +176,7 @@ async function loadResolveHook() {
   return mod.resolve;
 }
 
-tap.test('@grr/reloader/resolve', async t => {
+harness.test('@grr/reloader/resolve', async t => {
   const resolve = await loadResolveHook();
   const modMain = pkgdir + 'main.js';
   const modHookPath = './packages/reloader/hook.js';

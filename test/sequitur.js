@@ -1,7 +1,7 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
+import harness from './harness.js';
 import Sq from '@grr/sequitur';
-import tap from 'tap';
 
 const { apply, has } = Reflect;
 const configurable = true;
@@ -24,7 +24,7 @@ async function* asyncGen() {
   yield 6;
 }
 
-tap.test('@grr/sequitur', t => {
+harness.test('@grr/sequitur', t => {
   t.test('Helping with Iteration', async t => {
     // Two prototypes
     const IteratorPrototype = getPrototypeOf(getPrototypeOf([][ITERATOR]()));

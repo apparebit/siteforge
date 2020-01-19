@@ -1,8 +1,8 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
 import { rmdir, toDirectory } from '@grr/fs';
+import harness from './harness.js';
 import { join } from 'path';
-import tap from 'tap';
 
 const ROOT = join(toDirectory(import.meta.url), '..');
 const COVERAGE_DATA = join(ROOT, '.coverage');
@@ -20,16 +20,19 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./tooling.js');
   await import('./walk.js');
 
-  tap.on('end', () => {
+  const done = () => {
+    const { pass, fail } = harness.counts;
     let color, slogan;
-    if (tap.passing()) {
+
+    if (fail === 0) {
       color = '102;1';
-      slogan = `  Yay, all ${tap.counts.total} tests passed!  `;
+      slogan = `  Yay, all ${pass} tests passed!  `;
     } else {
       color = '48;5;210;1';
-      slogan = `  Nope, ${tap.counts.fail} out of ${tap.counts.total} tests failed!  `;
+      slogan = `  Nope, ${fail} out of ${pass + fail} tests failed!  `;
       process.exitCode = 70; // X_SOFTWARE
     }
+
     const spacer = Array(slogan.length)
       .fill(' ')
       .join('');
@@ -37,5 +40,11 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
       console.log(`\x1b[${color}m${text}\x1b[0m`);
     }
     console.log();
-  });
+  };
+
+  if (harness.onFinish) {
+    harness.onFinish(done);
+  } else {
+    harness.on('end', done);
+  }
 })();

@@ -1,4 +1,4 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
 import {
   copyFile,
@@ -13,16 +13,16 @@ import {
   writeVersionedFile,
 } from '@grr/fs';
 
-import { join } from 'path';
 import { createHash } from 'crypto';
-import tap from 'tap';
+import harness from './harness.js';
+import { join } from 'path';
 import { tmpdir } from 'os';
 
 const APPAREBIT = 'https://apparebit.com';
 const __directory = toDirectory(import.meta.url);
 //const DOT = '.'.charCodeAt(0);
 
-tap.test('@grr/fs', t => {
+harness.test('@grr/fs', t => {
   // ---------------------------------------------------------------------------
   t.test('paths', t => {
     // isDotFile()
@@ -30,12 +30,12 @@ tap.test('@grr/fs', t => {
     t.notOk(isDotFile('index.html'));
 
     // withTrailingSlash()
-    t.strictEqual(withTrailingSlash(APPAREBIT).href, APPAREBIT + '/');
-    t.strictEqual(
+    t.equal(withTrailingSlash(APPAREBIT).href, APPAREBIT + '/');
+    t.equal(
       withTrailingSlash(APPAREBIT + '/slasher').href,
       APPAREBIT + '/slasher/'
     );
-    t.strictEqual(
+    t.equal(
       withTrailingSlash(APPAREBIT + '/slasher/').href,
       APPAREBIT + '/slasher/'
     );
@@ -45,19 +45,19 @@ tap.test('@grr/fs', t => {
     t.ok(__directory.endsWith('/test'));
 
     // toCoolPath()
-    t.strictEqual(
+    t.equal(
       toCoolPath('/features/ubu-trump/index.html'),
       '/features/ubu-trump'
     );
-    t.strictEqual(
+    t.equal(
       toCoolPath('/features/ubu-trump/about.html'),
       '/features/ubu-trump/about'
     );
-    t.strictEqual(
+    t.equal(
       toCoolPath('/features/ubu-trump/the-dark-tower.jpg'),
       '/features/ubu-trump/the-dark-tower.jpg'
     );
-    t.strictEqual(toCoolPath('/features/ubu-trump/'), '/features/ubu-trump');
+    t.equal(toCoolPath('/features/ubu-trump/'), '/features/ubu-trump');
 
     t.end();
   });
@@ -72,11 +72,11 @@ tap.test('@grr/fs', t => {
 
       const original = await readFile(from, 'utf8');
       const copy1 = await readFile(to1, 'utf8');
-      t.strictEqual(copy1, original);
+      t.equal(copy1, original);
 
       await copyFile(from, to2);
       const copy2 = await readFile(to2, 'utf8');
-      t.strictEqual(copy2, original);
+      t.equal(copy2, original);
     } finally {
       await rmdir(join(__directory, 'down'), { recursive: true });
     }
@@ -93,7 +93,7 @@ tap.test('@grr/fs', t => {
     const hash =
       'd9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5';
 
-    t.strictEqual(
+    t.equal(
       createHash('sha256')
         .update(data)
         .digest('hex'),
@@ -101,7 +101,7 @@ tap.test('@grr/fs', t => {
     );
 
     // Path injection.
-    t.strictEqual(
+    t.equal(
       injectIntoPath(path, '789abcdef'),
       join(tmp, 'hello.v~789abcde.txt')
     );
@@ -116,11 +116,11 @@ tap.test('@grr/fs', t => {
       /Options argument must be a string or object/u
     );
     let actual = await writeVersionedFile(path, data);
-    t.strictEqual(actual, vp);
-    t.strictEqual(await readFile(vp, 'utf8'), data);
+    t.equal(actual, vp);
+    t.equal(await readFile(vp, 'utf8'), data);
     actual = await writeVersionedFile(path, data, 'utf8');
-    t.strictEqual(actual, vp);
-    t.strictEqual(await readFile(vp, 'utf8'), data);
+    t.equal(actual, vp);
+    t.equal(await readFile(vp, 'utf8'), data);
 
     t.end();
   });

@@ -1,0 +1,13 @@
+{
+  "name": "@grr/run",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "run.js",
+  "description": "a promising approach for running additional processes",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "@grr/async",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "main": "async.js",
   "description": "execute a configurable number of asynchronous tasks in parallel, while also queueing any tasks beyond that limit for first-come, first-serve execution later on",

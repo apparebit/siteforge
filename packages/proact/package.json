@@ -22,8 +22,8 @@
   "type": "module",
   "main": "./index.js",
   "dependencies": {
-    "@grr/html": "1.0.0",
-    "@grr/sequitur": "1.0.0",
+    "@grr/html": "0.1.0",
+    "@grr/sequitur": "0.1.0",
     "htm": "2.2.1"
   },
   "engines": {

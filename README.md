@@ -186,6 +186,9 @@ component packages are:
   * [__@grr/proact__](packages/proact) implements the proactive view system,
     notably a template tag for creating virtual DOM fragments and a render
     function for validating and emitting HTML.
+  * [__@grr/inventory__](packages/inventory) provides an in-memory
+    representation of a file system hierarchy and methods for processing the
+    those files.
 
 
 ## 3. The Guidelines in Practice

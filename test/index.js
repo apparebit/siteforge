@@ -13,6 +13,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./fs.js');
   await import('./glob.js');
   await import('./html.js');
+  await import('./inventory.js');
   await import('./options.js');
   await import('./proact.js');
   await import('./reloader.js');

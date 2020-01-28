@@ -23,20 +23,33 @@ const entity = status =>
 export default function walk(
   root,
   {
+    // Debugging
     debug = false,
+    println = console.error,
+
+    // Robustness, Trivial Excludes
     ignoreNoEnt = false,
     isExcluded = path => basename(path).charCodeAt(0) === DOT,
-    onFile = undefined,
+
+    // Task Scheduling
     run = (fn, that, ...args) => apply(fn, that, args),
+
+    // Application-Level Callbacks
+    onDirectory = undefined,
+    onFile = undefined,
+    onSymlink = undefined,
+
+    // File System Primitives
     lstat = promises.lstat,
-    println = console.error,
     readdir = promises.readdir,
     realpath = promises.realpath,
   } = {}
 ) {
   strict.equal(typeof root, 'string');
   strict.equal(typeof isExcluded, 'function');
+  if (onDirectory !== undefined) strict.equal(typeof onDirectory, 'function');
   if (onFile !== undefined) strict.equal(typeof onFile, 'function');
+  if (onSymlink !== undefined) strict.equal(typeof onSymlink, 'function');
   strict.equal(typeof run, 'function');
 
   // ---------------------------------------------------------------------------
@@ -137,9 +150,9 @@ export default function walk(
   //  * Deliver events synchronously just like Node.js.
 
   const registry = new Map();
-  registry.set(SYMLINK, []);
-  registry.set(DIRECTORY, []);
+  registry.set(DIRECTORY, onDirectory ? [onDirectory] : []);
   registry.set(FILE, onFile ? [onFile] : []);
+  registry.set(SYMLINK, onSymlink ? [onSymlink] : []);
 
   const on = (event, handler) => {
     strict.ok(registry.has(event));

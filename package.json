@@ -12,13 +12,23 @@
     "not dead"
   ],
   "devDependencies": {
+    "@grr/async": "0.1.0",
+    "@grr/fs": "0.1.0",
+    "@grr/glob": "0.1.0",
+    "@grr/html": "0.1.0",
+    "@grr/inventory": "0.1.0",
+    "@grr/options": "0.1.0",
+    "@grr/proact": "0.1.0",
+    "@grr/reloader": "0.1.0",
+    "@grr/sequitur": "0.1.0",
+    "@grr/walk": "0.1.0",
     "babel-eslint": "10.0.3",
-    "c8": "7.0.0",
+    "c8": "7.0.1",
     "eslint": "6.8.0",
-    "eslint-config-prettier": "6.9.0",
+    "eslint-config-prettier": "6.10.0",
     "open": "7.0.0",
     "prettier": "1.19.1",
-    "tap": "14.10.5"
+    "tap": "14.10.6"
   },
   "scripts": {
     "coverage": "c8 report && open coverage/index.html",

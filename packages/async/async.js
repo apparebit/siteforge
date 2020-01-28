@@ -110,6 +110,10 @@ export default class Executor {
     this._didStop = newPromiseCapability();
   }
 
+  get length() {
+    return this._inflight + this._ready.length;
+  }
+
   isIdle() {
     return this._state === IDLE;
   }

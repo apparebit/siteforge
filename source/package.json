@@ -26,6 +26,7 @@
     "@grr/html": "0.1.0",
     "@grr/options": "0.1.0",
     "@grr/proact": "0.1.0",
+    "@grr/run": "0.1.0",
     "@grr/sequitur": "0.1.0",
     "babel-minify": "0.5.1",
     "cssnano": "4.1.10",

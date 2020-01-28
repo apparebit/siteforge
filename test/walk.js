@@ -89,6 +89,10 @@ harness.test('@grr/walk', async t => {
     '/reloader/config.js',
     '/reloader/hook.js',
     '/reloader/package.json',
+    '/run/LICENSE',
+    '/run/README.md',
+    '/run/package.json',
+    '/run/run.js',
     '/sequitur/LICENSE',
     '/sequitur/README.md',
     '/sequitur/examples.js',
@@ -113,7 +117,7 @@ harness.test('@grr/walk', async t => {
   t.strictSame(actualFiles.sort(), expectedFilesShortWalk);
   t.strictSame(metrics, {
     readdir: 3,
-    entries: 18,
+    entries: 19,
     lstat: 11,
     realpath: 0,
     file: 8,
@@ -138,11 +142,11 @@ harness.test('@grr/walk', async t => {
 
   t.strictSame(actualFiles.sort(), expectedFiles);
   t.strictSame(metrics, {
-    readdir: 11,
-    entries: 55,
-    lstat: 56,
+    readdir: 12,
+    entries: 60,
+    lstat: 61,
     realpath: 0,
-    file: 45,
+    file: 49,
   });
 
   // ---------------------------------------------------------------------------

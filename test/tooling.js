@@ -2,7 +2,7 @@
 
 import harness from './harness.js';
 import { not, once } from '../source/tooling/function.js';
-import run from '../source/tooling/run.js';
+import run from '@grr/run';
 
 import {
   escapeRegex,

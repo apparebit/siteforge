@@ -59,20 +59,19 @@ harness.test('@grr/inventory', async t => {
   t.equal(indexDotHtml.content, '<p>Welcome to Apparebit!</p>');
 
   // No or malformed front matter.
-  metadata = indexDotHtml.process(_ => '').frontMatter();
-  t.equal(metadata, undefined);
-  t.throws(() => indexDotHtml.process(_ => '<script>...').frontMatter());
-  t.throws(() =>
-    indexDotHtml.process(_ => `<script>665</script>Whatever!`).frontMatter()
-  );
+  await indexDotHtml.process(_ => '');
+  t.equal(indexDotHtml.frontMatter(), undefined);
+  await indexDotHtml.process(_ => '<script>...');
+  t.throws(() => indexDotHtml.frontMatter());
+  await indexDotHtml.process(_ => `<script>665</script>Whatever!`);
+  t.throws(() => indexDotHtml.frontMatter());
 
   const file = inventory.addFile('/file', {
     source: resolve(DIRECTORY, '../package.json'),
   });
 
-  const text = await file.read();
   t.ok(
-    text.startsWith(`{
+    (await file.read()).startsWith(`{
   "private": true,
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",

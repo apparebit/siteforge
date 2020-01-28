@@ -5,17 +5,14 @@ import { createHash } from 'crypto';
 import { promises } from 'fs';
 import { fileURLToPath } from 'url';
 
-export const {
-  lstat,
-  readdir,
-  readFile,
-  realpath,
-  rmdir,
-  symlink,
-  writeFile,
+export const { lstat, readdir, readFile, realpath, rmdir, symlink } = promises;
+
+const {
+  copyFile: doCopyFile,
+  mkdir: doMkdir,
+  writeFile: doWriteFile,
 } = promises;
 
-const { copyFile: doCopyFile, mkdir: doMkdir } = promises;
 const { join: posixJoin, parse: parsePosixPath } = posix;
 
 const DOT = '.'.charCodeAt(0);
@@ -133,6 +130,13 @@ export function mkdir(path) {
 
 // -----------------------------------------------------------------------------
 
+export function writeFile(path, data, options) {
+  return retryAfterNoEntity(async path => {
+    await doWriteFile(path, data, options);
+    return path;
+  }, path);
+}
+
 /** Version the path for the given data and encoding. */
 export function versionPath(path, data, encoding) {
   return injectIntoPath(
@@ -159,8 +163,5 @@ export function writeVersionedFile(path, data, options = {}) {
 
   // Actually determine hash, splice into path, and write file.
   const versionedPath = doVersionPath(path, data, options.encoding);
-  return retryAfterNoEntity(async path => {
-    await writeFile(path, data, options);
-    return path;
-  }, versionedPath);
+  return writeFile(versionedPath, data, options);
 }

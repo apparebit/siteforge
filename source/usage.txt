@@ -22,8 +22,9 @@ as a "-V".
 
 The following options apply to the build task:
 
-  --content-dir <path>       Read content from directory (default: "./content")
-  --build-dir <path>         Write build to directory (default: "./build")
+  --content-dir <path>       Read content from directory ("./content")
+  --include-dir <path>       Read shared content from directory ("./include")
+  --build-dir <path>         Write build to directory ("./build")
   --clean-build              Delete previous build instead of overwriting files
   --do-not-build <glob>      Exclude matching files from build
   --rights-notice <notice>   Prepend rights notice to scripts and styles

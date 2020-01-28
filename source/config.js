@@ -1,4 +1,4 @@
-/* © 2019 Robert Grimm */
+/* © 2019-2020 Robert Grimm */
 
 import {
   aliased,
@@ -60,6 +60,7 @@ const optionTypes = aliased(
     doNotBuild: FileGlob,
     doNotValidate: FileGlob,
     dryRun: Boolean,
+    includeDir: FilePath,
     realm: String,
     rightsNotice: String,
     versionAssets: Boolean,
@@ -73,6 +74,7 @@ const optionDefaults = {
   contentDir: resolve('./content'),
   doNotBuild: () => false,
   doNotValidate: () => false,
+  includeDir: resolve('./include'),
   realm: process.env.NODE_ENV || 'development',
 };
 

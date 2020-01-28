@@ -1,7 +1,7 @@
 /* © 2020 Robert Grimm */
 
 import { posix } from 'path';
-import { promises } from 'fs';
+import { readFile, writeFile, writeVersionedFile } from '@grr/fs';
 import { runInNewContext } from 'vm';
 import { strict } from 'assert';
 
@@ -9,9 +9,25 @@ const { assign } = Object;
 const { extname, join, parse } = posix;
 const FRONT_OPEN = /\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
 const FRONT_CLOSE = '</script>';
-const { parse: parseJson } = JSON;
-const { readFile } = promises;
+const { parse: parseJson, stringify: stringifyJson } = JSON;
 const SLASH = '/'.charCodeAt(0);
+
+const NOTICE = new RegExp(
+  `^` + // Start at the beginning.
+  `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
+  `\\s*` + // Also ignore any space if present.
+  `(?:` +
+  `(?:\\/\\*` + // Match opening of multi-line comment.
+  `[\\n\\s*_=-]*` + // Ignore any number of spacing and decorative characters.
+  `((?:\\(c\\)|©|copyright).*?)` +
+  `[\\n\\s*_=-]*` + // Still ignore spacing and decorative characters.
+  `\\*\\/)` + // Up to the ending of that multi-line comment.
+  `|(?:\\/\\/[\\s*_=-]*\\n)*` + // Or: Ignore decorative single-line comments
+    `(?:\\/\\/((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Until a copyright
+  'iu'
+);
+
+// =============================================================================
 
 class File {
   static extension(path) {
@@ -27,25 +43,23 @@ class File {
   }
 
   static kind(extension) {
-    return (
-      {
-        '.css': 'style',
-        '.data.js': 'data',
-        '.gif': 'image',
-        '.htm': 'markup',
-        '.html': 'markup',
-        '.jpg': 'image',
-        '.jpeg': 'image',
-        '.js': 'script',
-        '.md': 'markup',
-        '.png': 'image',
-        '.txt': 'text',
-        '.webmanifest': 'data',
-        '.webp': 'image',
-        '.woff': 'font',
-        '.woff2': 'font',
-      }[extension] || 'etc'
-    );
+    return {
+      '.css': 'style',
+      '.data.js': 'data',
+      '.gif': 'image',
+      '.htm': 'markup',
+      '.html': 'markup',
+      '.jpg': 'image',
+      '.jpeg': 'image',
+      '.js': 'script',
+      '.png': 'image',
+      '.sh': 'ignore',
+      '.txt': 'etc', // robots.txt
+      '.webmanifest': 'etc', // PWA
+      '.webp': 'image',
+      '.woff': 'font',
+      '.woff2': 'font',
+    }[extension];
   }
 
   #content;
@@ -85,6 +99,10 @@ class File {
 
   get source() {
     return this.#source;
+  }
+
+  under(newroot) {
+    return join(newroot, this.#path.slice(1));
   }
 
   async read(options = 'utf8') {
@@ -142,17 +160,45 @@ class File {
       throw new Error(`front matter for "${this.path}" is not an object`);
     }
     this.#content = this.#content.slice(end + FRONT_CLOSE.length).trim();
-    assign(this, metadata);
+    assign(this, metadata); // Consider removing again!!
     return metadata;
   }
 
-  process(map) {
-    this.#content = map(this.#content);
+  async process(mapper) {
+    this.#content = await mapper(this.#content);
     return this;
+  }
+
+  async processWithCopyright(mapper) {
+    const [prefix, notice] = this.#content.match(NOTICE) || [];
+
+    if (!prefix) {
+      this.#content = await mapper(this.#content);
+    } else {
+      this.#content = `/* ${notice.trim()} */ ${await mapper(
+        this.#content.slice(prefix.length)
+      )}`;
+    }
+
+    return this;
+  }
+
+  async write(path, options) {
+    await writeFile(path, this.#content, options);
+    return this;
+  }
+
+  async writeVersioned(path, options) {
+    await writeVersionedFile(path, this.#content, options);
+    return this;
+  }
+
+  toString() {
+    return `File(${this.#path})`;
   }
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 class Directory {
   static is(value) {
@@ -237,9 +283,27 @@ class Directory {
     this.#inventory.index(file);
     return file;
   }
+
+  toJSON() {
+    const entries = {};
+    for (const [name, value] of this.#entries) {
+      if (name !== '.' && name !== '..') {
+        if (Directory.is(value)) {
+          entries[name] = value.toJSON();
+        } else {
+          entries[name] = value.toString();
+        }
+      }
+    }
+    return entries;
+  }
+
+  toString() {
+    return stringifyJson(this.toJSON(), null, 2);
+  }
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 export default class Inventory {
   static create() {
@@ -248,6 +312,7 @@ export default class Inventory {
 
   #root;
   #byKind;
+  #renamed;
 
   constructor() {
     this.#root = new Directory(this);
@@ -261,7 +326,11 @@ export default class Inventory {
       markup: init(),
       script: init(),
       style: init(),
-      text: init(),
+    };
+
+    this.#renamed = {
+      from: init(),
+      to: init(),
     };
   }
 
@@ -281,7 +350,20 @@ export default class Inventory {
   }
 
   index(file) {
-    this.#byKind[file.kind].set(file.path, file);
+    const { kind } = file;
+    if (kind && kind !== 'ignore') {
+      this.#byKind[kind].set(file.path, file);
+    }
     return this;
+  }
+
+  *byKind(...kinds) {
+    for (const kind of kinds) {
+      yield* this.#byKind[kind];
+    }
+  }
+
+  toString() {
+    return stringifyJson({ '/': this.#root.toJSON() }, null, 2);
   }
 }

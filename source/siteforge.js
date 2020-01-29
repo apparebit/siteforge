@@ -63,12 +63,9 @@ async function buildScript(path, file, config) {
   await file.processWithCopyright(
     content => minify(content, {}, { comments: false }).code
   );
-
-  if (config.options.versionAssets && path !== '/sw.js') {
-    await file.writeVersioned(built);
-  } else {
-    await file.write(built);
-  }
+  await file.write(built, {
+    versioned: config.options.versionAssets && path !== '/sw.js',
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -112,11 +109,7 @@ async function buildStyle(path, file, config) {
       .forEach(warn => reportPostCSSWarning(config.logger, warn));
     return minified.css;
   });
-  if (config.options.versionAssets) {
-    await file.writeVersioned(built);
-  } else {
-    await file.write(built);
-  }
+  await file.write(built, { versioned: config.options.versionAssets });
 }
 
 // -----------------------------------------------------------------------------

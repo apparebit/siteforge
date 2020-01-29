@@ -52,7 +52,7 @@ harness.test('@grr/inventory', async t => {
   t.throws(() => inventory.addFile('/index.html'));
 
   // Well-formed front matter.
-  let metadata = indexDotHtml.frontMatter();
+  let { metadata } = indexDotHtml.frontMatter();
   t.equal(metadata.name, 'Apparebit');
   t.equal(metadata.alternateName, 'It Will Appear');
   t.equal(metadata.url, 'https://apparebit.com');
@@ -60,7 +60,7 @@ harness.test('@grr/inventory', async t => {
 
   // No or malformed front matter.
   await indexDotHtml.process(_ => '');
-  t.equal(indexDotHtml.frontMatter(), undefined);
+  t.equal(indexDotHtml.frontMatter().metadata, undefined);
   await indexDotHtml.process(_ => '<script>...');
   t.throws(() => indexDotHtml.frontMatter());
   await indexDotHtml.process(_ => `<script>665</script>Whatever!`);

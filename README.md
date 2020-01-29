@@ -136,8 +136,8 @@ In addition to the static website generator [__@grr/siteforge__](source) itself,
 this monorepo also hosts the constituent components. For now, none of the
 packages have been released to npm, largely because the process of building a
 minimum viable site:forge and refactoring supporting functionality into separate
-packages is not yet complete. Roughly organized by focus area, the current
-component packages are:
+packages is not yet complete. Roughly organized by focus area, the component
+packages are:
 
 ### Synchronous, Asynchronous, Concurrent
 
@@ -160,6 +160,12 @@ component packages are:
     hot module reloading, but only for modules in select directories and at
     select times. Since Node.js module hook API will likely change in the
     future, this package must be considered experimental.
+
+### Logging
+
+  * [__@grr/logger__](packages/logger) prints semantic messages to the terminal
+    in beautiful color through sheer will and raw ANSI escape codes. It's the
+    one and only logging package for Node.js tools.
 
 ### File Storage
 
@@ -239,6 +245,23 @@ just that approach. While it still has two distinct entry points,
 `optionsFromObject()` and `optionsFromArguments()`, the schema and internal
 logic for enforcing it are shared. That, in turn, simplifies [ingestion of the
 configuration](source/config.js).
+
+### To Package Or Not to Package
+
+When building without third-party libraries as much as possible, small helper
+functions tend to accumulate with time and could conceivably be packaged in a
+themed bundle. Arguably, the [@grr/fs](packages/fs) package is just one instance
+of this approach, seeing that it combines functions for managing file names,
+functions for versioning file names, and functions that update the file system
+while also tolerating `ENOENT` errors. In that case, I considered the benefit of
+easier file operations far outweighing the drawbacks of maintaining such a grab
+bag. But in several other cases, that same trade-off very much favored not
+creating another package. The [@grr/inventory](packages/inventory) package is
+the other exception and, at first glance, appears even more random, notably when
+looking at the `File` class. But in that case the seeming randomness of features
+directly reflects the union of features necessary for processing a basic range
+of file types. In other words, domain-specific requirements justify the
+bundling.
 
 ---
 

@@ -208,19 +208,20 @@ practice more concretely.
 Breaking a tool into packages while also minimizing dependencies sounds more
 difficult than it often is in practice: The basic idea is to expose hooks in a
 package's API that allow for progressive enhancement of the package's
-functionality. For instance, `@grr/walk` defaults to a serial traversal of the
-file system, performing one I/O operation after the other I/O operations.
-However, it can also perform several I/O operations concurrently—as long as it
-receives a suitable `run` callback. As it happens, `@grr/async`'s executors have
-a `start()` method with the exact same signature. Hence, making a file system
-traversal concurrent is as straight-forward as:
+functionality. For instance, [@grr/walk](packages/walk) defaults to a serial
+traversal of the file system, performing one I/O operation after the other I/O
+operations. However, it can also perform several I/O operations concurrently—as
+long as it receives a suitable `run` callback. As it happens,
+[@grr/async](packages/async)'s executors have a `submit()` method with the exact
+same signature. Hence, making a file system traversal concurrent is as
+straight-forward as:
 
 ```js
 import Executor from '@grr/async';
 import walk from '@grr/walk';
 
 const executor = new Executor();
-const control = walk(root, { run: executor.start.bind(executor) });
+const control = walk(root, { run: executor.submit.bind(executor) });
 // walk() exposes visited file system entities through events,
 // since an asynchronous iterator would be too limiting.
 control.on('file', (_, path, virtualPath, status) => ...);
@@ -240,10 +241,11 @@ many other command line tools running on Node.js, site:forge can be configured
 via command line arguments and a `package.json` manifest alike. Since the data
 from either source must be parsed and validated, it makes eminent sense for the
 same package to implement both. That way, the code for expressing the schema and
-validating data items against it can be shared. The `@grr/options` package takes
-just that approach. While it still has two distinct entry points,
-`optionsFromObject()` and `optionsFromArguments()`, the schema and internal
-logic for enforcing it are shared. That, in turn, simplifies [ingestion of the
+validating data items against it can be shared. The
+[@grr/options](packages/options) package takes just that approach. While it
+still has two distinct entry points, `optionsFromObject()` and
+`optionsFromArguments()`, the schema and internal logic for enforcing it are
+shared. That, in turn, simplifies [ingestion of the
 configuration](source/config.js).
 
 ### To Package Or Not to Package

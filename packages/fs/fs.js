@@ -130,6 +130,13 @@ export function mkdir(path) {
 
 // -----------------------------------------------------------------------------
 
+/**
+ * Write the given data to a file at the given path. Unlike the built-in
+ * `writeFile()`, this version tolerates `ENOENT` errors by transparently
+ * creating necessary directories. It returns a promise for the written path,
+ * which is just the same signature as that for `writeVersionedFile()` below
+ * where the path is _not_ known upon invocation.
+ */
 export function writeFile(path, data, options) {
   return retryAfterNoEntity(async path => {
     await doWriteFile(path, data, options);

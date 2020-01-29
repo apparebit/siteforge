@@ -36,7 +36,10 @@ async function inventorize(executor, config) {
   await walk(config.options.contentDir, {
     ignoreNoEnt: true,
     isExcluded: config.options.doNotBuild,
-    onFile: (_, source, path) => inventory.addFile(path, { source }),
+    onFile: (_, source, path) => {
+      config.logger.info(`Adding "${path}" to inventory`);
+      inventory.addFile(path, { source });
+    },
     run: (...args) => executor.submit(...args),
   }).done;
 

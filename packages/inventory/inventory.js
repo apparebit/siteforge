@@ -5,7 +5,6 @@ import { readFile, writeFile, writeVersionedFile } from '@grr/fs';
 import { runInNewContext } from 'vm';
 import { strict } from 'assert';
 
-const { assign } = Object;
 const { extname, join, parse } = posix;
 const FRONT_OPEN = /\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
 const FRONT_CLOSE = '</script>';
@@ -61,6 +60,46 @@ class File {
       '.woff2': 'font',
     }[extension];
   }
+
+  static frontMatter(path, content) {
+    strict.equal(typeof content, 'string');
+    const match = content.match(FRONT_OPEN);
+    if (match == null) return { content };
+
+    const start = match[0].length;
+    const end = content.indexOf(FRONT_CLOSE);
+    if (end === -1) {
+      throw new Error(`front matter for "${path}" has no closing tag`);
+    }
+
+    const metadata = runInNewContext(
+      `(${content.slice(start, end)})`,
+      undefined, // create fresh sandbox
+      {
+        filename: path,
+        displayErrors: true,
+        contextCodeGeneration: {
+          strings: false, // no eval()
+          wasm: false, // no wasm
+        },
+      }
+    );
+
+    if (metadata == null || typeof metadata !== 'object') {
+      throw new Error(`front matter for "${path}" is not an object`);
+    }
+
+    content = content.slice(end + FRONT_CLOSE.length).trim();
+    return { content, metadata };
+  }
+
+  static copyrightNotice(path, content) {
+    const [prefix, notice] = this.#content.match(NOTICE) || [];
+    if (!prefix) return { content };
+    return { notice: notice.trim(), content: content.slice(prefix.length) };
+  }
+
+  // ---------------------------------------------------------------------------
 
   #content;
   #extension;
@@ -133,35 +172,10 @@ class File {
   }
 
   frontMatter() {
-    strict.equal(typeof this.#content, 'string');
-    const match = this.#content.match(FRONT_OPEN);
-    if (match == null) return undefined;
-
-    const start = match[0].length;
-    const end = this.#content.indexOf(FRONT_CLOSE);
-    if (end === -1) {
-      throw new Error(`front matter for "${this.path}" has no closing tag`);
-    }
-
-    const metadata = runInNewContext(
-      `(${this.#content.slice(start, end)})`,
-      undefined, // sandbox
-      {
-        filename: this.path,
-        displayErrors: true,
-        contextCodeGeneration: {
-          strings: false, // No eval()
-          wasm: false, // No wasm
-        },
-      }
-    );
-
-    if (metadata == null || typeof metadata !== 'object') {
-      throw new Error(`front matter for "${this.path}" is not an object`);
-    }
-    this.#content = this.#content.slice(end + FRONT_CLOSE.length).trim();
-    assign(this, metadata); // Consider removing again!!
-    return metadata;
+    const { content, metadata } = File.frontMatter(this.#path, this.#content);
+    this.#content = content;
+    this.metadata = metadata;
+    return this;
   }
 
   async process(mapper) {
@@ -170,26 +184,21 @@ class File {
   }
 
   async processWithCopyright(mapper) {
-    const [prefix, notice] = this.#content.match(NOTICE) || [];
-
-    if (!prefix) {
-      this.#content = await mapper(this.#content);
+    const { notice, content } = File.copyrightNotice(this.#path, this.#content);
+    if (!notice) {
+      this.#content = await mapper(content);
     } else {
-      this.#content = `/* ${notice.trim()} */ ${await mapper(
-        this.#content.slice(prefix.length)
-      )}`;
+      this.#content = `/* ${notice} */ ${await mapper(content)}`;
     }
-
     return this;
   }
 
   async write(path, options) {
-    await writeFile(path, this.#content, options);
-    return this;
-  }
-
-  async writeVersioned(path, options) {
-    await writeVersionedFile(path, this.#content, options);
+    if (options.versioned) {
+      await writeVersionedFile(path, this.#content, options);
+    } else {
+      await writeFile(path, this.#content, options);
+    }
     return this;
   }
 

@@ -16,15 +16,15 @@ const NOTICE = new RegExp(
   `^` + // Start at the beginning.
   `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
   `\\s*` + // Also ignore any space if present.
-  `(?:` +
-  `(?:\\/\\*` + // Match opening of multi-line comment.
-  `[\\n\\s*_=-]*` + // Ignore any number of spacing and decorative characters.
-  `((?:\\(c\\)|©|copyright).*?)` +
-  `[\\n\\s*_=-]*` + // Still ignore spacing and decorative characters.
-  `\\*\\/)` + // Up to the ending of that multi-line comment.
-  `|(?:\\/\\/[\\s*_=-]*\\n)*` + // Or: Ignore decorative single-line comments
-    `(?:\\/\\/((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Until a copyright
-  'iu'
+  `(?:` + // Match either just a multi-line comment or 1+ single-line comments.
+  `(?:\\/\\*` + // Multi-line comment it is.
+  `[\\n\\s*_=-]*` + // Ignore any number of spacing or "decorative" characters.
+  `((?:\\(c\\)|©|copyright).*?)` + // Extract the copyright notice.
+  `[\\n\\s*_=-]*` + // Again, ignore spacing or decorative characters.
+  `\\*\\/)` + // Until we reach end of comment: It's safe to split content here.
+  `|(?:\\/\\/[\\s*_=-]*\\n)*` + // Or: Single-line comments its is.
+    `(?:\\/\\/((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Again, extract notice.
+  'iu' // Oh yeah, ignore case and embrace the Unicode.
 );
 
 // =============================================================================

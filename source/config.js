@@ -9,18 +9,25 @@ import {
   optionsFromArguments,
 } from '@grr/options';
 
-import Error from './tooling/error.js';
 import glob from '@grr/glob';
 import { join, resolve } from 'path';
-import Logger from './tooling/logger.js';
+import Logger from '@grr/logger';
 import { readFile, toDirectory } from '@grr/fs';
 
-const { assign } = Object;
+const { assign, defineProperty } = Object;
+const configurable = true;
 const __directory = toDirectory(import.meta.url);
 const { parse: parseJSON } = JSON;
+const writable = true;
 
 // -----------------------------------------------------------------------------
 // Manifest Loading
+
+const WrappedError = (message, cause) => {
+  const error = new Error(message);
+  defineProperty(error, 'cause', { configurable, writable, value: cause });
+  return error;
+};
 
 const loadSiteManifest = async () => {
   const path = join(process.cwd(), 'package.json');
@@ -28,7 +35,7 @@ const loadSiteManifest = async () => {
     return parseJSON(await readFile(path));
   } catch (x) {
     if (x.code === 'ENOENT') return {};
-    throw Error(`unable to load website manifest from "${path}"`, x);
+    throw WrappedError(`unable to load website manifest from "${path}"`, x);
   }
 };
 
@@ -37,7 +44,7 @@ const loadForgeManifest = async () => {
   try {
     return parseJSON(await readFile(path));
   } catch (x) {
-    throw Error(`unable to load site:forge manifest from "${path}"`, x);
+    throw WrappedError(`unable to load site:forge manifest from "${path}"`, x);
   }
 };
 

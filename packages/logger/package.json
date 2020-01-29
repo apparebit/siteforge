@@ -1,0 +1,13 @@
+{
+  "name": "@grr/logger",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "logger.js",
+  "description": "The one and only logger for Node.js",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

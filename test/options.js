@@ -10,13 +10,16 @@ import {
 } from '@grr/options';
 
 import { EOL } from 'os';
-import { escapeRegex } from '../source/tooling/text.js';
 import harness from './harness.js';
 import { toDirectory } from '@grr/fs';
 
 const { assign, keys: keysOf } = Object;
 const __directory = toDirectory(import.meta.url);
 const { has } = Reflect;
+
+// Popular copy pasta refined with local seasoning
+// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
+const escapeRegex = literal => literal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 
 harness.test('tooling/options', t => {
   const configuration = defaults();

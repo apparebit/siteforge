@@ -18,8 +18,8 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./proact.js');
   await import('./reloader.js');
   await import('./sequitur.js');
-  await import('./tooling.js');
   await import('./walk.js');
+  await import('./run.js');
 
   const done = () => {
     const { pass, fail } = harness.counts;

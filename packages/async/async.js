@@ -49,10 +49,6 @@ export function delay(ms = 0) {
 export class Task extends AsyncResource {
   constructor(fn, that, ...args) {
     super('@grr/async/Task');
-    this.reset(fn, that, ...args);
-  }
-
-  reset(fn, that, ...args) {
     this._fn = fn;
     this._that = that;
     this._args = args;

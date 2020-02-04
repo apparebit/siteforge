@@ -210,7 +210,7 @@ function deploy(config) {
   ]);
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 let taskNo = 1;
 function task(config, description) {
@@ -218,10 +218,11 @@ function task(config, description) {
 }
 
 async function main() {
-  // >>>>>>>>>> Determine Configuration
+  // ---------------------------------------------------------------------------
+  // Determine Configuration, Handle Version and Help Display
+
   const config = await configure();
 
-  // >>>>>>>>>> Print Version and Help
   if (config.options.version) {
     console.error(`site:forge ${config.forge.version}${EOL}`);
   }
@@ -232,19 +233,20 @@ async function main() {
     return;
   }
 
-  // >>>>>>>>>> Clean Previous Build
+  // ---------------------------------------------------------------------------
+  // Clean Previous Build
+
   if (
     (config.options.htaccess || config.options.build) &&
     config.options.cleanBuild
   ) {
-    task(
-      config,
-      `Clean previous build by removing "${config.options.buildDir}"`
-    );
+    task(config, `Clean previous build in "${config.options.buildDir}"`);
     await rmdir(config.options.buildDir, { recursive: true });
   }
 
-  // >>>>>>>>>> Build File System Inventory
+  // ---------------------------------------------------------------------------
+  // Build File System Inventory
+
   const executor = new Executor();
 
   let inventory;
@@ -253,7 +255,7 @@ async function main() {
     config.options.build ||
     config.options.validate
   ) {
-    task(config, `Determine work by traversing "${config.options.contentDir}"`);
+    task(config, `Traverse "${config.options.contentDir}"`);
     try {
       inventory = await inventorize(executor, config);
     } catch (x) {
@@ -263,9 +265,11 @@ async function main() {
     }
   }
 
-  // >>>>>>>>>> Build .htaccess
+  // ---------------------------------------------------------------------------
+  // Build .htaccess
+
   if (config.options.htaccess) {
-    task(config, `Build web server configuration`);
+    task(config, `Build ".htaccess"`);
     try {
       await run('bash', [BUILD_HTACCESS], { cwd: config.options.contentDir });
     } catch (x) {
@@ -273,18 +277,19 @@ async function main() {
     }
   }
 
-  // >>>>>>>>>> Build Content
+  // ---------------------------------------------------------------------------
+  // Build Content
+
   if (config.options.build) {
-    task(config, `Actually build website`);
+    task(config, `Build in "${config.options.buildDir}"`);
     await build(inventory, executor, config);
   }
 
-  // >>>>>>>>>> Validate Markup
+  // ---------------------------------------------------------------------------
+  // Validate Markup
+
   if (config.options.validate) {
-    task(
-      config,
-      `Validate generated markup files in "${config.options.buildDir}"`
-    );
+    task(config, `Validate markup in "${config.options.buildDir}"`);
 
     try {
       await validate(inventory, config);
@@ -295,7 +300,9 @@ async function main() {
     }
   }
 
-  // >>>>>>>>>> Deploy Generated Website
+  // ---------------------------------------------------------------------------
+  // Deploy Generated Website
+
   if (config.options.deploy) {
     if (!config.options.deploymentDir) {
       config.logger.error(
@@ -305,15 +312,12 @@ async function main() {
       return;
     }
 
-    task(
-      config,
-      `Deploy generated website to "${config.options.deploymentDir}"`
-    );
+    task(config, `Deploy to "${config.options.deploymentDir}"`);
     await deploy(config);
   }
 
+  // ---------------------------------------------------------------------------
   // >>>>>>>>>> Summarize Run
-  task(config, 'Done');
   config.logger.signOff();
 }
 

@@ -2,12 +2,13 @@
 
 import { format } from 'util';
 
+const configurable = true;
+const { defineProperties, defineProperty, keys: keysOf } = Object;
 const EOL = /\r?\n/gu;
 const ERROR_PREFIX = /^([A-Za-z]*Error): /u;
-const configurable = true;
 const { has } = Reflect;
 const isPlain = process.env.NODE_DISABLE_COLORS;
-const { defineProperties, defineProperty, keys: keysOf } = Object;
+const { trunc } = Math;
 const writable = true;
 
 const styles = {
@@ -110,11 +111,33 @@ function createLogFunction(level, { label, println = console.error } = {}) {
 }
 
 function createSignOff({ println = console.error } = {}) {
-  const { bold, green } = adjustedStyles;
+  const { bold, faint, green } = adjustedStyles;
 
-  return function signOff() {
+  return function signOff(start) {
+    let description;
+    if (start) {
+      let duration = Date.now() - start;
+      description = `${String(duration % 1000).padEnd(3, '0')}`; // millis
+
+      duration = trunc(duration / 1000);
+      const seconds = duration % 60;
+      const minutes = trunc(duration / 60);
+
+      if (minutes) {
+        description = `${`${seconds}`.padStart(2, '0')}.${description}`;
+        description = `${minutes}:${description}min`;
+      } else if (seconds) {
+        description = `${seconds}.${description}s`;
+      } else {
+        description = description + 'ms';
+      }
+      description = faint(description);
+    } else {
+      description = '';
+    }
+
     if (!this.errors && !this.warnings) {
-      println(green(`Happy, happy, joy, joy`));
+      println(`${green(`Happy, happy, joy, joy!`)} ${description}`);
       return;
     }
 
@@ -129,7 +152,7 @@ function createSignOff({ println = console.error } = {}) {
       msg += this.warnings > 1 ? ' warnings.' : ' warning.';
     }
     msg += ` So ${this.errors ? 'very ' : ''}sad!`;
-    println(bold(msg));
+    println(`${bold(msg)} ${description}`);
   };
 }
 

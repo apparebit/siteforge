@@ -30,7 +30,6 @@
     "@grr/sequitur": "0.1.0",
     "babel-minify": "0.5.1",
     "cssnano": "4.1.10",
-    "htm": "2.2.1",
     "postcss": "7.0.25",
     "vnu-jar": "19.9.4"
   }

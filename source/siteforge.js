@@ -169,7 +169,7 @@ function validate(inventory, config) {
       '-jar', vnuPath,
       '--skip-non-html',
       '--filterpattern', IGNORED_VALIDATIONS.join('|'),
-      ...(this.options.volume >= 2 ? ['--verbose'] : []),
+      ...(config.options.volume >= 2 ? ['--verbose'] : []),
       ...paths,
     ]);
 }
@@ -221,6 +221,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Determine Configuration, Handle Version and Help Display
 
+  const start = Date.now();
   const config = await configure();
 
   if (config.options.version) {
@@ -318,7 +319,7 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // >>>>>>>>>> Summarize Run
-  config.logger.signOff();
+  config.logger.signOff(start);
 }
 
 main();

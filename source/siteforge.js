@@ -318,7 +318,7 @@ async function main() {
   }
 
   // ---------------------------------------------------------------------------
-  // >>>>>>>>>> Summarize Run
+  // Summarize Run
   config.logger.signOff(start);
 }
 

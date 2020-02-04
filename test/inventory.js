@@ -7,17 +7,25 @@ import { toDirectory } from '@grr/fs';
 
 const DIRECTORY = toDirectory(import.meta.url);
 const { entries } = Object;
+
 const FAUX = {
   '/index.html': `<script>({
     name: 'Apparebit',
     alternateName: 'It Will Appear',
     url: 'https://apparebit.com',
   })</script><p>Welcome to Apparebit!</p>`,
-  '/about/apparebit.html': `<script>({
+
+  '/about/apparebit.html': `<script>{
     name: 'About This Website',
     url: 'https://apparebit.com/about/apparebit',
-  })</script><p>This is v3 of Apparebit.</p>`,
+  }</script><p>This is v3 of Apparebit.</p>`,
 };
+
+const MANIFEST_PREFIX = `{
+  "private": true,
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  `;
 
 harness.test('@grr/inventory', async t => {
   const inventory = Inventory.create();
@@ -34,6 +42,7 @@ harness.test('@grr/inventory', async t => {
   t.equal(apparebitDotHtml.path, '/about/apparebit.html');
   t.equal(apparebitDotHtml.extension, '.html');
   t.equal(apparebitDotHtml.kind, 'markup');
+  t.equal(apparebitDotHtml.toString(), 'File(/about/apparebit.html)');
 
   t.equal(inventory.root.lookup('index.html'), indexDotHtml);
   let dir = inventory.root.lookup('.');
@@ -52,37 +61,45 @@ harness.test('@grr/inventory', async t => {
   t.throws(() => inventory.addFile('/index.html'));
 
   // Well-formed front matter.
-  let { metadata } = indexDotHtml.frontMatter();
+  let metadata = indexDotHtml.extractFrontMatter();
   t.equal(metadata.name, 'Apparebit');
   t.equal(metadata.alternateName, 'It Will Appear');
   t.equal(metadata.url, 'https://apparebit.com');
   t.equal(indexDotHtml.content, '<p>Welcome to Apparebit!</p>');
 
   // No or malformed front matter.
-  await indexDotHtml.process(_ => '');
-  t.equal(indexDotHtml.frontMatter().metadata, undefined);
-  await indexDotHtml.process(_ => '<script>...');
-  t.throws(() => indexDotHtml.frontMatter());
-  await indexDotHtml.process(_ => `<script>665</script>Whatever!`);
-  t.throws(() => indexDotHtml.frontMatter());
+  indexDotHtml.content = '';
+  t.equal(indexDotHtml.extractFrontMatter(), undefined);
+
+  indexDotHtml.content = '<script>...';
+  t.throws(() => indexDotHtml.extractFrontMatter());
+
+  indexDotHtml.content = `<script>665</script>Whatever!`;
+  t.throws(() => indexDotHtml.extractFrontMatter());
 
   const file = inventory.addFile('/file', {
     source: resolve(DIRECTORY, '../package.json'),
   });
 
-  t.ok(
-    (await file.read()).startsWith(`{
-  "private": true,
-  "repository": "https://github.com/apparebit/siteforge",
-  "author": "Robert Grimm (https://apparebit.com)",
-  `)
-  );
+  let data = await file.read();
+  t.equal(typeof data, 'string');
+  t.ok(data.startsWith(MANIFEST_PREFIX));
+  t.equal(file.content, data);
 
-  const data = await file.read('json');
+  file.encoding = 'utf8';
+  data = await file.read();
+  t.equal(typeof data, 'string');
+  t.ok(data.startsWith(MANIFEST_PREFIX));
+
+  file.encoding = 'json';
+  data = await file.read();
+  t.ok(data);
+  t.equal(typeof data, 'object');
   t.equal(data.repository, 'https://github.com/apparebit/siteforge');
   t.equal(data.author, 'Robert Grimm (https://apparebit.com)');
+  t.equal(file.content, data);
 
-  const d2 = await file.read({ encoding: 'json' });
+  const d2 = await file.read();
   t.strictSame(d2, data);
 
   t.end();

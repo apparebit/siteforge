@@ -51,7 +51,7 @@ async function inventorize(executor, config) {
 
 async function copyAsset(path, file, config) {
   config.logger.info(`Copying resource "${path}"`);
-  const built = file.under(config.options.buildDir);
+  const built = file.mountPath(config.options.buildDir);
   await copyFile(file.source, built);
 }
 
@@ -60,13 +60,14 @@ async function copyAsset(path, file, config) {
 
 async function buildScript(path, file, config) {
   config.logger.info(`Compressing script "${path}"`);
-  const built = file.under(config.options.buildDir);
 
   await file.read();
-  await file.processWithCopyright(
-    content => minify(content, {}, { comments: false }).code
+  await file.transform(
+    content => minify(content, {}, { comments: false }).code,
+    { withCopyrightNotice: true }
   );
-  await file.write(built, {
+  await file.write({
+    targetDir: config.options.buildDir,
     versioned: config.options.versionAssets && path !== '/sw.js',
   });
 }
@@ -74,16 +75,7 @@ async function buildScript(path, file, config) {
 // -----------------------------------------------------------------------------
 // Styles
 
-const css = postcss([
-  cssnano({
-    preset: [
-      'default',
-      {
-        svgo: false,
-      },
-    ],
-  }),
-]);
+const css = postcss([cssnano({ preset: 'default' })]);
 
 function reportPostCSSWarning(logger, warn) {
   let msg = '';
@@ -99,20 +91,25 @@ function reportPostCSSWarning(logger, warn) {
 
 async function buildStyle(path, file, config) {
   config.logger.info(`Compressing style "${path}"`);
-  const built = file.under(config.options.buildDir);
 
   await file.read();
-  await file.processWithCopyright(async content => {
-    const minified = await css.process(content, {
-      from: file.source,
-      to: built,
-    });
-    minified
-      .warnings()
-      .forEach(warn => reportPostCSSWarning(config.logger, warn));
-    return minified.css;
+  await file.transform(
+    async content => {
+      const minified = await css.process(content, {
+        from: file.source,
+        to: file.mountPath(config.options.buildDir),
+      });
+      minified
+        .warnings()
+        .forEach(warn => reportPostCSSWarning(config.logger, warn));
+      return minified.css;
+    },
+    { withCopyrightNotice: true }
+  );
+  await file.write({
+    targetDir: config.options.buildDir,
+    versioned: config.options.versionAssets,
   });
-  await file.write(built, { versioned: config.options.versionAssets });
 }
 
 // -----------------------------------------------------------------------------
@@ -120,10 +117,9 @@ async function buildStyle(path, file, config) {
 
 async function buildPage(path, file, config) {
   config.logger.info(`Building page "${path}"`);
-  const built = file.under(config.options.buildDir);
 
   await file.read();
-  await file.write(built);
+  await file.write({ targetDir: config.options.buildDir });
 }
 
 // -----------------------------------------------------------------------------
@@ -145,11 +141,13 @@ async function build(inventory, executor, config) {
   for (const [path, file] of inventory.byKind('script')) {
     executor.run(buildScript, undefined, path, file, config);
   }
+
   await executor.onIdle();
 
   for (const [path, file] of inventory.byKind('markup')) {
     executor.run(buildPage, undefined, path, file, config);
   }
+
   await executor.onIdle();
 }
 
@@ -162,7 +160,7 @@ function validate(inventory, config) {
   // means traversing the file system before traversing the file system. Yay!
   const paths = [];
   for (const [, file] of inventory.byKind('markup')) {
-    const output = file.under(config.options.buildDir);
+    const output = file.mountPath(config.options.buildDir);
     if (!config.options.doNotValidate(output)) paths.push(output);
   }
 

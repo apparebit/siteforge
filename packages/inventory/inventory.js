@@ -60,22 +60,28 @@ class File {
       '.css': 'style',
       '.data.js': 'data',
       '.gif': 'image',
+      '.htaccess': 'configuration',
       '.htm': 'markup',
       '.html': 'markup',
       '.jpg': 'image',
       '.jpeg': 'image',
       '.js': 'script',
       '.png': 'image',
-      '.txt': 'etc', // E.g., robots.txt
-      '.webmanifest': 'etc', // PWAs
+      '.svg': 'image',
+      '.txt': 'configuration', // E.g., robots.txt
+      '.webmanifest': 'configuration', // PWAs
       '.webp': 'image',
       '.woff': 'font',
       '.woff2': 'font',
     }[extension || ''];
   }
 
-  /** Create a new path joining the given root with the given path. */
-  static mount(path, root) {
+  /**
+   * Mount the given path at the given root. Unlike Node.js' native `join`
+   * operation, this method relativizes the path by stripping the root directory
+   * before it joins the two paths.
+   */
+  static mount(root, path) {
     if (isAbsolute(path)) path = relative('/', path);
     return join(root, path);
   }
@@ -118,8 +124,8 @@ class File {
     });
   }
 
-  mountPath(root) {
-    return File.mount(this.path, root);
+  mountAt(root) {
+    return File.mount(root, this.path);
   }
 
   async read({
@@ -192,8 +198,8 @@ class File {
         filename: this.path,
         displayErrors: true,
         contextCodeGeneration: {
-          strings: false, // no eval()
-          wasm: false, // no wasm
+          strings: false, // Disable eval()
+          wasm: false, // Disable wasm
         },
       }
     );
@@ -370,7 +376,7 @@ export default class Inventory {
 
     this.#byKind = {
       data: new Map(),
-      etc: new Map(),
+      configuration: new Map(),
       font: new Map(),
       image: new Map(),
       markup: new Map(),
@@ -397,13 +403,17 @@ export default class Inventory {
   }
 
   indexByKind(file) {
-    let { path, kind } = file;
-    if (kind) this.#byKind[kind].set(path, file);
+    const { path, kind } = file;
+    if (kind) {
+      const index = this.#byKind[kind];
+      if (index) index.set(path, file);
+    }
   }
 
   *byKind(...kinds) {
     for (const kind of kinds) {
-      yield* this.#byKind[kind];
+      const index = this.#byKind[kind];
+      if (index) yield* index;
     }
   }
 

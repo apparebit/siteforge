@@ -13,10 +13,9 @@ const { isArray } = Array;
  * `children` to the `props` object instead of freshly allocating a new node.
  */
 export const h = (type, props, ...children) => {
-  props = Object(props);
-  props.type = type;
-  props.children = children;
-  return props;
+  // Microbenchmarking suggests that spreading `prop` into a new object literal
+  // is faster than coercing props to an object and then modifying it. On V8.
+  return { ...props, type, children };
 };
 
 /** Parse a thusly tagged string template into the vDOM. */
@@ -25,10 +24,11 @@ export default html;
 
 /** Determine the tag name for a vDOM node including view components. */
 export const tag = node => {
-  if (typeof node.type === 'function') {
-    return node.type.name || 'ViewComponent';
+  const { type } = node;
+  if (typeof type === 'function') {
+    return type.name || 'ViewComponent';
   } else {
-    return node.type;
+    return type;
   }
 };
 
@@ -36,7 +36,7 @@ export const tag = node => {
 export const isInternalProperty = name =>
   name === 'type' || name === 'children';
 
-const IgnoredTypes = new Set(['boolean', 'function', 'symbol']);
+const IgnoredTypes = new Set(['boolean', 'symbol']);
 const TextualTypes = new Set(['bigint', 'number', 'string']);
 
 /**

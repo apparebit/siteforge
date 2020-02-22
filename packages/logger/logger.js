@@ -111,48 +111,48 @@ function createLogFunction(level, { label, println = console.error } = {}) {
 }
 
 function createSignOff({ println = console.error } = {}) {
-  const { bold, faint, green } = adjustedStyles;
+  const { faint, green } = adjustedStyles;
 
   return function signOff(start) {
-    let description;
+    let timing;
     if (start) {
       let duration = Date.now() - start;
-      description = `${String(duration % 1000).padEnd(3, '0')}`; // millis
+      timing = `${String(duration % 1000).padEnd(3, '0')}`; // millis
 
       duration = trunc(duration / 1000);
       const seconds = duration % 60;
       const minutes = trunc(duration / 60);
 
       if (minutes) {
-        description = `${`${seconds}`.padStart(2, '0')}.${description}`;
-        description = `${minutes}:${description}min`;
+        timing = `${`${seconds}`.padStart(2, '0')}.${timing}`;
+        timing = `${minutes}:${timing}min`;
       } else if (seconds) {
-        description = `${seconds}.${description}s`;
+        timing = `${seconds}.${timing}s`;
       } else {
-        description = description + 'ms';
+        timing = timing + 'ms';
       }
-      description = faint(description);
-    } else {
-      description = '';
     }
 
     if (!this.errors && !this.warnings) {
-      println(`${green(`Happy, happy, joy, joy!`)} ${description}`);
+      let message = green(`Happy, happy, joy, joy!`);
+      if (timing) message += faint(`  ${timing}`);
+      println(message);
       return;
     }
 
-    let msg = `Finished with `;
+    let message = `Finished with `;
     if (this.errors) {
-      msg += String(this.errors);
-      msg += this.errors > 1 ? ' errors' : ' error';
-      msg += this.warnings ? ' and ' : '.';
+      message += String(this.errors);
+      message += this.errors > 1 ? ' errors' : ' error';
+      message += this.warnings ? ' and ' : '.';
     }
     if (this.warnings) {
-      msg += String(this.warnings);
-      msg += this.warnings > 1 ? ' warnings.' : ' warning.';
+      message += String(this.warnings);
+      message += this.warnings > 1 ? ' warnings.' : ' warning.';
     }
-    msg += ` So ${this.errors ? 'very ' : ''}sad!`;
-    println(`${bold(msg)} ${description}`);
+    message += ` So ${this.errors ? 'very ' : ''}sad!`;
+    if (timing) message += faint(`  ${timing}`);
+    println(message);
   };
 }
 
@@ -181,6 +181,10 @@ export default function Logger({
   }
 
   defineProperties(this, {
+    newline: {
+      configurable,
+      value: () => println(),
+    },
     signOff: {
       configurable,
       value: createSignOff({ println }),

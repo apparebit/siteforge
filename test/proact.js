@@ -44,7 +44,11 @@ const theQuestion = h('div', { class: 'highlight' }, ultimate);
 harness.test('@grr/proact/vdom.js', async t => {
   const props = { class: ['logo', 'positive'], role: 'presentation' };
   const logo = h('div', props, h('span'), h('span'), h('span'));
-  t.equal(logo, props);
+  t.strictSame(logo, {
+    ...props,
+    type: 'div',
+    children: Array(3).fill(h('span')),
+  });
   t.equal(logo.type, 'div');
   t.strictSame(logo.children, Array(3).fill(h('span')));
 

@@ -3,19 +3,22 @@
 
 import minify from 'babel-minify';
 import configure from './config.js';
-import { copyFile, rmdir, toDirectory } from '@grr/fs';
+import { copyFile, readFile, rmdir, toDirectory } from '@grr/fs';
 import cssnano from 'cssnano';
 import { EOL } from 'os';
 import Executor from '@grr/async';
 import Inventory from '@grr/inventory';
+import Logger from '@grr/logger';
 import postcss from 'postcss';
-import { resolve } from 'path';
+import { join, resolve } from 'path';
 import run from '@grr/run';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
+const __directory = toDirectory(import.meta.url);
+
 const BUILD_HTACCESS = resolve(
-  toDirectory(import.meta.url),
+  __directory,
   '../../server-configs-apache/bin/build.sh'
 );
 
@@ -37,8 +40,8 @@ async function inventorize(executor, config) {
     ignoreNoEnt: true,
     isExcluded: config.options.doNotBuild,
     onFile: (_, source, path) => {
-      config.logger.info(`Adding "${path}" to inventory`);
-      inventory.addFile(path, { source });
+      const { kind = 'file' } = inventory.addFile(path, { source });
+      config.logger.info(`Adding ${kind} "${path}" to inventory`);
     },
     run: (...args) => executor.submit(...args),
   }).done;
@@ -50,8 +53,9 @@ async function inventorize(executor, config) {
 // Shared Resources
 
 async function copyAsset(path, file, config) {
-  config.logger.info(`Copying resource "${path}"`);
-  const built = file.mountPath(config.options.buildDir);
+  const { kind = 'file' } = file;
+  config.logger.info(`Copying ${kind} "${path}"`);
+  const built = file.mountAt(config.options.buildDir);
   await copyFile(file.source, built);
 }
 
@@ -214,7 +218,7 @@ function deploy(config) {
 
 let taskNo = 1;
 function task(config, description) {
-  config.logger.notice(`site:forge §${taskNo++}. ${description}`);
+  config.logger.notice(`site:forge §${taskNo++}: ${description}`);
 }
 
 async function main() {
@@ -222,13 +226,24 @@ async function main() {
   // Determine Configuration, Handle Version and Help Display
 
   const start = Date.now();
-  const config = await configure();
+  let config;
+
+  try {
+    config = await configure();
+    config.logger = new Logger({ volume: config.options.volume });
+  } catch (x) {
+    config = { options: { help: true }, logger: new Logger() };
+    config.logger.error(x.message);
+    config.logger.newline();
+  }
 
   if (config.options.version) {
-    console.error(`site:forge ${config.forge.version}${EOL}`);
+    config.logger.notice(`site:forge ${config.forge.version}${EOL}`);
   }
   if (config.options.help) {
-    console.error(config.usage);
+    config.logger.notice(
+      await readFile(join(__directory, 'usage.txt'), 'utf8')
+    );
   }
   if (config.options.version || config.options.help) {
     return;
@@ -256,7 +271,7 @@ async function main() {
     config.options.build ||
     config.options.validate
   ) {
-    task(config, `Traverse "${config.options.contentDir}"`);
+    task(config, `Create inventory of "${config.options.contentDir}"`);
     try {
       inventory = await inventorize(executor, config);
     } catch (x) {
@@ -282,7 +297,7 @@ async function main() {
   // Build Content
 
   if (config.options.build) {
-    task(config, `Build in "${config.options.buildDir}"`);
+    task(config, `Generate build in "${config.options.buildDir}"`);
     await build(inventory, executor, config);
   }
 

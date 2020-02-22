@@ -11,7 +11,6 @@ import {
 
 import glob from '@grr/glob';
 import { join, resolve } from 'path';
-import Logger from '@grr/logger';
 import { readFile, toDirectory } from '@grr/fs';
 
 const { assign, defineProperty } = Object;
@@ -133,16 +132,8 @@ const configure = async () => {
   // Merge options giving priority to CLI arguments over website manifest.
   const options = assign({}, optionDefaults, pkg, cli);
 
-  // Instantiate the default logger.
-  const logger = new Logger({ volume: options.volume });
-
-  // Load tool help if necessary.
-  const usage = options.help
-    ? await readFile(join(__directory, 'usage.txt'), 'utf8')
-    : null;
-
   // Et voila!
-  return { site, forge, options, logger, usage };
+  return { site, forge, options };
 };
 
 export default configure;

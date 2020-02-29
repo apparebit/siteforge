@@ -2,8 +2,11 @@
   "name": "@grr/inventory",
   "version": "0.1.0",
   "type": "module",
-  "main": "inventory.js",
-  "description": "in-memory inventory of files contributing content to a website",
+  "main": "./inventory.js",
+  "exports": {
+    "./path": "./path.js"
+  },
+  "description": "in-memory inventory of website content and builders",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",

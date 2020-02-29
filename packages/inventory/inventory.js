@@ -1,35 +1,15 @@
 /* © 2020 Robert Grimm */
 
+import { kind } from './path.js';
 import { posix } from 'path';
-import { readFile, writeFile, writeVersionedFile } from '@grr/fs';
-import { runInNewContext } from 'vm';
-import { strict } from 'assert';
+import { strict as assert } from 'assert';
 
 const { assign, defineProperties } = Object;
-const { basename, dirname, extname, isAbsolute, join, parse, relative } = posix;
+const { dirname, isAbsolute, join, parse, relative } = posix;
 const configurable = true;
 const enumerable = true;
-const FRONT_OPEN = /\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
-const FRONT_CLOSE = '</script>';
-const { parse: parseJson, stringify: stringifyJson } = JSON;
-
-// =============================================================================
-
-// Regex for extracting copyright notice at top of source file.
-const NOTICE = new RegExp(
-  `^` + // Start at the beginning.
-  `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
-  `\\s*` + // Also ignore any space if present.
-  `(?:` + // Match either just a multi-line comment or 1+ single-line comments.
-  `(?:\\/\\*` + // Multi-line comment it is.
-  `[\\s*_=-]*` + // Ignore any number of spacing or "decorative" characters.
-  `((?:\\(c\\)|©|copyright).*?)` + // Extract the copyright notice.
-  `[\\s*_=-]*` + // Again, ignore spacing or decorative characters.
-  `\\*\\/)` + // Until we reach end of comment: It's safe to split content here.
-  `|(?:\\/\\/[\\p{Zs}*_=-]*\\n)*` + // Or: Single-line comments its is.
-    `(?:\\/\\/\\p{Zs}*((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Extract notice.
-  'iu' // Oh yeah, ignore case and embrace the Unicode.
-);
+const LA_FLOR = Symbol('secret');
+const { stringify: stringifyJson } = JSON;
 
 // Popular copy pasta refined with local seasoning
 // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
@@ -38,211 +18,12 @@ const escapeRegex = literal => literal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 // =============================================================================
 
 class File {
-  /** Map the given file path to its extension. */
-  static extension(path) {
-    let { name, ext } = parse(path);
-    let ext2;
-    if (ext === '.js') {
-      ext2 = extname(name);
-      if (ext2) {
-        ext = ext2 + ext;
-      }
-    }
-    return ext;
-  }
-
-  /**
-   * Map the given file extension to a coarser content kind. Unknown or
-   * non-existent extensions map to `undefined`
-   */
-  static kind(extension) {
-    return {
-      '.css': 'style',
-      '.data.js': 'data',
-      '.gif': 'image',
-      '.htaccess': 'configuration',
-      '.htm': 'markup',
-      '.html': 'markup',
-      '.jpg': 'image',
-      '.jpeg': 'image',
-      '.js': 'script',
-      '.png': 'image',
-      '.svg': 'image',
-      '.txt': 'configuration', // E.g., robots.txt
-      '.webmanifest': 'configuration', // PWAs
-      '.webp': 'image',
-      '.woff': 'font',
-      '.woff2': 'font',
-    }[extension || ''];
-  }
-
-  /**
-   * Mount the given path at the given root. Unlike Node.js' native `join`
-   * operation, this method relativizes the path by stripping the root directory
-   * before it joins the two paths.
-   */
-  static mount(root, path) {
-    if (isAbsolute(path)) path = relative('/', path);
-    return join(root, path);
-  }
-
-  /** Create a new path with `from`'s file name and `to`'s directory. */
-  static reroot(from, to) {
-    return join(dirname(to), basename(from));
-  }
-
-  // ---------------------------------------------------------------------------
-
-  constructor(inventory, path, data = {}) {
-    strict.ok(inventory instanceof Inventory);
-    strict.equal(typeof path, 'string');
-
+  constructor(path, data = {}) {
     assign(this, data);
-
-    const ext = File.extension(path);
     defineProperties(this, {
-      extension: {
-        configurable,
-        enumerable,
-        value: ext,
-      },
-      kind: {
-        configurable,
-        enumerable,
-        value: File.kind(ext),
-      },
-      inventory: {
-        configurable,
-        enumerable,
-        value: inventory,
-      },
-      path: {
-        configurable,
-        enumerable,
-        value: path,
-      },
+      path: { configurable, enumerable, value: path },
+      kind: { configurable, enumerable, value: kind(path) },
     });
-  }
-
-  mountAt(root) {
-    return File.mount(root, this.path);
-  }
-
-  async read({
-    encoding = this.encoding || 'utf8',
-    source = this.source,
-  } = {}) {
-    // Validate `source` path and optional `encoding`.
-    strict.ok(source);
-    strict.equal(typeof source, 'string');
-    strict.equal(typeof encoding, 'string');
-    if (!this.source) this.source = source;
-
-    let json = false;
-    if (encoding === 'json') {
-      encoding = 'utf8';
-      json = true;
-    }
-
-    // Actually read the file.
-    let content = await readFile(source, encoding);
-    if (typeof content === 'string' && content.charCodeAt(0) === 0xfeff) {
-      content = content.slice(1);
-    }
-    if (json) {
-      content = parseJson(content);
-    }
-    this.content = content;
-    return content;
-  }
-
-  extractCopyrightNotice() {
-    const { content } = this;
-    strict.equal(typeof content, 'string');
-
-    const [prefix, copyright] = content.match(NOTICE) || [];
-    if (!prefix) return undefined;
-
-    this.copyright = copyright.trim();
-    this.content = content.slice(prefix.length);
-    return this.copyright;
-  }
-
-  prefixCopyrightNotice() {
-    let { copyright, content } = this;
-    if (!copyright) return;
-    strict.equal(typeof copyright, 'string');
-    strict.equal(typeof content, 'string');
-
-    this.content = `/* ${copyright} */ ${content}`;
-  }
-
-  extractFrontMatter() {
-    const { content } = this;
-    strict.equal(typeof content, 'string');
-
-    // Determine character range of front matter.
-    const match = content.match(FRONT_OPEN);
-    if (match == null) return undefined;
-    const start = match[0].length;
-    const end = content.indexOf(FRONT_CLOSE);
-    if (end === -1) {
-      throw new Error(`front matter for "${this.path}" has no closing tag`);
-    }
-
-    // Evaluate and validate front matter.
-    const metadata = runInNewContext(
-      `(${content.slice(start, end)})`,
-      undefined, // create fresh sandbox
-      {
-        filename: this.path,
-        displayErrors: true,
-        contextCodeGeneration: {
-          strings: false, // Disable eval()
-          wasm: false, // Disable wasm
-        },
-      }
-    );
-
-    if (metadata == null || typeof metadata !== 'object') {
-      throw new Error(`front matter for "${this.path}" is not an object`);
-    }
-
-    // Patch file object.
-    this.metadata = metadata;
-    this.content = content.slice(end + FRONT_CLOSE.length).trim();
-    return metadata;
-  }
-
-  async transform(fn, { withCopyrightNotice = false } = {}) {
-    strict.equal(typeof fn, 'function');
-
-    if (withCopyrightNotice) this.extractCopyrightNotice();
-    this.content = await fn(this.content);
-    if (withCopyrightNotice) this.prefixCopyrightNotice();
-  }
-
-  async write({
-    encoding = this.encoding || 'utf8',
-    targetDir = this.targetDir,
-    versioned = this.versioned,
-  } = {}) {
-    const { content, path } = this;
-    strict.ok(typeof content === 'string' || content instanceof Buffer);
-    strict.equal(typeof path, 'string');
-    strict.equal(typeof targetDir, 'string');
-
-    const target = join(targetDir, path);
-    if (!versioned) {
-      await writeFile(target, content, encoding);
-      this.target = target;
-    } else {
-      const effective = await writeVersionedFile(target, content, encoding);
-      this.target = File.reroot(effective, target);
-    }
-
-    // Now that the content has been written out, we don't need it in memory.
-    delete this.content;
   }
 
   toString() {
@@ -253,58 +34,42 @@ class File {
 // =============================================================================
 
 class Directory {
-  static is(value) {
-    return value instanceof Directory;
-  }
-
-  #inventory;
   #path;
   #entries;
 
-  constructor(parent, name) {
+  constructor(parent = this, name = '/') {
+    if (parent === this) {
+      this.#path = name;
+    } else {
+      this.#path = join(parent.#path, name);
+      parent.#entries.set(name, this);
+    }
     this.#entries = new Map();
     this.#entries.set('.', this);
-
-    if (!Directory.is(parent)) {
-      this.#inventory = parent;
-      this.#entries.set('..', this);
-      this.#path = '/';
-    } else {
-      this.#inventory = parent.#inventory;
-      this.#entries.set('..', parent);
-      parent.#entries.set(name, this);
-      this.#path = join(parent.#path, name);
-    }
+    this.#entries.set('..', parent);
   }
 
-  // prettier-ignore
-  get path() { return this.#path; }
+  get path() {
+    return this.#path;
+  }
 
   lookup(
     path,
     { fillInMissingSegments = false, validateLastSegment = false } = {}
   ) {
-    strict.equal(typeof path, 'string');
+    assert.ok(!isAbsolute(path), 'path must be relative');
 
-    if (path === '/') return this.#inventory.root;
+    const segments = path.split('/');
 
-    let segments, cursor;
-    if (isAbsolute(path)) {
-      segments = path.split('/').slice(1);
-      cursor = this.#inventory.root;
-    } else {
-      segments = path.split('/');
-      cursor = this;
-    }
-
+    let cursor = this;
     for (let index = 0; index < segments.length; index++) {
       const name = segments[index];
 
       if (cursor.#entries.has(name)) {
-        const skip = index < segments.length - 1 || !validateLastSegment;
+        const skip = !validateLastSegment && index === segments.length - 1;
         const entry = cursor.#entries.get(name);
 
-        if (skip || Directory.is(entry)) {
+        if (entry instanceof Directory || skip) {
           cursor = entry;
         } else {
           throw new Error(
@@ -323,28 +88,26 @@ class Directory {
     return cursor;
   }
 
-  addFile(name, data = {}) {
-    strict.equal(typeof name, 'string');
+  _add(secret, name, data = {}) {
+    assert.equal(secret, LA_FLOR, `Don't call me, I'll call you!`);
+    assert.ok(name && typeof name === 'string');
+
     if (this.#entries.has(name)) {
-      throw new Error(
-        `entry "${name}" in directory "${this.#path}" already exists`
-      );
+      throw new Error(`directory "${this.#path}" already has entry "${name}"`);
     }
 
-    const file = new File(this.#inventory, join(this.#path, name), data);
+    const file = new File(join(this.#path, name), data);
     this.#entries.set(name, file);
-    this.#inventory.indexByKind(file);
     return file;
   }
 
   // ---------------------------------------------------------------------------
 
-  /** Convert this directory object to JSON. */
   toJSON() {
     const entries = {};
     for (const [name, value] of this.#entries) {
       if (name !== '.' && name !== '..') {
-        if (Directory.is(value)) {
+        if (value instanceof Directory) {
           entries[name] = value.toJSON();
         } else {
           entries[name] = value.toString();
@@ -354,7 +117,6 @@ class Directory {
     return entries;
   }
 
-  /** Convert this directory object to a string. */
   toString() {
     return stringifyJson(this.toJSON(), null, 2);
   }
@@ -363,86 +125,115 @@ class Directory {
 // =============================================================================
 
 export default class Inventory {
-  static create() {
-    return new Inventory();
-  }
+  #root = new Directory();
+  #byKind = new Map();
+  #versionedPaths = new Map();
 
-  #root;
-  #byKind;
-  #renamed;
+  add(path, data = {}) {
+    assert.ok(isAbsolute(path), 'path must be absolute');
 
-  constructor() {
-    this.#root = new Directory(this);
+    // Create new file object within directory hierarchy.
+    let { dir, base } = parse(path);
+    let parent = this.#root;
+    if (dir !== '/') {
+      parent = parent.lookup(relative('/', dir), {
+        fillInMissingSegments: true,
+        validateLastSegment: true,
+      });
+    }
+    const file = parent._add(LA_FLOR, base, data);
 
-    this.#byKind = {
-      data: new Map(),
-      configuration: new Map(),
-      font: new Map(),
-      image: new Map(),
-      markup: new Map(),
-      script: new Map(),
-      style: new Map(),
-    };
+    // Add file's path to secondary
+    const { kind } = file;
+    if (this.#byKind.has(kind)) {
+      this.#byKind.get(kind).push(file);
+    } else {
+      this.#byKind.set(kind, [file]);
+    }
 
-    this.#renamed = new Map();
+    return file;
   }
 
   get root() {
     return this.#root;
   }
 
-  addFile(path, data = {}) {
-    const { dir, base } = parse(path);
-    return this.#root
-      .lookup(dir, { fillInMissingSegments: true, validateLastSegment: true })
-      .addFile(base, data);
-  }
+  /** Look up a single file by the given name. */
+  byPath(path, options) {
+    assert.ok(isAbsolute(path), 'path must be absolute');
+    if (path === '/') return this.#root;
 
-  lookup(path, options) {
+    path = relative('/', path);
     return this.#root.lookup(path, options);
   }
 
-  indexByKind(file) {
-    const { path, kind } = file;
-    if (kind) {
-      const index = this.#byKind[kind];
-      if (index) index.set(path, file);
-    }
-  }
-
+  /** Look up some files by their kinds. */
   *byKind(...kinds) {
     for (const kind of kinds) {
-      const index = this.#byKind[kind];
-      if (index) yield* index;
+      yield* this.#byKind.get(kind);
     }
   }
 
-  renamePath(from, to) {
-    const previously = this.#renamed.get(from);
+  /** Look up files by tool phase. */
+  *byPhase(phase) {
+    switch (phase) {
+      case 1:
+        yield* this.#byKind.get('data');
+        break;
+      case 2:
+        for (const [kind, index] of this.#byKind) {
+          if (kind === 'component' || kind === 'data' || kind === 'markup') {
+            continue;
+          }
+          yield* index;
+        }
+        break;
+      case 3:
+        yield* this.#byKind.get('component');
+        yield* this.#byKind.get('markup');
+        break;
+      default:
+        assert.fail('phase must be 1, 2, or 3');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Mark path as versioned through second argument. The two paths must be the
+   * same with exception of the file name.
+   */
+  version(path, versionedPath) {
+    assert.equal(dirname(path), dirname(versionedPath));
+    const previously = this.#versionedPaths.get(path);
     if (previously) {
-      if (to !== previously) {
+      if (versionedPath !== previously) {
         throw new Error(
-          `path "${from}" has already been renamed to "${previously}"`
+          `path "${path}" is already versioned as "${versionedPath}"`
         );
       }
     } else {
-      this.#renamed.set(from, to);
+      this.#versionedPaths.set(path, versionedPath);
     }
   }
 
-  lookupRenamedPath(path) {
-    return this.#renamed.get(path);
+  /** Look up the versioned alternative for the given path. */
+  versioned(path) {
+    return this.#versionedPaths.get(path);
   }
 
-  matchRenamedPath() {
+  /**
+   * Create a regular expression that matches all paths (in their original
+   * form) that have been versioned.
+   */
+  matchOriginals() {
     return new RegExp(
-      this.#renamed
-        .keys()
-        .map(p => escapeRegex(p))
-        .join('|'),
+      [...this.#versionedPaths.keys()].map(p => escapeRegex(p)).join('|'),
       'u'
     );
   }
+
+  // ---------------------------------------------------------------------------
 
   toString() {
     return stringifyJson({ inventory: { '/': this.#root.toJSON() } }, null, 2);

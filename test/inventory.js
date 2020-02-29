@@ -1,106 +1,148 @@
 /* © 2019-2020 Robert Grimm */
 
 import Inventory from '@grr/inventory';
+import { cool, kind as kindOf } from '@grr/inventory/path';
 import harness from './harness.js';
-import { resolve } from 'path';
-import { toDirectory } from '@grr/fs';
 
-const DIRECTORY = toDirectory(import.meta.url);
-const { entries } = Object;
+const { entries, keys: keysOf } = Object;
 
 const FAUX = {
-  '/index.html': `<script>({
-    name: 'Apparebit',
-    alternateName: 'It Will Appear',
-    url: 'https://apparebit.com',
-  })</script><p>Welcome to Apparebit!</p>`,
-
-  '/about/apparebit.html': `<script>{
-    name: 'About This Website',
-    url: 'https://apparebit.com/about/apparebit',
-  }</script><p>This is v3 of Apparebit.</p>`,
+  '/.htaccess': 'config',
+  '/about/apparebit.html': 'markup',
+  '/index.html': 'markup',
+  '/about/robert-grimm.js': 'component',
+  '/about/robert-grimm.jpg': 'image',
+  '/data/2020.data.js': 'data',
+  '/features/utopia/sundown.jpg': 'image',
+  '/asset/function.js': 'script',
+  '/asset/logo.svg': 'graphic',
+  '/robots.txt': 'config',
 };
 
-const MANIFEST_PREFIX = `{
-  "private": true,
-  "repository": "https://github.com/apparebit/siteforge",
-  "author": "Robert Grimm (https://apparebit.com)",
-  `;
+harness.test('@grr/inventory', t => {
+  t.test('path', t => {
+    t.is(cool('/features/ubu-trump/index.html'), '/features/ubu-trump');
+    t.is(cool('/features/ubu-trump/about.html'), '/features/ubu-trump/about');
+    t.is(
+      cool('/features/ubu-trump/the-dark-tower.jpg'),
+      '/features/ubu-trump/the-dark-tower.jpg'
+    );
+    t.is(cool('/features/ubu-trump/'), '/features/ubu-trump');
 
-harness.test('@grr/inventory', async t => {
-  const inventory = Inventory.create();
-  for (const [path, content] of entries(FAUX)) {
-    inventory.addFile(path, { content });
-  }
+    for (const [path, kind] of entries(FAUX)) {
+      t.is(kindOf(path), kind);
+    }
 
-  let indexDotHtml = inventory.lookup('/index.html');
-  t.equal(indexDotHtml.path, '/index.html');
-  t.equal(indexDotHtml.extension, '.html');
-  t.equal(indexDotHtml.kind, 'markup');
-
-  const apparebitDotHtml = inventory.lookup('/about/apparebit.html');
-  t.equal(apparebitDotHtml.path, '/about/apparebit.html');
-  t.equal(apparebitDotHtml.extension, '.html');
-  t.equal(apparebitDotHtml.kind, 'markup');
-  t.equal(apparebitDotHtml.toString(), 'File(/about/apparebit.html)');
-
-  t.equal(inventory.root.lookup('index.html'), indexDotHtml);
-  let dir = inventory.root.lookup('.');
-  t.equal(dir.path, '/');
-  t.equal(
-    inventory.root.lookup('about').lookup('apparebit.html'),
-    apparebitDotHtml
-  );
-
-  // Error conditions for lookup and file creation.
-  t.throws(() => inventory.lookup('/index.html/index.html'));
-  t.throws(() => inventory.lookup('/file-really-does-not-exist'));
-  t.throws(() =>
-    inventory.lookup('/about/apparebit.html', { validateLastSegment: true })
-  );
-  t.throws(() => inventory.addFile('/index.html'));
-
-  // Well-formed front matter.
-  let metadata = indexDotHtml.extractFrontMatter();
-  t.equal(metadata.name, 'Apparebit');
-  t.equal(metadata.alternateName, 'It Will Appear');
-  t.equal(metadata.url, 'https://apparebit.com');
-  t.equal(indexDotHtml.content, '<p>Welcome to Apparebit!</p>');
-
-  // No or malformed front matter.
-  indexDotHtml.content = '';
-  t.equal(indexDotHtml.extractFrontMatter(), undefined);
-
-  indexDotHtml.content = '<script>...';
-  t.throws(() => indexDotHtml.extractFrontMatter());
-
-  indexDotHtml.content = `<script>665</script>Whatever!`;
-  t.throws(() => indexDotHtml.extractFrontMatter());
-
-  const file = inventory.addFile('/file', {
-    source: resolve(DIRECTORY, '../package.json'),
+    t.end();
   });
 
-  let data = await file.read();
-  t.equal(typeof data, 'string');
-  t.ok(data.startsWith(MANIFEST_PREFIX));
-  t.equal(file.content, data);
+  const inventory = new Inventory();
+  t.equal(inventory.toString().replace(/\s/gu, ''), '{"inventory":{"/":{}}}');
+  t.equal(inventory.root.toString().replace(/\s/gu, ''), '{}');
 
-  file.encoding = 'utf8';
-  data = await file.read();
-  t.equal(typeof data, 'string');
-  t.ok(data.startsWith(MANIFEST_PREFIX));
+  const fauxPaths = keysOf(FAUX);
+  inventory.add(fauxPaths[0]);
+  t.equal(
+    inventory.toString().replace(/\s/gu, ''),
+    '{"inventory":{"/":{".htaccess":"File(/.htaccess)"}}}'
+  );
 
-  file.encoding = 'json';
-  data = await file.read();
-  t.ok(data);
-  t.equal(typeof data, 'object');
-  t.equal(data.repository, 'https://github.com/apparebit/siteforge');
-  t.equal(data.author, 'Robert Grimm (https://apparebit.com)');
-  t.equal(file.content, data);
+  inventory.add(fauxPaths[1]);
+  t.equal(
+    inventory.toString().replace(/\s/gu, ''),
+    '{"inventory":{"/":{".htaccess":"File(/.htaccess)",' +
+      '"about":{"apparebit.html":"File(/about/apparebit.html)"}}}}'
+  );
 
-  const d2 = await file.read();
-  t.strictSame(d2, data);
+  for (const path of fauxPaths.slice(2)) {
+    inventory.add(path);
+  }
+
+  let ent = inventory.byPath('/');
+  t.is(ent.path, '/');
+  t.is(inventory.root, ent);
+
+  ent = inventory.byPath('/index.html');
+  t.is(ent.path, '/index.html');
+  t.is(ent.kind, 'markup');
+
+  let ent2 = inventory.root.lookup('index.html');
+  t.is(ent2, ent);
+
+  ent = inventory.root.lookup('.');
+  t.is(ent, inventory.root);
+  ent = ent.lookup('..');
+  t.is(ent, inventory.root);
+  ent = ent.lookup('features').lookup('utopia');
+  t.is(ent, inventory.byPath('/features/utopia'));
+
+  function checkFileIndex(fileIterator, paths) {
+    t.same(
+      [...fileIterator].map(f => f.path),
+      paths
+    );
+  }
+
+  checkFileIndex(inventory.byKind('graphic', 'image'), [
+    '/asset/logo.svg',
+    '/about/robert-grimm.jpg',
+    '/features/utopia/sundown.jpg',
+  ]);
+
+  checkFileIndex(inventory.byPhase(1), ['/data/2020.data.js']);
+  checkFileIndex(inventory.byPhase(2), [
+    '/.htaccess',
+    '/robots.txt',
+    '/about/robert-grimm.jpg',
+    '/features/utopia/sundown.jpg',
+    '/asset/function.js',
+    '/asset/logo.svg',
+  ]);
+  checkFileIndex(inventory.byPhase(3), [
+    '/about/robert-grimm.js',
+    '/about/apparebit.html',
+    '/index.html',
+  ]);
+
+  // Error Conditions While Adding Files
+  t.throws(() => inventory.add('about'), /path must be absolute/u);
+  t.throws(
+    () => inventory.root._add(665, 'boo'),
+    /Don't call me, I'll call you!/u
+  );
+  t.throws(
+    () => inventory.add('/index.html'),
+    /directory "\/" already has entry "index.html"/u
+  );
+
+  // Error Conditions While Retrieving Files
+  t.throws(() => inventory.byPath('about'), /path must be absolute/u);
+  t.throws(() => [...inventory.byPhase(0)], /phase must be 1, 2, or 3/u);
+
+  // Error Conditions During Directory Look Up
+  t.throws(
+    () => inventory.root.lookup('/index.html'),
+    /path must be relative/u
+  );
+  t.throws(
+    () => inventory.root.lookup('features/dystopia/index.html'),
+    /entry "dystopia" in directory "\/features" does not exist/u
+  );
+  t.throws(() => {
+    inventory.root.lookup('about/robert-grimm.js/index.html');
+  }, /entry "robert-grimm.js" in directory "\/about" is not a directory/u);
+
+  // Versioned File Names
+  inventory.version('/some/style.css', '/some/style-v~89abcdef.css');
+  inventory.version('/some/style.css', '/some/style-v~89abcdef.css');
+  t.throws(() =>
+    inventory.version('/some/style.css', '/some/style-v~ffffffff.css')
+  );
+
+  t.equal(inventory.versioned('/some/style.css'), '/some/style-v~89abcdef.css');
+  t.equal(inventory.versioned('/some/other/style.css'), undefined);
+
+  t.equal(inventory.matchOriginals().toString(), '/\\/some\\/style\\.css/u');
 
   t.end();
 });

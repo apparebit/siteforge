@@ -104,7 +104,7 @@ const initializeOptions = config => {
   return options;
 };
 
-const lookupConfiguration = (option, config) => {
+const lookUpConfiguration = (option, config) => {
   if (option === '_') {
     return {
       name: '_',
@@ -153,7 +153,7 @@ export const optionsFromObject = (options, config) => {
   const errors = [];
 
   for (let option of keysOf(options)) {
-    const { name, type, description } = lookupConfiguration(option, config);
+    const { name, type, description } = lookUpConfiguration(option, config);
 
     if (type === undefined) {
       errors.push(`Unknown option ${description}`);
@@ -205,7 +205,7 @@ export const optionsFromArguments = (
   let cursor = 0;
 
   const setopt = (arg, key, value) => {
-    const { name, type, description } = lookupConfiguration(key, config);
+    const { name, type, description } = lookUpConfiguration(key, config);
 
     if (type === undefined) {
       errors.push(`Unknown command line option ${description}`);

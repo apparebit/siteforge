@@ -7,7 +7,6 @@ import {
   isVersionedPath,
   readFile,
   rmdir,
-  toCoolPath,
   toDirectory,
   withTrailingSlash,
   writeVersionedFile,
@@ -43,21 +42,6 @@ harness.test('@grr/fs', t => {
     // toDirectory()
     t.notOk(__directory.startsWith('file:'));
     t.ok(__directory.endsWith('/test'));
-
-    // toCoolPath()
-    t.equal(
-      toCoolPath('/features/ubu-trump/index.html'),
-      '/features/ubu-trump'
-    );
-    t.equal(
-      toCoolPath('/features/ubu-trump/about.html'),
-      '/features/ubu-trump/about'
-    );
-    t.equal(
-      toCoolPath('/features/ubu-trump/the-dark-tower.jpg'),
-      '/features/ubu-trump/the-dark-tower.jpg'
-    );
-    t.equal(toCoolPath('/features/ubu-trump/'), '/features/ubu-trump');
 
     t.end();
   });

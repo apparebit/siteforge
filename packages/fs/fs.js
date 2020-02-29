@@ -1,6 +1,6 @@
 /* © 2019-2020 Robert Grimm */
 
-import { basename, dirname, extname, posix } from 'path';
+import { basename, dirname, extname } from 'path';
 import { createHash } from 'crypto';
 import { promises } from 'fs';
 import { fileURLToPath } from 'url';
@@ -12,8 +12,6 @@ const {
   mkdir: doMkdir,
   writeFile: doWriteFile,
 } = promises;
-
-const { join: posixJoin, parse: parsePosixPath } = posix;
 
 const DOT = '.'.charCodeAt(0);
 const SLASH = '/'.charCodeAt(0);
@@ -44,33 +42,6 @@ export function withTrailingSlash(url) {
 /** Get the directory of the given file URL as a path. */
 export function toDirectory(url) {
   return dirname(fileURLToPath(url));
-}
-
-/**
- * Make the given path look "cool". Taking a cue from [cool
- * URLs](https://www.w3.org/Provider/Style/URI), this function removes
- * `index.htm` and `index.html` from paths for HTML documents and the extensions
- * `.htm` and `.html` from the paths for all other HTML documents. It also
- * removes the trailing slash from all paths, as they make paths more complex
- * without adding expressivity. Unfortunately, in the absence of an index file
- * and trailing slash, browsers resolve relative URLs off the parent directory
- * and not the page itself. Hence, they should be rewritten to absolute URLs.
- * The practice of using `.htm` appears largely confined to Windows users. It
- * would be a grave mistake to ignore it in a function that removes the
- * extension.
- */
-export function toCoolPath(path) {
-  // Node.js' path.posix.parse() eliminates any trailing slash without trace.
-  const { dir, base, name, ext } = parsePosixPath(path);
-  if (ext === '.html' || ext === '.htm') {
-    if (name === 'index') {
-      return dir;
-    } else {
-      return posixJoin(dir, name);
-    }
-  }
-
-  return posixJoin(dir, base);
 }
 
 const LENGTH = 8;

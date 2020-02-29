@@ -67,6 +67,7 @@ const optionTypes = aliased(
     doNotValidate: FileGlob,
     dryRun: Boolean,
     includeDir: FilePath,
+    json: Boolean,
     realm: String,
     rightsNotice: String,
     versionAssets: Boolean,

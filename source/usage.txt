@@ -14,6 +14,9 @@ It supports the following task-independent options:
   -v, --verbose              Increase the volume by one level
   -q, --quiet                Decrease the volume by one level
 
+  --json                     Log in newline-separated JSON format
+                             instead of (colorful) plain text.
+
   --realm <label>            `development` or `production`
 
 If the only argument is "-v", "-vh", or "-hv", site:forge treats the "-v"
@@ -45,6 +48,11 @@ The following options apply to the deploy task:
 
 The default volume is 0. At that level, the output of error(), warning(), and
 notice() is visible, though info() and debug() are suppressed.
+
+site:forge recognizes the following environment variables:
+
+  NO_COLOR                  If defined, log without color.
+  NODE_DISABLE_COLORS       If defined, log without color.
 
 site:forge is © 2019-2020 Robert Grimm
 

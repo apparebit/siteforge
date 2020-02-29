@@ -4,6 +4,7 @@
     "target": "es2020"
   },
   "include": [
-    "lib/**/*.js"
+    "packages/**/*.js",
+    "source/**/*.js"
   ]
 }

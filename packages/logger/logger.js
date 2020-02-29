@@ -7,7 +7,9 @@ const { defineProperties, defineProperty, keys: keysOf } = Object;
 const EOL = /\r?\n/gu;
 const ERROR_PREFIX = /^([A-Za-z]*Error): /u;
 const { has } = Reflect;
-const isPlain = process.env.NODE_DISABLE_COLORS;
+const isPlain =
+  process.env.NODE_DISABLE_COLORS != null || process.env.NO_COLOR != null;
+const { stringify } = JSON;
 const { trunc } = Math;
 const writable = true;
 
@@ -21,26 +23,16 @@ const styles = {
   red: s => `\x1b[1;31m${s}\x1b[39;22m`,
 };
 
-const adjustStyles = isPlain => ({
-  bold: isPlain ? styles.plain : styles.bold,
-  faint: isPlain ? styles.plain : styles.faint,
-  green: isPlain ? styles.plain : styles.green,
-  magenta: isPlain ? styles.plain : styles.magenta,
-  orange: isPlain ? styles.plain : styles.orange,
-  plain: styles.plain,
-  red: isPlain ? styles.plain : styles.red,
-});
-
-const adjustedStyles = adjustStyles(isPlain);
+const adjust = style => (isPlain ? s => s : style);
 
 const levels = {
   // Possibly add panic (-3) and trace (3).
-  error: { volume: -2, format: adjustedStyles.red },
-  warning: { volume: -1, format: adjustedStyles.orange },
-  success: { volume: 0, format: adjustedStyles.green },
-  notice: { volume: 0, format: adjustedStyles.bold },
-  info: { volume: 1, format: adjustedStyles.plain },
-  debug: { volume: 2, format: adjustedStyles.faint },
+  error: { volume: -2, format: adjust(styles.red) },
+  warning: { volume: -1, format: adjust(styles.orange) },
+  success: { volume: 0, format: adjust(styles.green) },
+  notice: { volume: 0, format: adjust(styles.bold) },
+  info: { volume: 1, format: adjust(styles.plain) },
+  debug: { volume: 2, format: adjust(styles.faint) },
 };
 
 const chopOffErrorPrefix = s => {
@@ -83,14 +75,14 @@ const formatAsLines = (primary, ...rest) => {
 };
 
 function createLogFunction(level, { label, println = console.error } = {}) {
-  const prefix = label ? `${adjustedStyles.magenta(label)} ` : '';
+  const prefix = label ? `${adjust(styles.magenta)(label)} ` : '';
   const counter = `${level}s`;
   const isError = level === 'error';
   const isWarning = level === 'warning';
 
   const printDiagnostic = s => println(prefix + levels[level].format(s));
   const printExplanation = s => println(prefix + s);
-  const printDetail = s => println(prefix + adjustedStyles.faint(s));
+  const printDetail = s => println(prefix + adjust(styles.faint)(s));
 
   return function log(...args) {
     this[counter]++;
@@ -111,8 +103,6 @@ function createLogFunction(level, { label, println = console.error } = {}) {
 }
 
 function createSignOff({ println = console.error } = {}) {
-  const { faint, green } = adjustedStyles;
-
   return function signOff(start) {
     let timing;
     if (start) {
@@ -134,8 +124,8 @@ function createSignOff({ println = console.error } = {}) {
     }
 
     if (!this.errors && !this.warnings) {
-      let message = green(`Happy, happy, joy, joy!`);
-      if (timing) message += faint(`  ${timing}`);
+      let message = adjust(styles.green)(`Happy, happy, joy, joy!`);
+      if (timing) message += adjust(styles.faint)(`  ${timing}`);
       println(message);
       return;
     }
@@ -151,16 +141,56 @@ function createSignOff({ println = console.error } = {}) {
       message += this.warnings > 1 ? ' warnings.' : ' warning.';
     }
     message += ` So ${this.errors ? 'very ' : ''}sad!`;
-    if (timing) message += faint(`  ${timing}`);
+    if (timing) message += adjust(styles.faint)(`  ${timing}`);
     println(message);
   };
 }
 
+function createJsonLogFunction(level, { label, println = console.error } = {}) {
+  const counter = `${level}s`;
+  const normalize = value => {
+    if (value instanceof Error) {
+      const replacement = {
+        name: value.name,
+        message: value.message,
+        stack: value.stack,
+      };
+      if (value.cause) replacement.cause = normalize(value.cause);
+      return replacement;
+    } else {
+      return value;
+    }
+  };
+
+  return function log(...args) {
+    this[counter]++;
+    println(stringify({ label, level, arguments: args }, normalize));
+  };
+}
+
+function createJsonSignOff({ println = console.error } = {}) {
+  return function signOff(start) {
+    const duration = start ? Date.now() - start : -1;
+    println(
+      stringify({
+        level: 'done',
+        errors: this.errors,
+        warnings: this.warnings,
+        duration,
+      })
+    );
+  };
+}
+
 export default function Logger({
+  inJSON = false,
   label,
   println = console.error,
   volume = 0,
 } = {}) {
+  const logFunction = inJSON ? createJsonLogFunction : createLogFunction;
+  const signOff = inJSON ? createJsonSignOff : createSignOff;
+
   for (const level of keysOf(levels)) {
     const descriptor = levels[level];
 
@@ -169,7 +199,7 @@ export default function Logger({
     } else {
       defineProperty(this, level, {
         configurable,
-        value: createLogFunction(level, { label, println }),
+        value: logFunction(level, { label, println }),
       });
     }
 
@@ -187,11 +217,7 @@ export default function Logger({
     },
     signOff: {
       configurable,
-      value: createSignOff({ println }),
-    },
-    formatAsLines: {
-      configurable,
-      value: formatAsLines,
+      value: signOff({ println }),
     },
   });
 }

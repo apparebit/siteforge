@@ -41,124 +41,152 @@ const theQuestion = h('div', { class: 'highlight' }, ultimate);
 
 // =============================================================================
 
-harness.test('@grr/proact/vdom.js', async t => {
-  const props = { class: ['logo', 'positive'], role: 'presentation' };
-  const logo = h('div', props, h('span'), h('span'), h('span'));
-  t.strictSame(logo, {
-    ...props,
-    type: 'div',
-    children: Array(3).fill(h('span')),
+harness.test('@grr/proact', t => {
+  t.test('h', async t => {
+    const props = { class: ['logo', 'positive'], role: 'presentation' };
+    const logo = h('div', props, h('span'), h('span'), h('span'));
+    t.strictSame(logo, {
+      ...props,
+      type: 'div',
+      children: Array(3).fill(h('span')),
+    });
+    t.equal(logo.type, 'div');
+    t.strictSame(logo.children, Array(3).fill(h('span')));
+
+    t.equal(tag(logo), 'div');
+    t.equal(tag(logo.children[0]), 'span');
+    t.equal(tag(h(() => {})), 'ViewComponent');
+
+    t.ok(isInternalProperty('children'));
+    t.ok(isInternalProperty('type'));
+    t.notOk(isInternalProperty('cite'));
+
+    t.ok(isInternalChild());
+    t.ok(isInternalChild(null));
+    t.ok(isInternalChild(false));
+    t.ok(isInternalChild(true));
+    t.ok(isInternalChild(''));
+    t.notOk(isInternalChild(665));
+    t.notOk(isInternalChild('Off the Mark'));
+    t.notOk(isInternalChild({}));
+
+    t.notOk(isTextualChild());
+    t.notOk(isTextualChild(true));
+    t.notOk(isTextualChild({}));
+    t.ok(isTextualChild(665));
+    t.ok(isTextualChild(42n));
+    t.ok(isTextualChild('w00t'));
+
+    t.notOk(isComponent());
+    t.notOk(isComponent(true));
+    t.notOk(isComponent(665));
+    t.notOk(isComponent({}));
+    t.ok(isComponent({ type: () => {} }));
+
+    const steps = [];
+    for await (const step of traverse(theQuestion)) {
+      steps.push(step);
+    }
+
+    t.strictSame(steps, [
+      {
+        code: Opcode.EnterNode,
+        parent: undefined,
+        node: theQuestion,
+      },
+      { code: Opcode.EnterNode, parent: 'div', node: ultimate },
+      {
+        code: Opcode.Text,
+        parent: 'span',
+        node: 'And the answer is   42!',
+      },
+      {
+        code: Opcode.ExitNode,
+        parent: 'div',
+        node: ultimate,
+      },
+      {
+        code: Opcode.ExitNode,
+        parent: undefined,
+        node: theQuestion,
+      },
+    ]);
+
+    t.end();
   });
-  t.equal(logo.type, 'div');
-  t.strictSame(logo.children, Array(3).fill(h('span')));
 
-  t.equal(tag(logo), 'div');
-  t.equal(tag(logo.children[0]), 'span');
-  t.equal(tag(h(() => {})), 'ViewComponent');
+  // ---------------------------------------------------------------------------
 
-  t.ok(isInternalProperty('children'));
-  t.ok(isInternalProperty('type'));
-  t.notOk(isInternalProperty('cite'));
+  t.test('html', t => {
+    t.same(
+      html`
+        <div class="highlight"></div>
+      `,
+      { type: 'div', class: 'highlight', children: [] }
+    );
 
-  t.ok(isInternalChild());
-  t.ok(isInternalChild(null));
-  t.ok(isInternalChild(false));
-  t.ok(isInternalChild(true));
-  t.ok(isInternalChild(''));
-  t.notOk(isInternalChild(665));
-  t.notOk(isInternalChild('Off the Mark'));
-  t.notOk(isInternalChild({}));
+    t.same(
+      html`
+        <div class="highlight"><span>The answer is 42!</span></div>
+      `,
+      {
+        type: 'div',
+        class: 'highlight',
+        children: [{ type: 'span', children: ['The answer is 42!'] }],
+      }
+    );
 
-  t.notOk(isTextualChild());
-  t.notOk(isTextualChild(true));
-  t.notOk(isTextualChild({}));
-  t.ok(isTextualChild(665));
-  t.ok(isTextualChild(42n));
-  t.ok(isTextualChild('w00t'));
+    t.end();
+  });
 
-  t.notOk(isComponent());
-  t.notOk(isComponent(true));
-  t.notOk(isComponent(665));
-  t.notOk(isComponent({}));
-  t.ok(isComponent({ type: () => {} }));
+  // ---------------------------------------------------------------------------
 
-  const steps = [];
-  for await (const step of traverse(theQuestion)) {
-    steps.push(step);
-  }
+  t.test('render', async t => {
+    t.equal(escapeAttribute(`totally-fine`), `totally-fine`);
+    t.equal(escapeAttribute(`totally fine`), `"totally fine"`);
+    t.equal(escapeAttribute(`totally & fine`), `"totally &amp; fine"`);
 
-  t.strictSame(steps, [
-    {
-      code: Opcode.EnterNode,
-      parent: undefined,
-      node: theQuestion,
-    },
-    { code: Opcode.EnterNode, parent: 'div', node: ultimate },
-    {
-      code: Opcode.Text,
-      parent: 'span',
-      node: 'And the answer is   42!',
-    },
-    {
-      code: Opcode.ExitNode,
-      parent: 'div',
-      node: ultimate,
-    },
-    {
-      code: Opcode.ExitNode,
-      parent: undefined,
-      node: theQuestion,
-    },
-  ]);
+    t.equal(escapeText(`Nothing to see here!`), `Nothing to see here!`);
+    t.equal(escapeText(`"'&'"`), `&#34;&#39;&amp;&#39;&#34;`);
 
-  t.end();
-});
+    t.ok(isValidComment('This is a comment.'));
 
-// =============================================================================
+    t.notOk(isValidRawText('script', 'totally invalid! </script '));
+    t.notOk(isValidRawText('style', 'totally invalid! </style '));
+    t.notOk(isValidRawText('code', 'totally not raw text </code '));
+    t.ok(isValidRawText('textarea', 'This is some text in a textarea'));
 
-harness.test('@grr/proact/render.js', async t => {
-  t.equal(escapeAttribute(`totally-fine`), `totally-fine`);
-  t.equal(escapeAttribute(`totally fine`), `"totally fine"`);
-  t.equal(escapeAttribute(`totally & fine`), `"totally &amp; fine"`);
+    t.notOk(isValidComment('> This is not a valid comment.'));
+    t.notOk(isValidComment('-> This is not a valid comment.'));
+    t.notOk(isValidComment('This is not a valid comment. <!-'));
+    t.notOk(isValidComment('This is not <!-- a valid comment.'));
+    t.notOk(isValidComment('This is not --> a valid comment.'));
+    t.notOk(isValidComment('This is not --!> a valid comment.'));
 
-  t.equal(escapeText(`Nothing to see here!`), `Nothing to see here!`);
-  t.equal(escapeText(`"'&'"`), `&#34;&#39;&amp;&#39;&#34;`);
+    const model = await Model.load();
+    const steps = [];
+    for await (const step of render(theQuestion, { model })) {
+      steps.push(step);
+    }
 
-  t.ok(isValidComment('This is a comment.'));
+    t.equal(
+      steps.join(''),
+      '<div class=highlight><span>And the answer is 42!</span></div>'
+    );
 
-  t.notOk(isValidRawText('script', 'totally invalid! </script '));
-  t.notOk(isValidRawText('style', 'totally invalid! </style '));
-  t.notOk(isValidRawText('code', 'totally not raw text </code '));
-  t.ok(isValidRawText('textarea', 'This is some text in a textarea'));
+    t.equal(
+      await Sq.from(
+        render(
+          html`
+            <div class="highlight"><span>And the answer is 42!</span></div>
+          `
+        )
+      ).join(),
+      '<div class=highlight><span>And the answer is 42!</span></div>'
+    );
 
-  t.notOk(isValidComment('> This is not a valid comment.'));
-  t.notOk(isValidComment('-> This is not a valid comment.'));
-  t.notOk(isValidComment('This is not a valid comment. <!-'));
-  t.notOk(isValidComment('This is not <!-- a valid comment.'));
-  t.notOk(isValidComment('This is not --> a valid comment.'));
-  t.notOk(isValidComment('This is not --!> a valid comment.'));
-
-  const model = await Model.load();
-  const steps = [];
-  for await (const step of render(theQuestion, { model })) {
-    steps.push(step);
-  }
-
-  t.equal(
-    steps.join(''),
-    '<div class=highlight><span>And the answer is 42!</span></div>'
-  );
-
-  t.equal(
-    await Sq.from(
-      render(
-        html`
-          <div class="highlight"><span>And the answer is 42!</span></div>
-        `
-      )
-    ).join(),
-    '<div class=highlight><span>And the answer is 42!</span></div>'
-  );
+    t.end();
+  });
 
   t.end();
 });

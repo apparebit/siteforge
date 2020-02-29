@@ -57,6 +57,11 @@ harness.test('@grr/walk', async t => {
 
   const expectedFiles = [
     ...expectedFilesShortWalk.slice(0, 4),
+    '/contentforge/LICENSE',
+    '/contentforge/README.md',
+    '/contentforge/builder.js',
+    '/contentforge/package.json',
+    '/contentforge/transform.js',
     '/fs/LICENSE',
     '/fs/README.md',
     '/fs/fs.js',
@@ -74,6 +79,7 @@ harness.test('@grr/walk', async t => {
     '/inventory/README.md',
     '/inventory/inventory.js',
     '/inventory/package.json',
+    '/inventory/path.js',
     '/logger/LICENSE',
     '/logger/README.md',
     '/logger/logger.js',
@@ -121,7 +127,7 @@ harness.test('@grr/walk', async t => {
   t.strictSame(actualFiles.sort(), expectedFilesShortWalk);
   t.strictSame(metrics, {
     readdir: 3,
-    entries: 20,
+    entries: 21,
     lstat: 11,
     realpath: 0,
     file: 8,
@@ -134,6 +140,7 @@ harness.test('@grr/walk', async t => {
   const executor = new Executor();
 
   ({ done, metrics } = walk(root, {
+    isExcluded: path => path.includes('node_modules'),
     onFile(_, __, vpath) {
       actualFiles.push(vpath);
     },
@@ -146,11 +153,11 @@ harness.test('@grr/walk', async t => {
 
   t.strictSame(actualFiles.sort(), expectedFiles);
   t.strictSame(metrics, {
-    readdir: 13,
-    entries: 65,
-    lstat: 66,
+    readdir: 14,
+    entries: 73,
+    lstat: 73,
     realpath: 0,
-    file: 53,
+    file: 59,
   });
 
   // ---------------------------------------------------------------------------

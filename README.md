@@ -189,13 +189,17 @@ packages are:
 
   * [__@grr/html__](packages/html) provides a model for well-formed HTML based
     on HTML5, WAI-ARIA, and the Open Graph Protocol.
+  * [__@grr/inventory__](packages/inventory) manages the files contributing to a
+    website's content. It implements the primary index hierarchically mapping
+    paths to in-memory file objects as well as secondary indexes capturing, for
+    example, kinds of content and versioned content.
+  * [__@grr/contentforge__](package/contentforge) implements coarse-grained
+    content transformations, such as reading sources, extracting metadata,
+    minifying content, and writing results. It also composes these
+    transformations into complete content-specific build pipelines.
   * [__@grr/proact__](packages/proact) implements the proactive view system,
     notably a template tag for creating virtual DOM fragments and a render
     function for validating and emitting HTML.
-  * [__@grr/inventory__](packages/inventory) provides an in-memory
-    representation of a file system hierarchy and methods for processing the
-    those files.
-
 
 ## 3. The Guidelines in Practice
 

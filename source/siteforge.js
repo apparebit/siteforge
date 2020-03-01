@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 // © 2020 Robert Grimm
 
-import minify from 'babel-minify';
+import builderFor from '@grr/contentforge';
 import configure from './config.js';
-import { copyFile, readFile, rmdir, toDirectory } from '@grr/fs';
-import cssnano from 'cssnano';
+import { readFile, rmdir, toDirectory } from '@grr/fs';
 import { EOL } from 'os';
 import Executor from '@grr/async';
 import Inventory from '@grr/inventory';
 import Logger from '@grr/logger';
-import postcss from 'postcss';
 import { join, resolve } from 'path';
 import run from '@grr/run';
 import vnuPath from 'vnu-jar';
@@ -31,16 +29,16 @@ const IGNORED_VALIDATIONS = [
 ];
 
 // -----------------------------------------------------------------------------
-// File System Inventory
+// Inventory of File System
 
-async function inventorize(executor, config) {
+async function takeInventory(executor, config) {
   const inventory = new Inventory();
 
   await walk(config.options.contentDir, {
     ignoreNoEnt: true,
     isExcluded: config.options.doNotBuild,
     onFile: (_, source, path) => {
-      const { kind = 'file' } = inventory.addFile(path, { source });
+      const { kind = 'file' } = inventory.add(path, { source });
       config.logger.info(`Adding ${kind} "${path}" to inventory`);
     },
     run: (...args) => executor.submit(...args),
@@ -50,121 +48,37 @@ async function inventorize(executor, config) {
 }
 
 // -----------------------------------------------------------------------------
-// Shared Resources
+// Build
 
-async function copyAsset(path, file, config) {
-  const { kind = 'file' } = file;
-  config.logger.info(`Copying ${kind} "${path}"`);
-  const built = file.mountAt(config.options.buildDir);
-  await copyFile(file.source, built);
-}
+async function build(executor, config) {
+  for (const phase of [1, 2, 3]) {
+    for (const file of config.inventory.byPhase(phase)) {
+      const builder = builderFor(file.kind);
+      if (builder) {
+        executor.run(builder, undefined, file, config);
+      } else {
+        config.logger.error(
+          `Unable to build ${file.kind || 'file'} "${file.path}"`
+        );
+      }
+    }
 
-// -----------------------------------------------------------------------------
-// Scripts
-
-async function buildScript(path, file, config) {
-  config.logger.info(`Compressing script "${path}"`);
-
-  await file.read();
-  await file.transform(
-    content => minify(content, {}, { comments: false }).code,
-    { withCopyrightNotice: true }
-  );
-  await file.write({
-    targetDir: config.options.buildDir,
-    versioned: config.options.versionAssets && path !== '/sw.js',
-  });
-}
-
-// -----------------------------------------------------------------------------
-// Styles
-
-const css = postcss([cssnano({ preset: 'default' })]);
-
-function reportPostCSSWarning(logger, warn) {
-  let msg = '';
-  if (warn.node && warn.node.type !== 'root') {
-    msg += `${warn.node.source.start.line}:${warn.node.source.start.column}: `;
+    // We effectively implement structured concurrency: All tasks spawned in an
+    // iteration of the outer loop are joined again by the following await.
+    await executor.onIdle();
   }
-  msg += warn.text;
-  if (warn.plugin) {
-    msg += ` [${warn.plugin}]`;
-  }
-  logger.warning(msg);
-}
-
-async function buildStyle(path, file, config) {
-  config.logger.info(`Compressing style "${path}"`);
-
-  await file.read();
-  await file.transform(
-    async content => {
-      const minified = await css.process(content, {
-        from: file.source,
-        to: file.mountPath(config.options.buildDir),
-      });
-      minified
-        .warnings()
-        .forEach(warn => reportPostCSSWarning(config.logger, warn));
-      return minified.css;
-    },
-    { withCopyrightNotice: true }
-  );
-  await file.write({
-    targetDir: config.options.buildDir,
-    versioned: config.options.versionAssets,
-  });
-}
-
-// -----------------------------------------------------------------------------
-// Pages
-
-async function buildPage(path, file, config) {
-  config.logger.info(`Building page "${path}"`);
-
-  await file.read();
-  await file.write({ targetDir: config.options.buildDir });
-}
-
-// -----------------------------------------------------------------------------
-// Work Scheduling
-
-async function build(inventory, executor, config) {
-  // for (const [path, file] of inventory.byKind('data')) {
-  //   executor.call(loadData, path, file, config);
-  // }
-
-  // await executor.onIdle;
-
-  for (const [path, file] of inventory.byKind('etc', 'font', 'image')) {
-    executor.run(copyAsset, undefined, path, file, config);
-  }
-  for (const [path, file] of inventory.byKind('style')) {
-    executor.run(buildStyle, undefined, path, file, config);
-  }
-  for (const [path, file] of inventory.byKind('script')) {
-    executor.run(buildScript, undefined, path, file, config);
-  }
-
-  await executor.onIdle();
-
-  for (const [path, file] of inventory.byKind('markup')) {
-    executor.run(buildPage, undefined, path, file, config);
-  }
-
-  await executor.onIdle();
 }
 
 // -----------------------------------------------------------------------------
 // Validation
 
-function validate(inventory, config) {
+function validate(config) {
   // Nu Validator's command line interface pretends to be useful but is not.
   // Anything beyond selecting all files of a given type is impossible. That
   // means traversing the file system before traversing the file system. Yay!
   const paths = [];
-  for (const [, file] of inventory.byKind('markup')) {
-    const output = file.mountPath(config.options.buildDir);
+  for (const [, file] of config.inventory.byKind('markup')) {
+    const output = join(config.options.buildDir, file.path);
     if (!config.options.doNotValidate(output)) paths.push(output);
   }
 
@@ -230,7 +144,10 @@ async function main() {
 
   try {
     config = await configure();
-    config.logger = new Logger({ volume: config.options.volume });
+    config.logger = new Logger({
+      json: config.options.json,
+      volume: config.options.volume,
+    });
   } catch (x) {
     config = { options: { help: true }, logger: new Logger() };
     config.logger.error(x.message);
@@ -265,7 +182,6 @@ async function main() {
 
   const executor = new Executor();
 
-  let inventory;
   if (
     config.options.htaccess ||
     config.options.build ||
@@ -273,7 +189,7 @@ async function main() {
   ) {
     task(config, `Create inventory of "${config.options.contentDir}"`);
     try {
-      inventory = await inventorize(executor, config);
+      config.inventory = await takeInventory(executor, config);
     } catch (x) {
       config.logger.error(`Unable to read file system hierarchy:`, x);
       process.exitCode = 74; // EX_IOERR
@@ -298,7 +214,7 @@ async function main() {
 
   if (config.options.build) {
     task(config, `Generate build in "${config.options.buildDir}"`);
-    await build(inventory, executor, config);
+    await build(executor, config);
   }
 
   // ---------------------------------------------------------------------------
@@ -308,7 +224,7 @@ async function main() {
     task(config, `Validate markup in "${config.options.buildDir}"`);
 
     try {
-      await validate(inventory, config);
+      await validate(config);
     } catch (x) {
       config.logger.error(`Markup did not validate`, x);
       process.exitCode = 65; // EX_DATAERR

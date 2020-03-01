@@ -140,7 +140,7 @@ export function extractCopyrightNotice(file, context) {
       copyright: copyright.trim(),
       content: content.slice(prefix.length),
     };
-  } else if (context.options.copyright) {
+  } else if (context && context.options && context.options.copyright) {
     // If part of configuration, use that notice instead.
     return {
       copyright: context.options.copyright,

@@ -62,6 +62,7 @@ const optionTypes = aliased(
     buildDir: FilePath,
     cleanBuild: Boolean,
     contentDir: FilePath,
+    copyright: String,
     deploymentDir: String,
     doNotBuild: FileGlob,
     doNotValidate: FileGlob,
@@ -69,7 +70,6 @@ const optionTypes = aliased(
     includeDir: FilePath,
     json: Boolean,
     realm: String,
-    rightsNotice: String,
     versionAssets: Boolean,
     _: validateTask,
   })

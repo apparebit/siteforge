@@ -158,9 +158,8 @@ async function main() {
     config.logger.notice(`site:forge ${config.forge.version}${EOL}`);
   }
   if (config.options.help) {
-    config.logger.notice(
-      await readFile(join(__directory, 'usage.txt'), 'utf8')
-    );
+    const help = await readFile(join(__directory, 'usage.txt'), 'utf8');
+    config.logger.notice(config.logger.embolden(help));
   }
   if (config.options.version || config.options.help) {
     return;

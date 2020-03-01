@@ -1,7 +1,8 @@
-/* © 2019 Robert Grimm */
+/* © 2019–2020 Robert Grimm */
 
 import { format } from 'util';
 
+const BOLD = /<b>(.*?)<\/b>/gu;
 const configurable = true;
 const { defineProperties, defineProperty, keys: keysOf } = Object;
 const EOL = /\r?\n/gu;
@@ -12,6 +13,8 @@ const isPlain =
 const { stringify } = JSON;
 const { trunc } = Math;
 const writable = true;
+
+// -----------------------------------------------------------------------------
 
 const styles = {
   bold: s => `\x1b[1m${s}\x1b[22m`,
@@ -34,6 +37,8 @@ const levels = {
   info: { volume: 1, format: adjust(styles.plain) },
   debug: { volume: 2, format: adjust(styles.faint) },
 };
+
+// -----------------------------------------------------------------------------
 
 const chopOffErrorPrefix = s => {
   const [prefix] = ERROR_PREFIX.exec(s) || [];
@@ -146,6 +151,8 @@ function createSignOff({ println = console.error } = {}) {
   };
 }
 
+// -----------------------------------------------------------------------------
+
 function createJsonLogFunction(level, { label, println = console.error } = {}) {
   const counter = `${level}s`;
   const normalize = value => {
@@ -182,6 +189,8 @@ function createJsonSignOff({ println = console.error } = {}) {
   };
 }
 
+// -----------------------------------------------------------------------------
+
 export default function Logger({
   inJSON = false,
   label,
@@ -210,10 +219,15 @@ export default function Logger({
     });
   }
 
+  const bold = adjust(styles.bold);
   defineProperties(this, {
     newline: {
       configurable,
       value: () => println(),
+    },
+    embolden: {
+      configurable,
+      value: text => text.replace(BOLD, (_, span) => bold(span)),
     },
     signOff: {
       configurable,

@@ -3,14 +3,19 @@
 import {
   copyAsset,
   extractCopyrightNotice,
+  loadModule,
   log,
   minifyScript,
   minifyStyle,
   pipe,
   prefixCopyrightNotice,
   readSource,
+  renderVDOM,
+  runModule,
   writeTarget,
 } from './transform.js';
+
+import { KIND } from '@grr/inventory/path';
 
 // -----------------------------------------------------------------------------
 
@@ -20,12 +25,20 @@ export const buildPage = pipe(
   writeTarget
 );
 
-export const buildScript = pipe(
+export const buildClientScript = pipe(
   log('info', file => `Minifying script "${file.path}"`),
   readSource,
   extractCopyrightNotice,
   minifyScript,
   prefixCopyrightNotice,
+  writeTarget
+);
+
+export const buildServerScript = pipe(
+  log('info', file => `Executing script "${file.path}"`),
+  loadModule,
+  runModule,
+  renderVDOM,
   writeTarget
 );
 
@@ -39,20 +52,21 @@ export const buildStyle = pipe(
 );
 
 export const copyResource = pipe(
-  log('info', file => `Copying ${file.kind || 'file'} "${file.path}`),
+  log('info', file => `Copying ${file.kind || 'file'} "${file.path}"`),
   copyAsset
 );
 
 // -----------------------------------------------------------------------------
 
-export default function builderFor(kind) {
+export default function selectBuilderFor(kind) {
   return {
-    config: copyResource,
-    font: copyResource,
-    graphic: copyResource,
-    image: copyResource,
-    markup: buildPage,
-    script: buildScript,
-    style: buildStyle,
+    [KIND.CONTENT_SCRIPT]: buildServerScript,
+    [KIND.FONT]: copyResource,
+    [KIND.GRAPHIC]: copyResource,
+    [KIND.IMAGE]: copyResource,
+    [KIND.MARKUP]: buildPage,
+    [KIND.METADATA]: copyResource,
+    [KIND.SCRIPT]: buildClientScript,
+    [KIND.STYLE]: buildStyle,
   }[kind];
 }

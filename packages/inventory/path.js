@@ -7,43 +7,57 @@ const {
   join: joinUrlPath,
   parse: parseUrlPath,
 } = posix;
+const { freeze } = Object;
 
-export function kind(path) {
+export const KIND = freeze({
+  CONTENT_SCRIPT: 'content-script', // Executed during website generation.
+  DATA: 'data', // File objects.
+  FONT: 'font',
+  GRAPHIC: 'graphic', // Vector graphics.
+  IMAGE: 'image', // Bitmapped image.
+  MARKDOWN: 'markdown',
+  MARKUP: 'markup', // HTML.
+  METADATA: 'metadata', // Configuration state.
+  SCRIPT: 'script', // Executed on client.
+  STYLE: 'style',
+});
+
+export function toKind(path) {
   if (path === '/.htaccess' || path === '.htaccess') {
-    return 'config';
+    return KIND.METADATA;
   }
 
   const { name, ext } = parseUrlPath(path);
   if (ext !== '.js') {
     return {
-      '.css': 'style',
-      '.htm': 'markup',
-      '.html': 'markup',
-      '.jpg': 'image',
-      '.jpeg': 'image',
-      '.md': 'markdown',
-      '.png': 'image',
-      '.svg': 'graphic',
-      '.txt': 'config', // robots.txt
-      '.webmanifest': 'config',
-      '.webp': 'image',
-      '.woff': 'font',
-      '.woff2': 'font',
+      '.css': KIND.STYLE,
+      '.htm': KIND.MARKUP,
+      '.html': KIND.MARKUP,
+      '.jpg': KIND.IMAGE,
+      '.jpeg': KIND.IMAGE,
+      '.md': KIND.MARKDOWN,
+      '.png': KIND.IMAGE,
+      '.svg': KIND.GRAPHIC,
+      '.txt': KIND.METADATA, // robots.txt
+      '.webmanifest': KIND.METADATA,
+      '.webp': KIND.IMAGE,
+      '.woff': KIND.FONT,
+      '.woff2': KIND.FONT,
     }[ext];
   }
 
   const ext2 = extnameUrlPath(name);
   // A data-producing component for server-side execution.
-  if (ext2 === '.data') return 'data';
+  if (ext2 === '.data') return KIND.DATA;
 
-  // We still need to distinguish content-producing components for server-side
+  // We still need to distinguish content-producing scripts for server-side
   // execution from scripts for client-side execution. While the use of a second
-  // extension generalizes, it seems a bit heavy on the protocol. Instead, we
-  // leverage existing convention that reserves certain directories for client
-  // assets and otherwise default to server components.
+  // extension for data-producing server-scripts generalizes, it is a bit heavy
+  // on protocol. Instead, we leverage existing convention that reserves certain
+  // directories for client assets and otherwise default to server scripts.
   return /^\/(assets?|library|js)\/.*?[.]js$/iu.test(path)
-    ? 'script'
-    : 'component';
+    ? KIND.SCRIPT
+    : KIND.CONTENT_SCRIPT;
 }
 
 export function cool(path) {

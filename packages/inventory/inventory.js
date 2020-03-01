@@ -1,12 +1,13 @@
 /* © 2020 Robert Grimm */
 
-import { kind } from './path.js';
+import { toKind, KIND } from './path.js';
 import { posix } from 'path';
 import { strict as assert } from 'assert';
 
 const { assign, defineProperties } = Object;
 const { dirname, isAbsolute, join, parse, relative } = posix;
 const configurable = true;
+const EMPTY_ARRAY = [];
 const enumerable = true;
 const LA_FLOR = Symbol('secret');
 const { stringify: stringifyJson } = JSON;
@@ -22,7 +23,7 @@ class File {
     assign(this, data);
     defineProperties(this, {
       path: { configurable, enumerable, value: path },
-      kind: { configurable, enumerable, value: kind(path) },
+      kind: { configurable, enumerable, value: toKind(path) },
     });
   }
 
@@ -170,7 +171,7 @@ export default class Inventory {
   /** Look up some files by their kinds. */
   *byKind(...kinds) {
     for (const kind of kinds) {
-      yield* this.#byKind.get(kind);
+      yield* this.#byKind.get(kind) || EMPTY_ARRAY;
     }
   }
 
@@ -178,19 +179,23 @@ export default class Inventory {
   *byPhase(phase) {
     switch (phase) {
       case 1:
-        yield* this.#byKind.get('data');
+        yield* this.#byKind.get(KIND.DATA) || EMPTY_ARRAY;
         break;
       case 2:
         for (const [kind, index] of this.#byKind) {
-          if (kind === 'component' || kind === 'data' || kind === 'markup') {
+          if (
+            kind === KIND.CONTENT_SCRIPT ||
+            kind === KIND.DATA ||
+            kind === KIND.MARKUP
+          ) {
             continue;
           }
-          yield* index;
+          yield* index || EMPTY_ARRAY;
         }
         break;
       case 3:
-        yield* this.#byKind.get('component');
-        yield* this.#byKind.get('markup');
+        yield* this.#byKind.get(KIND.CONTENT_SCRIPT) || EMPTY_ARRAY;
+        yield* this.#byKind.get(KIND.MARKUP) || EMPTY_ARRAY;
         break;
       default:
         assert.fail('phase must be 1, 2, or 3');

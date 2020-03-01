@@ -1,22 +1,22 @@
 /* © 2019-2020 Robert Grimm */
 
 import Inventory from '@grr/inventory';
-import { cool, kind as kindOf } from '@grr/inventory/path';
+import { cool, toKind, KIND } from '@grr/inventory/path';
 import harness from './harness.js';
 
 const { entries, keys: keysOf } = Object;
 
 const FAUX = {
-  '/.htaccess': 'config',
-  '/about/apparebit.html': 'markup',
-  '/index.html': 'markup',
-  '/about/robert-grimm.js': 'component',
-  '/about/robert-grimm.jpg': 'image',
-  '/data/2020.data.js': 'data',
-  '/features/utopia/sundown.jpg': 'image',
-  '/asset/function.js': 'script',
-  '/asset/logo.svg': 'graphic',
-  '/robots.txt': 'config',
+  '/.htaccess': KIND.METADATA,
+  '/about/apparebit.html': KIND.MARKUP,
+  '/index.html': KIND.MARKUP,
+  '/about/robert-grimm.js': KIND.CONTENT_SCRIPT,
+  '/about/robert-grimm.jpg': KIND.IMAGE,
+  '/data/2020.data.js': KIND.DATA,
+  '/features/utopia/sundown.jpg': KIND.IMAGE,
+  '/asset/function.js': KIND.SCRIPT,
+  '/asset/logo.svg': KIND.GRAPHIC,
+  '/robots.txt': KIND.METADATA,
 };
 
 harness.test('@grr/inventory', t => {
@@ -30,7 +30,7 @@ harness.test('@grr/inventory', t => {
     t.is(cool('/features/ubu-trump/'), '/features/ubu-trump');
 
     for (const [path, kind] of entries(FAUX)) {
-      t.is(kindOf(path), kind);
+      t.is(toKind(path), kind);
     }
 
     t.end();
@@ -64,7 +64,7 @@ harness.test('@grr/inventory', t => {
 
   ent = inventory.byPath('/index.html');
   t.is(ent.path, '/index.html');
-  t.is(ent.kind, 'markup');
+  t.is(ent.kind, KIND.MARKUP);
 
   let ent2 = inventory.root.lookup('index.html');
   t.is(ent2, ent);
@@ -83,7 +83,7 @@ harness.test('@grr/inventory', t => {
     );
   }
 
-  checkFileIndex(inventory.byKind('graphic', 'image'), [
+  checkFileIndex(inventory.byKind(KIND.GRAPHIC, KIND.IMAGE), [
     '/asset/logo.svg',
     '/about/robert-grimm.jpg',
     '/features/utopia/sundown.jpg',

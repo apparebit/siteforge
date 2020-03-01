@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // © 2020 Robert Grimm
 
-import builderFor from '@grr/contentforge';
 import configure from './config.js';
 import { readFile, rmdir, toDirectory } from '@grr/fs';
 import { EOL } from 'os';
@@ -10,6 +9,7 @@ import Inventory from '@grr/inventory';
 import Logger from '@grr/logger';
 import { join, resolve } from 'path';
 import run from '@grr/run';
+import selectBuilderFor from '@grr/contentforge';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
@@ -53,7 +53,7 @@ async function takeInventory(executor, config) {
 async function build(executor, config) {
   for (const phase of [1, 2, 3]) {
     for (const file of config.inventory.byPhase(phase)) {
-      const builder = builderFor(file.kind);
+      const builder = selectBuilderFor(file.kind);
       if (builder) {
         executor.run(builder, undefined, file, config);
       } else {

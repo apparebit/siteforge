@@ -2,9 +2,10 @@
 
 import { copyFile, readFile, writeFile, writeVersionedFile } from '@grr/fs';
 import cssnano from 'cssnano';
-import { html } from '@grr/proact';
+import { html, render } from '@grr/proact';
 import { join } from 'path';
 import minify from 'babel-minify';
+import Model from '@grr/html';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
 
@@ -129,16 +130,6 @@ export async function copyAsset(file, context) {
 
 // -----------------------------------------------------------------------------
 
-export function parseJSON(file) {
-  return { content: doParseJSON(file.content) };
-}
-
-export function parseHTML(file) {
-  return { content: html([file.content], []) };
-}
-
-// -----------------------------------------------------------------------------
-
 export function extractCopyrightNotice(file) {
   const { content } = file;
   const [prefix, _, copyright] = content.match(NOTICE) || [];
@@ -196,6 +187,46 @@ export function extractFrontMatter(file) {
     metadata,
     content: content.slice(end + FRONT_CLOSE.length).trim(),
   };
+}
+
+// -----------------------------------------------------------------------------
+
+export async function loadModule(file, context) {
+  let { path, source } = file;
+  const result = {};
+  if (!source) {
+    source = result.source = join(context.options.contentDir, path);
+  }
+
+  result.content = await import(source);
+  return result;
+}
+
+export async function runModule(file, context) {
+  let content = file.content.default(file, context);
+  if (content && typeof content.then === 'function') {
+    content = await content;
+  }
+  return { content };
+}
+
+export async function renderVDOM(file) {
+  const fragments = [];
+  const model = await Model.load();
+  for await (const fragment of render(file.content, { model })) {
+    fragments.push(fragment);
+  }
+  return { content: fragments.join('') };
+}
+
+// -----------------------------------------------------------------------------
+
+export function parseJSON(file) {
+  return { content: doParseJSON(file.content) };
+}
+
+export function parseHTML(file) {
+  return { content: html([file.content], []) };
 }
 
 // -----------------------------------------------------------------------------

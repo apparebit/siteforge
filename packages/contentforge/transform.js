@@ -130,15 +130,24 @@ export async function copyAsset(file, context) {
 
 // -----------------------------------------------------------------------------
 
-export function extractCopyrightNotice(file) {
+export function extractCopyrightNotice(file, context) {
   const { content } = file;
-  const [prefix, _, copyright] = content.match(NOTICE) || [];
-  if (!prefix) return undefined;
 
-  return {
-    copyright: copyright.trim(),
-    content: content.slice(prefix.length),
-  };
+  const [prefix, _, copyright] = content.match(NOTICE) || [];
+  if (prefix) {
+    // If present, preserve copyright notice from source code.
+    return {
+      copyright: copyright.trim(),
+      content: content.slice(prefix.length),
+    };
+  } else if (context.options.copyright) {
+    // If part of configuration, use that notice instead.
+    return {
+      copyright: context.options.copyright,
+    };
+  } else {
+    return undefined;
+  }
 }
 
 export function prefixCopyrightNotice(file) {

@@ -9,7 +9,7 @@ import Inventory from '@grr/inventory';
 import Logger from '@grr/logger';
 import { join, resolve } from 'path';
 import run from '@grr/run';
-import selectBuilderFor from '@grr/contentforge';
+import { default as selectBuilderFor, copyResource } from '@grr/contentforge';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
@@ -32,7 +32,9 @@ const IGNORED_VALIDATIONS = [
 // Inventory of File System
 
 async function takeInventory(executor, config) {
-  const inventory = new Inventory();
+  const inventory = new Inventory({
+    isStaticAsset: config.options.staticAssets,
+  });
 
   await walk(config.options.contentDir, {
     ignoreNoEnt: true,
@@ -57,9 +59,7 @@ async function build(executor, config) {
       if (builder) {
         executor.run(builder, undefined, file, config);
       } else {
-        config.logger.error(
-          `Unable to build ${file.kind || 'file'} "${file.path}"`
-        );
+        config.logger.error(`Unable to build ${file.kind} "${file.path}"`);
       }
     }
 
@@ -145,7 +145,7 @@ async function main() {
   try {
     config = await configure();
     config.logger = new Logger({
-      json: config.options.json,
+      json: config.options.logJson,
       volume: config.options.volume,
     });
   } catch (x) {
@@ -153,6 +153,8 @@ async function main() {
     config.logger.error(x.message);
     config.logger.newline();
   }
+
+  config.stats = [];
 
   if (config.options.version) {
     config.logger.notice(`site:forge ${config.forge.version}${EOL}`);

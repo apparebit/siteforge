@@ -10,6 +10,7 @@ const {
 const { freeze } = Object;
 
 export const KIND = freeze({
+  CONFIG: 'config',
   CONTENT_SCRIPT: 'content-script', // Executed during website generation.
   DATA: 'data', // File objects.
   FONT: 'font',
@@ -17,33 +18,40 @@ export const KIND = freeze({
   IMAGE: 'image', // Bitmapped image.
   MARKDOWN: 'markdown',
   MARKUP: 'markup', // HTML.
-  METADATA: 'metadata', // Configuration state.
   SCRIPT: 'script', // Executed on client.
   STYLE: 'style',
+  TEXT: 'text',
+  UNKNOWN: 'file',
 });
 
-export function toKind(path) {
-  if (path === '/.htaccess' || path === '.htaccess') {
-    return KIND.METADATA;
+export function isDefaultAssetPath(path) {
+  return /^\/(assets?|static)\//iu.test(path);
+}
+
+export function toKind(path, isStaticAsset = isDefaultAssetPath) {
+  if (path.endsWith('/.htaccess') || path.endsWith('/robots.txt')) {
+    return KIND.CONFIG;
   }
 
   const { name, ext } = parseUrlPath(path);
   if (ext !== '.js') {
-    return {
-      '.css': KIND.STYLE,
-      '.htm': KIND.MARKUP,
-      '.html': KIND.MARKUP,
-      '.jpg': KIND.IMAGE,
-      '.jpeg': KIND.IMAGE,
-      '.md': KIND.MARKDOWN,
-      '.png': KIND.IMAGE,
-      '.svg': KIND.GRAPHIC,
-      '.txt': KIND.METADATA, // robots.txt
-      '.webmanifest': KIND.METADATA,
-      '.webp': KIND.IMAGE,
-      '.woff': KIND.FONT,
-      '.woff2': KIND.FONT,
-    }[ext];
+    return (
+      {
+        '.css': KIND.STYLE,
+        '.htm': KIND.MARKUP,
+        '.html': KIND.MARKUP,
+        '.jpg': KIND.IMAGE,
+        '.jpeg': KIND.IMAGE,
+        '.md': KIND.MARKDOWN,
+        '.png': KIND.IMAGE,
+        '.svg': KIND.GRAPHIC,
+        '.txt': KIND.TEXT,
+        '.webmanifest': KIND.CONFIG,
+        '.webp': KIND.IMAGE,
+        '.woff': KIND.FONT,
+        '.woff2': KIND.FONT,
+      }[ext] || KIND.UNKNOWN
+    );
   }
 
   const ext2 = extnameUrlPath(name);
@@ -55,9 +63,7 @@ export function toKind(path) {
   // extension for data-producing server-scripts generalizes, it is a bit heavy
   // on protocol. Instead, we leverage existing convention that reserves certain
   // directories for client assets and otherwise default to server scripts.
-  return /^\/(assets?|library|js)\/.*?[.]js$/iu.test(path)
-    ? KIND.SCRIPT
-    : KIND.CONTENT_SCRIPT;
+  return isStaticAsset(path) ? KIND.SCRIPT : KIND.CONTENT_SCRIPT;
 }
 
 export function cool(path) {

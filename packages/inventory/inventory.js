@@ -1,6 +1,6 @@
 /* © 2020 Robert Grimm */
 
-import { toKind, KIND } from './path.js';
+import { isDefaultAssetPath, toKind, KIND } from './path.js';
 import { posix } from 'path';
 import { strict as assert } from 'assert';
 
@@ -19,16 +19,16 @@ const escapeRegex = literal => literal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 // =============================================================================
 
 class File {
-  constructor(path, data = {}) {
+  constructor(path, kind, data = {}) {
     assign(this, data);
     defineProperties(this, {
       path: { configurable, enumerable, value: path },
-      kind: { configurable, enumerable, value: toKind(path) },
+      kind: { configurable, enumerable, value: kind },
     });
   }
 
   toString() {
-    return `File(${this.path})`;
+    return `File(${this.kind} ${this.path})`;
   }
 }
 
@@ -89,7 +89,7 @@ class Directory {
     return cursor;
   }
 
-  _add(secret, name, data = {}) {
+  _add(secret, name, kind, data = {}) {
     assert.equal(secret, LA_FLOR, `Don't call me, I'll call you!`);
     assert.ok(name && typeof name === 'string');
 
@@ -97,7 +97,8 @@ class Directory {
       throw new Error(`directory "${this.#path}" already has entry "${name}"`);
     }
 
-    const file = new File(join(this.#path, name), data);
+    const path = join(this.#path, name);
+    const file = new File(path, kind, data);
     this.#entries.set(name, file);
     return file;
   }
@@ -129,6 +130,11 @@ export default class Inventory {
   #root = new Directory();
   #byKind = new Map();
   #versionedPaths = new Map();
+  #isStaticAsset;
+
+  constructor({ isStaticAsset = isDefaultAssetPath } = {}) {
+    this.#isStaticAsset = isStaticAsset;
+  }
 
   add(path, data = {}) {
     assert.ok(isAbsolute(path), 'path must be absolute');
@@ -142,10 +148,10 @@ export default class Inventory {
         validateLastSegment: true,
       });
     }
-    const file = parent._add(LA_FLOR, base, data);
+    const kind = toKind(path, this.#isStaticAsset);
+    const file = parent._add(LA_FLOR, base, kind, data);
 
     // Add file's path to secondary
-    const { kind } = file;
     if (this.#byKind.has(kind)) {
       this.#byKind.get(kind).push(file);
     } else {

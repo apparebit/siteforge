@@ -7,7 +7,7 @@ import harness from './harness.js';
 const { entries, keys: keysOf } = Object;
 
 const FAUX = {
-  '/.htaccess': KIND.METADATA,
+  '/.htaccess': KIND.CONFIG,
   '/about/apparebit.html': KIND.MARKUP,
   '/index.html': KIND.MARKUP,
   '/about/robert-grimm.js': KIND.CONTENT_SCRIPT,
@@ -16,7 +16,7 @@ const FAUX = {
   '/features/utopia/sundown.jpg': KIND.IMAGE,
   '/asset/function.js': KIND.SCRIPT,
   '/asset/logo.svg': KIND.GRAPHIC,
-  '/robots.txt': KIND.METADATA,
+  '/robots.txt': KIND.CONFIG,
 };
 
 harness.test('@grr/inventory', t => {
@@ -43,15 +43,15 @@ harness.test('@grr/inventory', t => {
   const fauxPaths = keysOf(FAUX);
   inventory.add(fauxPaths[0]);
   t.equal(
-    inventory.toString().replace(/\s/gu, ''),
-    '{"inventory":{"/":{".htaccess":"File(/.htaccess)"}}}'
+    inventory.toString().replace(/\s+/gu, ' '),
+    '{ "inventory": { "/": { ".htaccess": "File(config /.htaccess)" } } }'
   );
 
   inventory.add(fauxPaths[1]);
   t.equal(
-    inventory.toString().replace(/\s/gu, ''),
-    '{"inventory":{"/":{".htaccess":"File(/.htaccess)",' +
-      '"about":{"apparebit.html":"File(/about/apparebit.html)"}}}}'
+    inventory.toString().replace(/\s+/gu, ' '),
+    '{ "inventory": { "/": { ".htaccess": "File(config /.htaccess)", ' +
+      '"about": { "apparebit.html": "File(markup /about/apparebit.html)" } } } }'
   );
 
   for (const path of fauxPaths.slice(2)) {

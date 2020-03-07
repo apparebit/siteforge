@@ -45,8 +45,25 @@ const NOTICE = new RegExp(
  * but rather return an object with modified properties only. If a step does not
  * modify the argument, it should return `undefined`.
  */
+export function build(label, ...steps) {
+  return async function process(file, context) {
+    // Measure latency in nanoseconds. Log resource being built.
+    const start = global.process.hrtime.bigint();
+    const { path, kind } = file;
+    context.logger.info(`Building ${label} "${path}"`);
+
+    const diff = await pipe(...steps)(file, context);
+
+    const end = global.process.hrtime.bigint();
+    const entry = { path, kind, label, duration: end - start };
+    context.stats.push(entry);
+
+    return assign(file, diff);
+  };
+}
+
 export function pipe(...steps) {
-  return async function pipe(file, context) {
+  return async function process(file, context) {
     const diff = create(file);
     for (const step of steps) {
       let delta = step(diff, context);
@@ -57,14 +74,6 @@ export function pipe(...steps) {
     }
     setPrototypeOf(diff, null);
     return diff;
-  };
-}
-
-export function seal(pipe) {
-  return async function sealedPipe(file, context) {
-    const diff = await pipe(file, context);
-    assign(file, diff);
-    return file;
   };
 }
 
@@ -126,6 +135,12 @@ export async function copyAsset(file, context) {
 
   await copyFile(source, target);
   return result;
+}
+
+// -----------------------------------------------------------------------------
+
+export function parseJSON(file) {
+  return { content: doParseJSON(file.content) };
 }
 
 // -----------------------------------------------------------------------------
@@ -200,6 +215,12 @@ export function extractFrontMatter(file) {
 
 // -----------------------------------------------------------------------------
 
+export function parseHTML(file) {
+  return { content: html([file.content], []) };
+}
+
+// -----------------------------------------------------------------------------
+
 export async function loadModule(file, context) {
   let { path, source } = file;
   const result = {};
@@ -212,30 +233,35 @@ export async function loadModule(file, context) {
 }
 
 export async function runModule(file, context) {
-  let content = file.content.default(file, context);
-  if (content && typeof content.then === 'function') {
-    content = await content;
+  let { content } = file;
+  if (typeof content.default !== 'function') {
+    throw new Error(`default export of "${file.path}" is not a function`);
   }
+
+  try {
+    // FIXME Make call consistent with VDOM rendering.
+    content = content.default(file, context);
+    if (content && typeof content === 'function') content = await content;
+  } catch (x) {
+    const error = new Error(
+      `default export of "${file.path}" signalled error: ${x.message}`
+    );
+    error.cause = x;
+    throw error;
+  }
+
   return { content };
 }
 
-export async function renderVDOM(file) {
+// -----------------------------------------------------------------------------
+
+export async function renderHTML(file) {
   const fragments = [];
   const model = await Model.load();
   for await (const fragment of render(file.content, { model })) {
     fragments.push(fragment);
   }
   return { content: fragments.join('') };
-}
-
-// -----------------------------------------------------------------------------
-
-export function parseJSON(file) {
-  return { content: doParseJSON(file.content) };
-}
-
-export function parseHTML(file) {
-  return { content: html([file.content], []) };
 }
 
 // -----------------------------------------------------------------------------

@@ -2,7 +2,10 @@
   "name": "@grr/contentforge",
   "version": "0.1.0",
   "type": "module",
-  "main": "builder.js",
+  "exports": {
+    ".": "./builder.js",
+    "./transform": "./transform.js"
+  },
   "description": " TE ted musicComponents that are exposed to  to deal with everything else being for for basic, content-specific build functions  site:forge's basic content generators",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",

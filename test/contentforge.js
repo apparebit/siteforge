@@ -1,27 +1,26 @@
 /* © 2019-2020 Robert Grimm */
 
 import {
+  build,
   copyAsset,
   extractFrontMatter,
   exec,
-  log,
   minifyScript,
   minifyStyle,
   parseJSON,
   parseHTML,
   extractCopyrightNotice,
   prefixCopyrightNotice,
-  pipe,
   readSource,
-  seal,
   writeTarget,
-} from '@grr/contentforge/transform.js';
+} from '@grr/contentforge/transform';
 import harness from './harness.js';
 import { join } from 'path';
+import { KIND } from '@grr/inventory/path';
 import { tmpdir } from 'os';
 import { mkdir, readFile, rmdir, writeFile } from '@grr/fs';
 
-const { keys: keysOf } = Object;
+const { assign, keys: keysOf } = Object;
 
 harness.test('@grr/contentforge', async t => {
   const tmp = tmpdir();
@@ -41,27 +40,30 @@ harness.test('@grr/contentforge', async t => {
       info: msg => logged.push(['info', msg]),
       error: msg => logged.push(['error', msg]),
     },
+    stats: [],
   };
 
   // Read, Write
-  let file = { path: '/la-flor.txt' };
+  let file = { path: '/la-flor.txt', kind: KIND.TEXT };
   await rmdir(buildDir, { recursive: true });
   await rmdir(contentDir, { recursive: true });
   await mkdir(buildDir);
   await mkdir(contentDir);
   await writeFile(join(contentDir, 'la-flor.txt'), 'de mi secreto', 'utf8');
 
-  file = await seal(
-    pipe(
+  file = assign(
+    file,
+    await build(
+      'resource',
       readSource,
-      log('info', file => file.content),
       exec(({ content }) => t.equal(content, 'de mi secreto')),
       writeTarget
-    )
-  )(file, context);
+    )(file, context)
+  );
 
-  t.equal(keysOf(file).length, 4);
+  t.same(keysOf(file).sort(), ['content', 'kind', 'path', 'source', 'target']);
   t.equal(file.path, '/la-flor.txt');
+  t.equal(file.kind, KIND.TEXT);
   t.equal(file.content, undefined);
   t.equal(file.source, join(contentDir, '/la-flor.txt'));
   t.equal(file.target, join(buildDir, '/la-flor.txt'));
@@ -69,7 +71,7 @@ harness.test('@grr/contentforge', async t => {
     await readFile(join(buildDir, 'la-flor.txt'), 'utf8'),
     'de mi secreto'
   );
-  t.same(logged, [['info', 'de mi secreto']]);
+  t.same(logged, [['info', 'Building resource "/la-flor.txt"']]);
 
   await writeFile(join(contentDir, 'Amanda'), 'Gris', 'utf8');
   file = await copyAsset({ path: '/Amanda' }, context);

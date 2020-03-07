@@ -1,16 +1,16 @@
 /* © 2020 Robert Grimm */
 
 import {
+  build,
   copyAsset,
   extractCopyrightNotice,
   loadModule,
-  log,
   minifyScript,
   minifyStyle,
-  pipe,
+  parseHTML,
   prefixCopyrightNotice,
   readSource,
-  renderVDOM,
+  renderHTML,
   runModule,
   writeTarget,
 } from './transform.js';
@@ -19,14 +19,10 @@ import { KIND } from '@grr/inventory/path';
 
 // -----------------------------------------------------------------------------
 
-export const buildPage = pipe(
-  log('info', file => `Building page "${file.path}"`),
-  readSource,
-  writeTarget
-);
+export const buildPage = build('page', readSource, parseHTML, writeTarget);
 
-export const buildClientScript = pipe(
-  log('info', file => `Minifying script "${file.path}"`),
+export const buildClientScript = build(
+  'script',
   readSource,
   extractCopyrightNotice,
   minifyScript,
@@ -34,16 +30,16 @@ export const buildClientScript = pipe(
   writeTarget
 );
 
-export const buildServerScript = pipe(
-  log('info', file => `Executing script "${file.path}"`),
+export const buildServerScript = build(
+  'scripted page',
   loadModule,
   runModule,
-  renderVDOM,
+  renderHTML,
   writeTarget
 );
 
-export const buildStyle = pipe(
-  log('info', file => `Minifying style "${file.path}"`),
+export const buildStyle = build(
+  'style',
   readSource,
   extractCopyrightNotice,
   minifyStyle,
@@ -51,21 +47,18 @@ export const buildStyle = pipe(
   writeTarget
 );
 
-export const copyResource = pipe(
-  log('info', file => `Copying ${file.kind || 'file'} "${file.path}"`),
-  copyAsset
-);
+export const copyResource = build('asset', copyAsset);
 
 // -----------------------------------------------------------------------------
 
 export default function selectBuilderFor(kind) {
   return {
+    [KIND.CONFIG]: copyResource,
     [KIND.CONTENT_SCRIPT]: buildServerScript,
     [KIND.FONT]: copyResource,
     [KIND.GRAPHIC]: copyResource,
     [KIND.IMAGE]: copyResource,
     [KIND.MARKUP]: buildPage,
-    [KIND.METADATA]: copyResource,
     [KIND.SCRIPT]: buildClientScript,
     [KIND.STYLE]: buildStyle,
   }[kind];

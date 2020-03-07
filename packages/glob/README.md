@@ -14,7 +14,8 @@ double star `**` as path segment for matching arbitrary path segments including
 none, a star `*` for matching zero or more characters within a path segment, and
 a question mark `?` for matching one character within a path segment. Patterns
 can match a literal star or question mark by preceding the character with a
-backslash.
+backslash. Since relying on case is bad interface design, this package performs
+all character matches independent of case.
 
 ---
 

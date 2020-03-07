@@ -86,6 +86,6 @@ export default function glob(...globs) {
     .join('|');
 
   if (!pattern) return () => false;
-  const regex = new RegExp(`^(${pattern})$`, 'u');
+  const regex = new RegExp(`^(${pattern})$`, 'iu');
   return path => regex.test(path);
 }

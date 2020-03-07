@@ -2,8 +2,8 @@
   "name": "@grr/inventory",
   "version": "0.1.0",
   "type": "module",
-  "main": "./inventory.js",
   "exports": {
+    ".": "./inventory.js",
     "./path": "./path.js"
   },
   "description": "in-memory inventory of website content and builders",

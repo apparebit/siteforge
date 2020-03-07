@@ -14,7 +14,7 @@ It also supports the following <b>task-independent options</b>:
   -v, --verbose              Increase the volume by one level
   -q, --quiet                Decrease the volume by one level
 
-  --json                     Log in newline-separated JSON format
+  --log-json                 Log in newline-separated JSON format
                              instead of (colorful) plain text.
 
   --realm <label>            `development` or `production`
@@ -35,6 +35,8 @@ The <b>build task options</b> are:
   --clean-build              Delete previous build instead of overwriting files
   --do-not-build <glob>      Exclude matching files from build
   --copyright <notice>       Prepend copyright notice to scripts and styles
+  --static-assets <glob>     Treat files as static assets, not as views
+                             ("**/asset/**|**/assets/**|**/static/**")
   --version-assets           Version scripts and styles by injecting a hash of
                              that content into the filename.
 

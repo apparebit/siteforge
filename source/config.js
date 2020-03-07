@@ -58,7 +58,6 @@ const validateTask = (name, report) => {
 
 const optionTypes = aliased(
   assign(defaults(), {
-    asset: FileGlob,
     buildDir: FilePath,
     cleanBuild: Boolean,
     contentDir: FilePath,
@@ -68,21 +67,22 @@ const optionTypes = aliased(
     doNotValidate: FileGlob,
     dryRun: Boolean,
     includeDir: FilePath,
-    json: Boolean,
+    logJson: Boolean,
     realm: String,
+    staticAssets: FileGlob,
     versionAssets: Boolean,
     _: validateTask,
   })
 );
 
 const optionDefaults = {
-  asset: glob('**/asset/**', '**/assets/**'),
   buildDir: resolve('./build'),
   contentDir: resolve('./content'),
   doNotBuild: () => false,
   doNotValidate: () => false,
   includeDir: resolve('./include'),
   realm: process.env.NODE_ENV || 'development',
+  staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
 };
 
 // -----------------------------------------------------------------------------

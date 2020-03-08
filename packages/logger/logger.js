@@ -224,13 +224,13 @@ function createJsonSignOff({ println = console.error } = {}) {
 // -----------------------------------------------------------------------------
 
 export default function Logger({
-  inJson,
+  inJSON,
   label,
   println = console.error,
   volume = 0,
 } = {}) {
-  const logFunction = inJson ? createJsonLogFunction : createLogFunction;
-  const signOff = inJson ? createJsonSignOff : createSignOff;
+  const logFunction = inJSON ? createJsonLogFunction : createLogFunction;
+  const signOff = inJSON ? createJsonSignOff : createSignOff;
 
   for (const level of keysOf(levels)) {
     const descriptor = levels[level];
@@ -264,6 +264,10 @@ export default function Logger({
     signOff: {
       configurable,
       value: signOff({ println }),
+    },
+    inJSON: {
+      configurable,
+      value: inJSON,
     },
   });
 }

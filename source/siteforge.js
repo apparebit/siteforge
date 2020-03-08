@@ -145,7 +145,7 @@ async function main() {
   try {
     config = await configure();
     config.logger = new Logger({
-      inJson: config.options.logJson,
+      inJSON: config.options.logJson,
       volume: config.options.volume,
     });
   } catch (x) {

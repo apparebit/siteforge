@@ -40,7 +40,9 @@ harness.test('@grr/contentforge', async t => {
       info: msg => logged.push(['info', msg]),
       error: msg => logged.push(['error', msg]),
     },
-    stats: [],
+    stats: {
+      resources: [],
+    },
   };
 
   // Read, Write
@@ -71,7 +73,7 @@ harness.test('@grr/contentforge', async t => {
     await readFile(join(buildDir, 'la-flor.txt'), 'utf8'),
     'de mi secreto'
   );
-  t.same(logged, [['info', 'Building resource "/la-flor.txt"']]);
+  t.same(logged, [['info', 'Building text "/la-flor.txt"']]);
 
   await writeFile(join(contentDir, 'Amanda'), 'Gris', 'utf8');
   file = await copyAsset({ path: '/Amanda' }, context);

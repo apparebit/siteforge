@@ -2,5 +2,7 @@
   "cSpell.words": [
     "npm's",
     "transpilation"
-  ]
+  ],
+  "debug.node.useV3": true,
+  "debug.javascript.usePreview": true
 }

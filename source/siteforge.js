@@ -9,7 +9,7 @@ import Inventory from '@grr/inventory';
 import Logger from '@grr/logger';
 import { join, resolve } from 'path';
 import run from '@grr/run';
-import { default as selectBuilderFor, copyResource } from '@grr/contentforge';
+import selectBuilderFor from '@grr/contentforge';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
@@ -139,13 +139,13 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Determine Configuration, Handle Version and Help Display
 
-  const start = Date.now();
+  const start = process.hrtime.bigint();
   let config;
 
   try {
     config = await configure();
     config.logger = new Logger({
-      json: config.options.logJson,
+      inJson: config.options.logJson,
       volume: config.options.volume,
     });
   } catch (x) {
@@ -153,8 +153,6 @@ async function main() {
     config.logger.error(x.message);
     config.logger.newline();
   }
-
-  config.stats = [];
 
   if (config.options.version) {
     config.logger.notice(`site:forge ${config.forge.version}${EOL}`);
@@ -251,7 +249,8 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // Summarize Run
-  config.logger.signOff(start);
+  config.stats.latency = process.hrtime.bigint() - start;
+  config.logger.signOff(config.stats);
 }
 
 main();

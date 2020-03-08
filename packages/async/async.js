@@ -4,6 +4,7 @@ import { AsyncResource } from 'async_hooks';
 import { inspect } from 'util';
 import { strict } from 'assert';
 
+const { create } = Object;
 const { has } = Reflect;
 const IDLE = Symbol('idle');
 const RUNNING = Symbol('running');
@@ -28,7 +29,7 @@ export function rethrow(error) {
   });
 }
 
-export function newPromiseCapability(container = {}) {
+export function newPromiseCapability(container = create(null)) {
   container.promise = new Promise((resolve, reject) => {
     container.resolve = resolve;
     container.reject = reject;

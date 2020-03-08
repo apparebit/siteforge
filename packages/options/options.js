@@ -5,6 +5,7 @@ import glob from '@grr/glob';
 import { resolve } from 'path';
 
 const configurable = true;
+const { create } = Object;
 const DASH = '-'.charCodeAt(0);
 const enumerable = true;
 const { has } = Reflect;
@@ -49,6 +50,8 @@ export const FileGlob = (patterns, report) => {
  * output volume.
  */
 export const defaults = () => ({
+  __proto__: null,
+
   h: 'help',
   help: Boolean,
 
@@ -90,7 +93,7 @@ export const aliased = config => {
 
 const initializeOptions = config => {
   const descriptors = getOwnPropertyDescriptors(config);
-  const options = {};
+  const options = create(null);
 
   for (const key of keysOf(descriptors)) {
     if (key === '_') continue;

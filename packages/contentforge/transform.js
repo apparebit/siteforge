@@ -50,13 +50,13 @@ export function build(label, ...steps) {
     // Measure latency in nanoseconds. Log resource being built.
     const start = global.process.hrtime.bigint();
     const { path, kind } = file;
-    context.logger.info(`Building ${label} "${path}"`);
+    context.logger.info(`Building ${kind} "${path}"`);
 
     const diff = await pipe(...steps)(file, context);
 
     const end = global.process.hrtime.bigint();
     const entry = { path, kind, label, duration: end - start };
-    context.stats.push(entry);
+    context.stats.resources.push(entry);
 
     return assign(file, diff);
   };
@@ -95,7 +95,7 @@ export function log(level, format) {
 
 export async function readSource(file, context) {
   let { encoding, path, source } = file;
-  const result = {};
+  const result = create(null);
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
   }
@@ -125,7 +125,7 @@ export async function writeTarget(file, context) {
 
 export async function copyAsset(file, context) {
   let { path, source, target } = file;
-  const result = {};
+  const result = create(null);
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
   }
@@ -223,7 +223,7 @@ export function parseHTML(file) {
 
 export async function loadModule(file, context) {
   let { path, source } = file;
-  const result = {};
+  const result = create(null);
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
   }
@@ -267,7 +267,10 @@ export async function renderHTML(file) {
 // -----------------------------------------------------------------------------
 
 export function minifyScript(file) {
-  return { content: minify(file.content, {}, { comments: false }).code };
+  return {
+    __proto__: null,
+    content: minify(file.content, {}, { comments: false }).code,
+  };
 }
 
 const css = postcss([cssnano({ preset: 'default' })]);

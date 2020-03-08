@@ -10,6 +10,7 @@ const {
 const { freeze } = Object;
 
 export const KIND = freeze({
+  __proto__: null,
   CONFIG: 'config',
   CONTENT_SCRIPT: 'content-script', // Executed during website generation.
   DATA: 'data', // File objects.

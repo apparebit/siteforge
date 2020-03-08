@@ -126,6 +126,7 @@ harness.test('@grr/walk', async t => {
 
   t.strictSame(actualFiles.sort(), expectedFilesShortWalk);
   t.strictSame(metrics, {
+    __proto__: null,
     readdir: 3,
     entries: 21,
     lstat: 11,
@@ -153,6 +154,7 @@ harness.test('@grr/walk', async t => {
 
   t.strictSame(actualFiles.sort(), expectedFiles);
   t.strictSame(metrics, {
+    __proto__: null,
     readdir: 14,
     entries: 73,
     lstat: 73,

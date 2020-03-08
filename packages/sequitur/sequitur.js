@@ -784,11 +784,11 @@ class Sequence extends Sq {
     return collectSync(this, into);
   }
 
-  collectEntries(into = {}) {
+  collectEntries(into = create(null)) {
     return collectEntriesSync(this, into);
   }
 
-  collectDescriptors(into = {}) {
+  collectDescriptors(into = create(null)) {
     return collectDescriptorsSync(this, into);
   }
 
@@ -890,11 +890,11 @@ class AsyncSequence extends Sq {
     return collectAsync(this, into);
   }
 
-  collectEntries(into = {}) {
+  collectEntries(into = create(null)) {
     return collectEntriesAsync(this, into);
   }
 
-  collectDescriptors(into = {}) {
+  collectDescriptors(into = create(null)) {
     return collectDescriptorsAsync(this, into);
   }
 

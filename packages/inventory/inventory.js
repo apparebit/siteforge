@@ -4,7 +4,7 @@ import { isDefaultAssetPath, toKind, KIND } from './path.js';
 import { posix } from 'path';
 import { strict as assert } from 'assert';
 
-const { assign, defineProperties } = Object;
+const { assign, create, defineProperties } = Object;
 const { dirname, isAbsolute, join, parse, relative } = posix;
 const configurable = true;
 const EMPTY_ARRAY = [];
@@ -19,7 +19,7 @@ const escapeRegex = literal => literal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 // =============================================================================
 
 class File {
-  constructor(path, kind, data = {}) {
+  constructor(path, kind, data = { __proto__: null }) {
     assign(this, data);
     defineProperties(this, {
       path: { configurable, enumerable, value: path },
@@ -106,7 +106,7 @@ class Directory {
   // ---------------------------------------------------------------------------
 
   toJSON() {
-    const entries = {};
+    const entries = create(null);
     for (const [name, value] of this.#entries) {
       if (name !== '.' && name !== '..') {
         if (value instanceof Directory) {
@@ -136,7 +136,7 @@ export default class Inventory {
     this.#isStaticAsset = isStaticAsset;
   }
 
-  add(path, data = {}) {
+  add(path, data = { __proto__: null }) {
     assert.ok(isAbsolute(path), 'path must be absolute');
 
     // Create new file object within directory hierarchy.

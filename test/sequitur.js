@@ -210,7 +210,7 @@ harness.test('@grr/sequitur', t => {
   });
 
   t.test('Turning Properties into Sequences', t => {
-    const object = { a: 1, b: 2 };
+    const object = { __proto__: null, a: 1, b: 2 };
     defineProperty(object, 'c', {
       configurable,
       value: 3,
@@ -239,7 +239,11 @@ harness.test('@grr/sequitur', t => {
     );
 
     // Sq.entries()
-    t.strictSame(Sq.entries(object).collectEntries(), { a: 1, b: 2 });
+    t.strictSame(Sq.entries(object).collectEntries(), {
+      __proto__: null,
+      a: 1,
+      b: 2,
+    });
     t.strictSame(
       Sq.entries(['boo', 'boo']).collectEntries(new Map()),
       new Map([
@@ -250,7 +254,10 @@ harness.test('@grr/sequitur', t => {
 
     // Sq.descriptors()
     t.strictSame(Sq.descriptors(object).collectDescriptors(), object);
-    t.strictSame(Sq.descriptors(object).collectDescriptors({ a: 665 }), object);
+    t.strictSame(
+      Sq.descriptors(object).collectDescriptors({ __proto__: null, a: 665 }),
+      object
+    );
     t.end();
   });
 
@@ -307,7 +314,7 @@ harness.test('@grr/sequitur', t => {
 
     t.strictSame(
       await Sq.zip(['a', 'b'], Sq.of(1, 2).toAsync()).collectEntries(),
-      { a: 1, b: 2 }
+      { __proto__: null, a: 1, b: 2 }
     );
 
     // eslint-disable-next-line require-atomic-updates
@@ -381,7 +388,7 @@ harness.test('@grr/sequitur', t => {
           }
         })
         .collectDescriptors(),
-      { a: 3, b: 6, c: 9 }
+      { __proto__: null, a: 3, b: 6, c: 9 }
     );
 
     t.end();

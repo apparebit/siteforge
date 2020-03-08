@@ -3,6 +3,7 @@
 import { execFile, spawn as doSpawn } from 'child_process';
 import { promisify } from 'util';
 
+const { create } = Object;
 const doExecFile = promisify(execFile);
 
 /**
@@ -52,7 +53,7 @@ export default function run(cmd, args = [], options = {}) {
     done = true;
 
     if (!code && !signal) {
-      resolve({});
+      resolve(create(null));
     } else {
       let message = `Child process failed`;
       if (signal) {

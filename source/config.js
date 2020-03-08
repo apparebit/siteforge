@@ -76,6 +76,7 @@ const optionTypes = aliased(
 );
 
 const optionDefaults = {
+  __proto__: null,
   buildDir: resolve('./build'),
   contentDir: resolve('./content'),
   doNotBuild: () => false,
@@ -92,12 +93,14 @@ const configure = async () => {
   // Load manifests for website and tool.
   const forgeManifest = await loadForgeManifest();
   const forge = {
+    __proto__: null,
     name: 'site:forge',
     version: forgeManifest.version,
   };
 
   const siteManifest = await loadSiteManifest();
   const site = {
+    __proto__: null,
     name: siteManifest.name || 'website',
     version: siteManifest.version || new Date().toISOString(),
   };
@@ -131,10 +134,13 @@ const configure = async () => {
   );
 
   // Merge options giving priority to CLI arguments over website manifest.
-  const options = assign({}, optionDefaults, pkg, cli);
+  const options = assign({ __proto__: null }, optionDefaults, pkg, cli);
+
+  // Set up statistics object;
+  const stats = { __proto__: null, resources: [], latency: 0n };
 
   // Et voila!
-  return { site, forge, options };
+  return { __proto__: null, site, forge, options, stats };
 };
 
 export default configure;

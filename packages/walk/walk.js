@@ -59,6 +59,7 @@ export default function walk(
   // interesting.
 
   const metrics = {
+    __proto__: null,
     readdir: 0,
     entries: 0,
     lstat: 0,

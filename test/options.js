@@ -125,6 +125,7 @@ harness.test('tooling/options', t => {
   t.strictSame(
     optionsFromArguments(['--round', '3', '--', '--not-a-flag'], configuration),
     {
+      __proto__: null,
       _: ['--not-a-flag'],
       round: 3,
       volume: 0,

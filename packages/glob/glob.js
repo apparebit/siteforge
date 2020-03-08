@@ -1,9 +1,5 @@
 /* © 2019 Robert Grimm */
 
-const ANY_SEGMENT_CHAR = '[^/]';
-const ANY_SEGMENT_PART = '[^/]*?';
-const ANY_SEGMENTS = '(|.+?/)'; // Either no segment or a non-empty segment!
-const ANYTHING = '.*?';
 const QUESTION_MARK = '?'.charCodeAt(0);
 const STAR = '*'.charCodeAt(0);
 
@@ -15,9 +11,9 @@ const regexFor = segment =>
     .replace(/(?<!\\)[*?]/gu, c => {
       switch (c.charCodeAt(0)) {
         case STAR:
-          return ANY_SEGMENT_PART;
+          return '[^/]*?';
         case QUESTION_MARK:
-          return ANY_SEGMENT_CHAR;
+          return '[^/]';
         default:
           throw new Error('Unreachable statement');
       }
@@ -45,9 +41,12 @@ export default function glob(...globs) {
       const segments = glob.split(/(?<!\\)[/]/u);
       const regexFragments = [];
 
-      // If there is only one segment, treat it as if prefixed with '**/'.
-      if (segments.length === 1 && segments[0] !== '**') {
-        regexFragments.push(ANY_SEGMENTS);
+      if (segments.length === 1 && segments[0] === '**') {
+        return '.*?';
+      } else if (segments.length === 1 || segments[0] === '**') {
+        // One segment or an explicit segment wildcard accepts segments followed
+        // by slash, just a slash, or nothing.
+        regexFragments.push('(.+?[/]|[/]|)');
       }
 
       for (const [index, segment] of segments.entries()) {
@@ -58,12 +57,17 @@ export default function glob(...globs) {
             throw new SyntaxError(
               `Glob "${glob}" contains invalid segment wildcard`
             );
-          } else if (segments[index + 1] === '**') {
-            continue; // One segment wildcard suffices!
+          } else if (
+            index === 0 ||
+            (index > 0 && segments[index - 1] === '**')
+          ) {
+            // We processed starting segment wildcard above. Do not process
+            // repeated segment wildcards.
+            continue;
           } else if (hasNext) {
-            regexFragments.push(ANY_SEGMENTS);
+            regexFragments.push('(|.+?/)');
           } else {
-            regexFragments.push(ANYTHING);
+            regexFragments.push('.*?');
           }
         } else {
           regexFragments.push(regexFor(segment));
@@ -72,7 +76,7 @@ export default function glob(...globs) {
             segments[index + 1] === '**' &&
             index === segments.length - 2
           ) {
-            regexFragments.push(ANYTHING);
+            // Nothing to do.
           } else if (hasNext) {
             regexFragments.push('/');
           } else {

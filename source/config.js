@@ -137,7 +137,7 @@ const configure = async () => {
   const options = assign({ __proto__: null }, optionDefaults, pkg, cli);
 
   // Set up statistics object;
-  const stats = { __proto__: null, resources: [], latency: 0n };
+  const stats = { __proto__: null, resources: [], duration: 0n };
 
   // Et voila!
   return { __proto__: null, site, forge, options, stats };

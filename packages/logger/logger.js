@@ -110,9 +110,9 @@ function createLogFunction(level, { label, println = console.error } = {}) {
 
 function createSignOff({ println = console.error } = {}) {
   return function signOff(stats) {
-    const nanos = stats.latency % 1_000_000_000n;
+    const nanos = stats.duration % 1_000_000_000n;
     const millis = nanos / 1_000_000n;
-    const remaining = (stats.latency - nanos) / 1_000_000_000n;
+    const remaining = (stats.duration - nanos) / 1_000_000_000n;
     const seconds = remaining % 60n;
     const minutes = (remaining - seconds) / 60n;
 
@@ -215,7 +215,7 @@ function createJsonSignOff({ println = console.error } = {}) {
         errors: this.errors,
         warnings: this.warnings,
         resources: stats.resources.length,
-        duration: String(stats.latency),
+        duration: String(stats.duration),
       })
     );
   };

@@ -249,8 +249,9 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // Summarize Run
-  config.stats.latency = process.hrtime.bigint() - start;
-  config.logger.signOff(config.stats);
+  const { stats } = config;
+  stats.duration = process.hrtime.bigint() - start;
+  config.logger.signOff(stats);
 }
 
 main();

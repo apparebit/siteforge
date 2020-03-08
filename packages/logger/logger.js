@@ -11,12 +11,12 @@ const { has } = Reflect;
 const isPlain =
   process.env.NODE_DISABLE_COLORS != null || process.env.NO_COLOR != null;
 const { stringify } = JSON;
-const { trunc } = Math;
 const writable = true;
 
 // -----------------------------------------------------------------------------
 
 const styles = {
+  __proto__: null,
   bold: s => `\x1b[1m${s}\x1b[22m`,
   faint: s => `\x1b[90m${s}\x1b[39m`,
   green: s => `\x1b[1;32m${s}\x1b[39;22m`,
@@ -30,6 +30,7 @@ const adjust = style => (isPlain ? s => s : style);
 
 const levels = {
   // Possibly add panic (-3) and trace (3).
+  __proto__: null,
   error: { volume: -2, format: adjust(styles.red) },
   warning: { volume: -1, format: adjust(styles.orange) },
   success: { volume: 0, format: adjust(styles.green) },
@@ -108,29 +109,46 @@ function createLogFunction(level, { label, println = console.error } = {}) {
 }
 
 function createSignOff({ println = console.error } = {}) {
-  return function signOff(start) {
+  return function signOff(stats) {
+    const nanos = stats.latency % 1_000_000_000n;
+    const millis = nanos / 1_000_000n;
+    const remaining = (stats.latency - nanos) / 1_000_000_000n;
+    const seconds = remaining % 60n;
+    const minutes = (remaining - seconds) / 60n;
+
     let timing;
-    if (start) {
-      let duration = Date.now() - start;
-      timing = `${String(duration % 1000).padEnd(3, '0')}`; // millis
-
-      duration = trunc(duration / 1000);
-      const seconds = duration % 60;
-      const minutes = trunc(duration / 60);
-
-      if (minutes) {
-        timing = `${`${seconds}`.padStart(2, '0')}.${timing}`;
-        timing = `${minutes}:${timing}min`;
-      } else if (seconds) {
-        timing = `${seconds}.${timing}s`;
+    if (seconds || minutes) {
+      if (10n <= millis && millis <= 99n) {
+        timing = `0${millis}`;
+      } else if (0n <= millis && millis <= 9n) {
+        timing = `00${millis}`;
       } else {
-        timing = timing + 'ms';
+        timing = String(millis);
       }
+    } else {
+      timing = String(millis);
+    }
+
+    if (minutes) {
+      if (seconds > 9n) {
+        timing = `${seconds}.${timing}`;
+      } else {
+        timing = `0${seconds}.${timing}`;
+      }
+      timing = `${minutes}:${timing}min`;
+    } else if (seconds) {
+      timing = `${seconds}.${timing}s`;
+    } else {
+      timing = timing + 'ms';
     }
 
     if (!this.errors && !this.warnings) {
       let message = adjust(styles.green)(`Happy, happy, joy, joy!`);
-      if (timing) message += adjust(styles.faint)(`  ${timing}`);
+      if (timing) {
+        message += adjust(styles.faint)(
+          `  ${stats.resources.length} resources in ${timing}`
+        );
+      }
       println(message);
       return;
     }
@@ -146,7 +164,11 @@ function createSignOff({ println = console.error } = {}) {
       message += this.warnings > 1 ? ' warnings.' : ' warning.';
     }
     message += ` So ${this.errors ? 'very ' : ''}sad!`;
-    if (timing) message += adjust(styles.faint)(`  ${timing}`);
+    if (timing) {
+      message += adjust(styles.faint)(
+        ` ${stats.resources.length} resources in ${timing}`
+      );
+    }
     println(message);
   };
 }
@@ -158,12 +180,15 @@ function createJsonLogFunction(level, { label, println = console.error } = {}) {
   const normalize = value => {
     if (value instanceof Error) {
       const replacement = {
+        __proto__: null,
         name: value.name,
         message: value.message,
         stack: value.stack,
       };
       if (value.cause) replacement.cause = normalize(value.cause);
       return replacement;
+    } else if (typeof value === 'bigint') {
+      return String(value);
     } else {
       return value;
     }
@@ -171,19 +196,26 @@ function createJsonLogFunction(level, { label, println = console.error } = {}) {
 
   return function log(...args) {
     this[counter]++;
-    println(stringify({ label, level, arguments: args }, normalize));
+    const record = { time: new Date().toISOString(), label, level };
+    if (args.length === 1) {
+      record.message = normalize(args[0]);
+    } else if (args.length) {
+      record.payload = args.map(normalize);
+    }
+    println(stringify(record));
   };
 }
 
 function createJsonSignOff({ println = console.error } = {}) {
-  return function signOff(start) {
-    const duration = start ? Date.now() - start : -1;
+  return function signOff(stats) {
     println(
       stringify({
-        level: 'done',
+        time: new Date().toISOString(),
+        message: 'site:forge is done',
         errors: this.errors,
         warnings: this.warnings,
-        duration,
+        resources: stats.resources.length,
+        duration: String(stats.latency),
       })
     );
   };
@@ -192,13 +224,13 @@ function createJsonSignOff({ println = console.error } = {}) {
 // -----------------------------------------------------------------------------
 
 export default function Logger({
-  inJSON = false,
+  inJson,
   label,
   println = console.error,
   volume = 0,
 } = {}) {
-  const logFunction = inJSON ? createJsonLogFunction : createLogFunction;
-  const signOff = inJSON ? createJsonSignOff : createSignOff;
+  const logFunction = inJson ? createJsonLogFunction : createLogFunction;
+  const signOff = inJson ? createJsonSignOff : createSignOff;
 
   for (const level of keysOf(levels)) {
     const descriptor = levels[level];

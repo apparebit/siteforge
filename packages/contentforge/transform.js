@@ -24,7 +24,7 @@ const { parse: doParseJSON } = JSON;
 // -----------------------------------------------------------------------------
 // Regular expression madness
 
-const FRONT_OPEN = /\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
+const FRONT_OPEN = /^\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
 const FRONT_CLOSE = '</script>';
 
 // Regex for extracting copyright notice at top of source file.
@@ -146,8 +146,8 @@ export function parseJSON(file) {
 
 export function extractCopyrightNotice(file, context) {
   const { content } = file;
+  const [prefix, copyright] = content.match(NOTICE) || [];
 
-  const [prefix, _, copyright] = content.match(NOTICE) || [];
   if (prefix) {
     // If present, preserve copyright notice from source code.
     return {
@@ -207,6 +207,8 @@ export function extractFrontMatter(file) {
 
   if (metadata == null || typeof metadata !== 'object') {
     throw new Error(`front matter for "${file.path}" is not an object`);
+  } else {
+    setPrototypeOf(metadata, null);
   }
 
   return {
@@ -218,34 +220,38 @@ export function extractFrontMatter(file) {
 
 // -----------------------------------------------------------------------------
 
-// Currently, one of few functions that does not adhere to the (file, context)
-// -> diff signature.
+function toComponent(name, module) {
+  if (typeof module.default === 'function') {
+    return module.default;
+  } else {
+    throw new TypeError(`module "${name}" doesn't default export function`);
+  }
+}
+
 export async function loadComponent(name, context) {
   const path = join(context.options.includeDir, name);
 
   if (!context.components[name]) {
-    let component;
+    context.logger.info(`Loading component "${name}"`);
+
+    let resolve, reject;
+    context.components[name] = new Promise((yay, nay) => {
+      resolve = yay;
+      reject = nay;
+    });
 
     try {
-      // Try include directory first (using file URL, since path probably is
-      // absolute).
-      component = await import(pathToFileURL(path));
+      resolve(toComponent(name, await import(pathToFileURL(path))));
     } catch {
-      // Fall back onto Node.js' regular module resolution.
       try {
-        component = await import(name);
+        resolve(toComponent(name, await import(name)));
       } catch {
-        throw new Error(
-          `unable to locate layout module "${name}" (not an include: "${path}")`
-        );
+        reject(new Error(`unable to locate component "${name}"`));
       }
     }
-
-    context.components[name] = component;
-    return component;
-  } else {
-    return context.components[name];
   }
+
+  return context.components[name];
 }
 
 export function parseMarkup(file) {

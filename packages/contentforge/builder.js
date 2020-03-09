@@ -9,7 +9,7 @@ import {
   loadModule,
   minifyScript,
   minifyStyle,
-  parseMarkup,
+  //parseMarkup,
   prefixCopyrightNotice,
   readSource,
   renderToFile,
@@ -25,9 +25,10 @@ export const buildPage = build(
   'page',
   readSource,
   extractFrontMatter,
-  parseMarkup,
+  //parseMarkup,
   assemblePage,
-  renderToFile
+  //renderToFile
+  writeTarget
 );
 
 // FIXME What is the equivalent of front matter?

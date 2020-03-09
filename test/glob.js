@@ -13,7 +13,7 @@ harness.test('@grr/glob', t => {
     allText: 'filentxt',
     textDir1: 'dir1/file.txt',
     textDir2: 'dir1/dir2/file.txt',
-    TEXTDIR2: 'DIR1/DIR2/fILE.TXT',
+    TEXTDIR2: 'DIR1/DIR2/FILE.TXT',
     textDir3: 'dir1/dir2/dir3/file.txt',
     pdf: 'file.pdf',
     pdfDir: 'dir1/file.pdf',
@@ -86,6 +86,22 @@ harness.test('@grr/glob', t => {
   t.strictSame(applyToPaths('file.txt'), FILE_DOT_TEXT_GLOB);
   t.strictSame(applyToPaths('**/file.txt'), FILE_DOT_TEXT_GLOB);
   t.strictSame(applyToPaths('**/**/file.txt'), FILE_DOT_TEXT_GLOB);
+
+  t.strictSame(applyToPaths('dir1/**/file.txt'), {
+    text: false,
+    allText: false,
+    textDir1: true,
+    textDir2: true,
+    TEXTDIR2: true,
+    textDir3: true,
+    pdf: false,
+    pdfDir: false,
+    confusedFile: false,
+    confusedDir: false,
+    dir1: false,
+    dir2: false,
+    oops: false,
+  });
 
   t.strictSame(applyToPaths('dir1/dir2/fil?.txt'), {
     text: false,

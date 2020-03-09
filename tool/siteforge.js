@@ -123,11 +123,10 @@ function deploy(config) {
 
   if (config.options.dryRun) rsyncOptions.push('--dry-run');
 
-  return run('rsync', [
-    ...rsyncOptions,
-    config.options.buildDir,
-    config.options.deploymentDir,
-  ]);
+  let build = config.options.buildDir;
+  if (!build.endsWith('/')) build = `${build}/`;
+
+  return run('rsync', [...rsyncOptions, build, config.options.deploymentDir]);
 }
 
 // =============================================================================

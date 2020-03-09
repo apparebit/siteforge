@@ -262,12 +262,12 @@ functions for versioning file names, and functions that update the file system
 while also tolerating `ENOENT` errors. In that case, I considered the benefit of
 easier file operations far outweighing the drawbacks of maintaining such a grab
 bag. But in several other cases, that same trade-off very much favored not
-creating another package. The [@grr/inventory](packages/inventory) package is
-the other exception and, at first glance, appears even more random, notably when
-looking at the `File` class. But in that case the seeming randomness of features
-directly reflects the union of features necessary for processing a basic range
-of file types. In other words, domain-specific requirements justify the
-bundling.
+creating another package. The [@grr/contentforge](packages/contentforge) package
+is the other exception and, at first glance, appears like a grab bag of
+functions that come in useful when statically generating a website. While that
+entails some arbitrariness, the package's selection of functionality actually is
+well-justified by covering the processing of basic content types, notably HTML,
+JavaScript, and CSS.
 
 ---
 

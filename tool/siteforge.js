@@ -13,7 +13,10 @@ import selectBuilderFor from '@grr/contentforge';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
+const configurable = true;
+const { defineProperty } = Object;
 const __directory = toDirectory(import.meta.url);
+const writable = true;
 
 const BUILD_HTACCESS = resolve(
   __directory,
@@ -57,7 +60,18 @@ async function build(executor, config) {
     for (const file of config.inventory.byPhase(phase)) {
       const builder = selectBuilderFor(file.kind);
       if (builder) {
-        executor.run(builder, undefined, file, config);
+        executor.run(builder, undefined, file, config).catch(reason => {
+          if (reason instanceof Error) {
+            defineProperty(reason, 'message', {
+              configurable,
+              writable,
+              value: `${file.path}: ${reason.message}`,
+            });
+          } else {
+            reason = `${file.path}: ${reason}`;
+          }
+          config.logger.error(reason);
+        });
       } else {
         config.logger.error(`Unable to build ${file.kind} "${file.path}"`);
       }

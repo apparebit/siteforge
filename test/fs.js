@@ -2,26 +2,34 @@
 
 import {
   copyFile,
+  createWriteStream,
+  drain,
   injectIntoPath,
   isDotFile,
   isVersionedPath,
   readFile,
   rmdir,
   toDirectory,
+  unlink,
   withTrailingSlash,
   writeVersionedFile,
 } from '@grr/fs';
 
 import { createHash } from 'crypto';
+import { h } from '@grr/proact/vdom';
 import harness from './harness.js';
 import { join } from 'path';
+import Model from '@grr/html';
 import { tmpdir } from 'os';
+import { render } from '@grr/proact';
 
 const APPAREBIT = 'https://apparebit.com';
 const __directory = toDirectory(import.meta.url);
 //const DOT = '.'.charCodeAt(0);
 
 harness.test('@grr/fs', t => {
+  const tmp = tmpdir();
+
   // ---------------------------------------------------------------------------
   t.test('paths', t => {
     // isDotFile()
@@ -70,7 +78,6 @@ harness.test('@grr/fs', t => {
 
   // ---------------------------------------------------------------------------
   t.test('versionPath(), writeVersionedPath()', async t => {
-    const tmp = tmpdir();
     const path = join(tmp, 'hello.txt');
     const vp = join(tmp, 'hello.v~d9014c46.txt');
     const data = 'Hello, world!\n';
@@ -105,6 +112,52 @@ harness.test('@grr/fs', t => {
     actual = await writeVersionedFile(path, data, 'utf8');
     t.equal(actual, vp);
     t.equal(await readFile(vp, 'utf8'), data);
+
+    t.end();
+  });
+
+  // ---------------------------------------------------------------------------
+  t.test('drain()', async t => {
+    const theQuestion = h(
+      'div',
+      { class: 'highlight' },
+      h('span', null, [
+        null,
+        undefined,
+        true,
+        false,
+        'And the answer',
+        null,
+        false,
+        ' is   ',
+        [[[[42]]]],
+        '!',
+      ])
+    );
+
+    const answer = join(tmp, 'answer.txt');
+    try {
+      const model = await Model.load();
+      const writable = createWriteStream(answer, { highWaterMark: 8 });
+
+      for await (const fragment of render(theQuestion, { model })) {
+        if (!writable.write(fragment)) {
+          await drain(writable);
+        }
+      }
+      writable.end();
+
+      t.equal(
+        await readFile(answer, 'utf8'),
+        '<div class=highlight><span>And the answer is 42!</span></div>'
+      );
+    } finally {
+      try {
+        await unlink(answer);
+      } catch {
+        // Ignore.
+      }
+    }
 
     t.end();
   });

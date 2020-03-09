@@ -14,6 +14,7 @@ const regexFor = segment =>
           return '[^/]*?';
         case QUESTION_MARK:
           return '[^/]';
+        /* c8 ignore next 2 */
         default:
           throw new Error('Unreachable statement');
       }

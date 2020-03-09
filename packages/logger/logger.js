@@ -53,7 +53,9 @@ const formatAsLines = (primary, ...rest) => {
   const isPrimaryError = primary instanceof Error;
   if (isPrimaryError || (isPrimaryText && rest[0] instanceof Error)) {
     const error = isPrimaryError ? primary : rest[0];
-    let message = (isPrimaryText ? primary + ' ' : '') + error.message;
+    let message = isPrimaryText
+      ? `${primary}: ${error.message}`
+      : error.message;
     [diagnostic, ...explanation] = message.split(EOL);
 
     let offset = error.name.length + 2 + error.message.length + 1;

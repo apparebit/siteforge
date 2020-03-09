@@ -35,10 +35,15 @@ The <b>build task options</b> are:
   --clean-build              Delete previous build instead of overwriting files
   --do-not-build <glob>      Exclude matching files from build
   --copyright <notice>       Prepend copyright notice to scripts and styles
-  --static-assets <glob>     Treat files as static assets, not as views
-                             ("**/asset/**|**/assets/**|**/static/**")
+  --static-assets <glob>     Treat JavaScript files as static assets, not as
+                             views ("**/asset/**|**/assets/**|**/static/**")
   --version-assets           Version scripts and styles by injecting a hash of
                              that content into the filename.
+
+Unlike most static website generators, site:forge does not have "layouts." More
+like MDX, it has "page providers" instead:
+
+  --page-provider <path>     Use page provider ("page.js")
 
 
 The <b>validate task options</b> are:

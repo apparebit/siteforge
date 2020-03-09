@@ -68,6 +68,7 @@ const optionTypes = aliased(
     dryRun: Boolean,
     includeDir: FilePath,
     logJson: Boolean,
+    pageProvider: FilePath,
     realm: String,
     staticAssets: FileGlob,
     versionAssets: Boolean,
@@ -82,6 +83,7 @@ const optionDefaults = {
   doNotBuild: () => false,
   doNotValidate: () => false,
   includeDir: resolve('./include'),
+  pageProvider: 'page.js',
   realm: process.env.NODE_ENV || 'development',
   staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
 };
@@ -136,11 +138,14 @@ const configure = async () => {
   // Merge options giving priority to CLI arguments over website manifest.
   const options = assign({ __proto__: null }, optionDefaults, pkg, cli);
 
+  // Set up component cache. FIXME: Consider moving into inventory.
+  const components = { __proto__: null };
+
   // Set up statistics object;
   const stats = { __proto__: null, resources: [], duration: 0n };
 
   // Et voila!
-  return { __proto__: null, site, forge, options, stats };
+  return { __proto__: null, site, forge, options, components, stats };
 };
 
 export default configure;

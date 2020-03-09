@@ -9,7 +9,15 @@ import { fileURLToPath } from 'url';
 // eslint-disable-next-line no-duplicate-imports
 export { createWriteStream } from 'fs';
 
-export const { lstat, readdir, readFile, realpath, rmdir, symlink } = promises;
+export const {
+  lstat,
+  readdir,
+  readFile,
+  realpath,
+  rmdir,
+  symlink,
+  unlink,
+} = promises;
 
 const {
   copyFile: doCopyFile,

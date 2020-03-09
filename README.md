@@ -250,7 +250,7 @@ validating data items against it can be shared. The
 still has two distinct entry points, `optionsFromObject()` and
 `optionsFromArguments()`, the schema and internal logic for enforcing it are
 shared. That, in turn, simplifies [ingestion of the
-configuration](source/config.js).
+configuration](tool/config.js).
 
 ### To Package Or Not to Package
 

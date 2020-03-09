@@ -5,6 +5,6 @@
   },
   "include": [
     "packages/**/*.js",
-    "source/**/*.js"
+    "tool/**/*.js"
   ]
 }

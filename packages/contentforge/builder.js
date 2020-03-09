@@ -1,16 +1,18 @@
 /* © 2020 Robert Grimm */
 
 import {
+  assemblePage,
   build,
   copyAsset,
   extractCopyrightNotice,
+  extractFrontMatter,
   loadModule,
   minifyScript,
   minifyStyle,
-  parseHTML,
+  parseMarkup,
   prefixCopyrightNotice,
   readSource,
-  renderHTML,
+  renderToFile,
   runModule,
   writeTarget,
 } from './transform.js';
@@ -19,7 +21,23 @@ import { KIND } from '@grr/inventory/path';
 
 // -----------------------------------------------------------------------------
 
-export const buildPage = build('page', readSource, parseHTML, writeTarget);
+export const buildPage = build(
+  'page',
+  readSource,
+  extractFrontMatter,
+  parseMarkup,
+  assemblePage,
+  renderToFile
+);
+
+// FIXME What is the equivalent of front matter?
+export const buildServerScript = build(
+  'scripted page',
+  loadModule,
+  runModule,
+  assemblePage,
+  renderToFile
+);
 
 export const buildClientScript = build(
   'script',
@@ -27,14 +45,6 @@ export const buildClientScript = build(
   extractCopyrightNotice,
   minifyScript,
   prefixCopyrightNotice,
-  writeTarget
-);
-
-export const buildServerScript = build(
-  'scripted page',
-  loadModule,
-  runModule,
-  renderHTML,
   writeTarget
 );
 

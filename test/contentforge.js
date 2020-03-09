@@ -4,11 +4,10 @@ import {
   build,
   copyAsset,
   extractFrontMatter,
-  exec,
   minifyScript,
   minifyStyle,
   parseJSON,
-  parseHTML,
+  parseMarkup,
   extractCopyrightNotice,
   prefixCopyrightNotice,
   readSource,
@@ -58,7 +57,10 @@ harness.test('@grr/contentforge', async t => {
     await build(
       'resource',
       readSource,
-      exec(({ content }) => t.equal(content, 'de mi secreto')),
+      file => {
+        t.equal(file.content, 'de mi secreto');
+        return undefined; // Nothing changed.
+      },
       writeTarget
     )(file, context)
   );
@@ -110,11 +112,11 @@ harness.test('@grr/contentforge', async t => {
     })</script><p>Welcome to Apparebit!</p>`,
   };
 
-  let metadata;
-  ({ metadata, content } = extractFrontMatter(file, context));
-  t.equal(metadata.name, 'Apparebit');
-  t.equal(metadata.alternateName, 'It Will Appear');
-  t.equal(metadata.url, 'https://apparebit.com');
+  let name, alternateName, url;
+  ({ name, alternateName, url, content } = extractFrontMatter(file, context));
+  t.equal(name, 'Apparebit');
+  t.equal(alternateName, 'It Will Appear');
+  t.equal(url, 'https://apparebit.com');
   t.equal(content, '<p>Welcome to Apparebit!</p>');
 
   // Fail at Extracting Front Matter.
@@ -138,7 +140,7 @@ harness.test('@grr/contentforge', async t => {
   t.same(content, [665]);
 
   // Parse HTML.
-  ({ content } = parseHTML({
+  ({ content } = parseMarkup({
     content: `<section><h2>Headline</h2><p>Paragraph</p></section>`,
   }));
   t.same(content, {

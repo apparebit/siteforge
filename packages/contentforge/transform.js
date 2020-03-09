@@ -1,11 +1,20 @@
 /* © 2020 Robert Grimm */
 
-import { copyFile, readFile, writeFile, writeVersionedFile } from '@grr/fs';
+import {
+  copyFile,
+  createWriteStream,
+  drain,
+  readFile,
+  writeFile,
+  writeVersionedFile,
+} from '@grr/fs';
+
 import cssnano from 'cssnano';
 import { html, render } from '@grr/proact';
 import { join } from 'path';
 import minify from 'babel-minify';
 import Model from '@grr/html';
+import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
 
@@ -79,23 +88,10 @@ export function pipe(...steps) {
 
 // -----------------------------------------------------------------------------
 
-export function exec(fn) {
-  return function exec(file, context) {
-    fn(file, context);
-  };
-}
-
-export function log(level, format) {
-  return function log(file, context) {
-    context.logger[level](format(file, context));
-  };
-}
-
-// -----------------------------------------------------------------------------
-
 export async function readSource(file, context) {
-  let { encoding, path, source } = file;
   const result = create(null);
+
+  let { encoding, path, source } = file;
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
   }
@@ -109,8 +105,10 @@ export async function readSource(file, context) {
 }
 
 export async function writeTarget(file, context) {
+  const result = create(null);
+  result.content = undefined;
+
   let { content, encoding, path, target } = file;
-  const result = { content: undefined };
   if (!target) {
     target = result.target = join(context.options.buildDir, path);
   }
@@ -124,8 +122,9 @@ export async function writeTarget(file, context) {
 }
 
 export async function copyAsset(file, context) {
-  let { path, source, target } = file;
   const result = create(null);
+
+  let { path, source, target } = file;
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
   }
@@ -152,12 +151,14 @@ export function extractCopyrightNotice(file, context) {
   if (prefix) {
     // If present, preserve copyright notice from source code.
     return {
+      __proto__: null,
       copyright: copyright.trim(),
       content: content.slice(prefix.length),
     };
   } else if (context && context.options && context.options.copyright) {
     // If part of configuration, use that notice instead.
     return {
+      __proto__: null,
       copyright: context.options.copyright,
     };
   } else {
@@ -170,6 +171,7 @@ export function prefixCopyrightNotice(file) {
   if (!copyright) return undefined;
 
   return {
+    __proto__: null,
     copyright: undefined,
     content: `/* ${copyright} */ ${content}`,
   };
@@ -208,22 +210,91 @@ export function extractFrontMatter(file) {
   }
 
   return {
-    metadata,
+    __proto__: null,
+    ...metadata,
     content: content.slice(end + FRONT_CLOSE.length).trim(),
   };
 }
 
 // -----------------------------------------------------------------------------
 
-export function parseHTML(file) {
-  return { content: html([file.content], []) };
+// Currently, one of few functions that does not adhere to the (file, context)
+// -> diff signature.
+export async function loadComponent(name, context) {
+  const path = join(context.options.includeDir, name);
+
+  if (!context.components[name]) {
+    let component;
+
+    try {
+      // Try include directory first (using file URL, since path probably is
+      // absolute).
+      component = await import(pathToFileURL(path));
+    } catch {
+      // Fall back onto Node.js' regular module resolution.
+      try {
+        component = await import(name);
+      } catch {
+        throw new Error(
+          `unable to locate layout module "${name}" (not an include: "${path}")`
+        );
+      }
+    }
+
+    context.components[name] = component;
+    return component;
+  } else {
+    return context.components[name];
+  }
+}
+
+export function parseMarkup(file) {
+  return { __proto__: null, content: html([file.content], []) };
+}
+
+export async function assemblePage(file, context) {
+  const result = create(null);
+
+  let { page } = file;
+  if (!page && context.options.pageProvider) {
+    page = result.page = context.options.pageProvider;
+  }
+
+  const PageProvider = page
+    ? await loadComponent(page, context)
+    : ({ content }) => content;
+  result.content = await PageProvider(file, context);
+
+  return result;
+}
+
+export async function renderToFile(file, context) {
+  const result = create(null);
+  result.content = undefined;
+
+  let { content, path, target } = file;
+  if (!target) {
+    target = result.target = join(context.options.buildDir, path);
+  }
+
+  const model = await Model.load();
+  const writable = createWriteStream(target);
+  for await (const fragment of render(content, { model })) {
+    if (!writable.write(fragment)) {
+      await drain(writable);
+    }
+  }
+  writable.end();
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------
 
 export async function loadModule(file, context) {
-  let { path, source } = file;
   const result = create(null);
+
+  let { path, source } = file;
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
   }
@@ -250,18 +321,7 @@ export async function runModule(file, context) {
     throw error;
   }
 
-  return { content };
-}
-
-// -----------------------------------------------------------------------------
-
-export async function renderHTML(file) {
-  const fragments = [];
-  const model = await Model.load();
-  for await (const fragment of render(file.content, { model })) {
-    fragments.push(fragment);
-  }
-  return { content: fragments.join('') };
+  return { __proto__: null, content };
 }
 
 // -----------------------------------------------------------------------------

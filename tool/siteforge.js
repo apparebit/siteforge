@@ -6,6 +6,7 @@ import { readFile, rmdir, toDirectory } from '@grr/fs';
 import { EOL } from 'os';
 import Executor from '@grr/async';
 import Inventory from '@grr/inventory';
+import { KIND } from '@grr/inventory/path';
 import Logger from '@grr/logger';
 import { join, resolve } from 'path';
 import run from '@grr/run';
@@ -13,10 +14,7 @@ import selectBuilderFor from '@grr/contentforge';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
-const configurable = true;
-const { defineProperty } = Object;
 const __directory = toDirectory(import.meta.url);
-const writable = true;
 
 const BUILD_HTACCESS = resolve(
   __directory,
@@ -43,7 +41,7 @@ async function takeInventory(executor, config) {
     ignoreNoEnt: true,
     isExcluded: config.options.doNotBuild,
     onFile: (_, source, path) => {
-      const { kind = 'file' } = inventory.add(path, { source });
+      const { kind } = inventory.add(path, { source });
       config.logger.info(`Adding ${kind} "${path}" to inventory`);
     },
     run: (...args) => executor.submit(...args),
@@ -61,19 +59,10 @@ async function build(executor, config) {
       const builder = selectBuilderFor(file.kind);
       if (builder) {
         executor.run(builder, undefined, file, config).catch(reason => {
-          if (reason instanceof Error) {
-            defineProperty(reason, 'message', {
-              configurable,
-              writable,
-              value: `${file.path}: ${reason.message}`,
-            });
-          } else {
-            reason = `${file.path}: ${reason}`;
-          }
-          config.logger.error(reason);
+          config.logger.error(`Failed to build "${file.path}"`, reason);
         });
       } else {
-        config.logger.error(`Unable to build ${file.kind} "${file.path}"`);
+        config.logger.error(`No builder for ${file.kind} "${file.path}"`);
       }
     }
 
@@ -91,9 +80,8 @@ function validate(config) {
   // Anything beyond selecting all files of a given type is impossible. That
   // means traversing the file system before traversing the file system. Yay!
   const paths = [];
-  for (const [, file] of config.inventory.byKind('markup')) {
-    const output = join(config.options.buildDir, file.path);
-    if (!config.options.doNotValidate(output)) paths.push(output);
+  for (const { target } of config.inventory.byKind(KIND.MARKUP)) {
+    if (!config.options.doNotValidate(target)) paths.push(target);
   }
 
   // prettier-ignore

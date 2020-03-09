@@ -2,8 +2,12 @@
 
 import { basename, dirname, extname } from 'path';
 import { createHash } from 'crypto';
+import { once } from 'events';
 import { promises } from 'fs';
 import { fileURLToPath } from 'url';
+
+// eslint-disable-next-line no-duplicate-imports
+export { createWriteStream } from 'fs';
 
 export const { lstat, readdir, readFile, realpath, rmdir, symlink } = promises;
 
@@ -142,4 +146,26 @@ export function writeVersionedFile(path, data, options = {}) {
   // Actually determine hash, splice into path, and write file.
   const versionedPath = doVersionPath(path, data, options.encoding);
   return writeFile(versionedPath, data, options);
+}
+
+// -----------------------------------------------------------------------------
+
+/** Create promise for a writable's pending writes having correctly drained. */
+export function drain(writable) {
+  // Copied from https://nodejs.org/docs/latest/api/stream.html
+  // #stream_piping_to_writable_streams_from_async_iterators. Clearly,
+  //     await once(writable, 'drain')
+  // does not come close to handling error conditions. However, like anything
+  // streams in Node.js, the correct solution is far too involved.
+  if (writable.destroyed) {
+    return Promise.reject(
+      new Error(`writable "${writable}" closed prematurely`)
+    );
+  }
+  return Promise.race([
+    once(writable, 'drain'),
+    once(writable, 'close').then(() =>
+      Promise.reject(new Error(`writable "${writable}" closed prematurely`))
+    ),
+  ]);
 }

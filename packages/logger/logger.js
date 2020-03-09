@@ -146,7 +146,7 @@ function createSignOff({ println = console.error } = {}) {
       let message = adjust(styles.green)(`Happy, happy, joy, joy!`);
       if (timing) {
         message += adjust(styles.faint)(
-          `  ${stats.resources.length} resources in ${timing}`
+          ` Processed ${stats.resources.length} resources in ${timing}`
         );
       }
       println(message);
@@ -166,7 +166,7 @@ function createSignOff({ println = console.error } = {}) {
     message += ` So ${this.errors ? 'very ' : ''}sad!`;
     if (timing) {
       message += adjust(styles.faint)(
-        ` ${stats.resources.length} resources in ${timing}`
+        ` Processed ${stats.resources.length} resources in ${timing}`
       );
     }
     println(message);

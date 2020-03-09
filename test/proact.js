@@ -11,14 +11,14 @@ import {
   Opcode,
   tag,
   traverse,
-} from '@grr/proact/vdom.js';
+} from '@grr/proact/vdom';
 
 import {
   escapeAttribute,
   escapeText,
   isValidComment,
   isValidRawText,
-} from '@grr/proact/render.js';
+} from '@grr/proact/render';
 
 import harness from './harness.js';
 import Model from '@grr/html';

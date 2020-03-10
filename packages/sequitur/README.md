@@ -1,6 +1,38 @@
 # @grr/sequitur
 
-This package provides lazy sequences over both synchronous and asynchronous
+DO NOT USE THIS VERSION! THIS PACKAGE WAS BROKEN BY ITS OVERAMBITIOUS DESIGN.
+THE NEXT VERSION WILL BE MOSTLY SYNCHRONOUS:
+
+ 1. __It solves the wrong problem__. Pipelines over asynchronous iterables are
+    nice to have, but there is a more fundamental challenge: Pipelines over
+    promise-returning functions. If they spawn tasks at all, they probably
+    should adhere to a fork-join or structured concurrency model. They
+    definitely should implement cooperative cancellation because they may just
+    do the heavy lifting. The pipelines in
+    [__@grr/contentforge__](../contentforge) certainly do. In short, runtime
+    support for such pipelines belongs into a future rewrite of
+    [__@grr/async__](../async).
+
+ 2. __It may not solve the wrong problem__. Checking for specific prototypes
+    doesn't work so well in an effectively distributed environment such as
+    desktop browsers. The tests for iterables and iterators may already work
+    across domains. One can also write tests for Map and Set that will [work
+    across
+    domains](https://stackoverflow.com/questions/29924932/how-to-reliably-check-an-object-is-an-ecmascript-6-map-set/29926193#29926193).
+    But one probably can't do the same for async functions and generators and
+    that always was an inelegant because incomplete approach.
+
+ 3. __It really may not solve the wrong problem__. Relying on basic tests
+    implemented as static methods may be the latest and greatest in JavaScript
+    object orientation. But those tests are not authoritative after
+    initialization, since the class object providing the methods also provides a
+    level of indirection that may be easily modified by the naive (why not?),
+    the smart (ooh, I can fix that), and the evil (ooh, I can overtake that)
+    alike. Clearly, that's _not_ the stuff robust APIs are made from.
+
+---
+
+~~This package provides lazy sequences over both synchronous and asynchronous
 iterables and generator functions. They are reusable as well, as long as their
 original sources are reusable, which is the case for most iterables and all
 generator functions. __sequitur__ tries to preserve synchronous sequences as
@@ -11,9 +43,9 @@ between synchronous and asynchronous sequences based on argument. The overall
 effect of this method overloading for synchronous and asynchronous iterables,
 generator functions, and callbacks is a highly uniform and usable interface
 despite the implementation having two of every operator, one synchronous and one
-asynchronous.
+asynchronous.~~
 
-## Telling Synchronous from Asynchronous
+## ~~Telling Synchronous from Asynchronous~~ – Don't Do This
 
 However, there are limitations to that automatic overload resolution, since the
 implementation needs to reason about functions and methods without executing

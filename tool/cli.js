@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // © 2020 Robert Grimm
 
 import configure from './config.js';
@@ -145,6 +144,12 @@ async function main() {
 
   try {
     config = await configure();
+
+    global['@grr/siteforge/loader/config'] = {
+      __proto__: null,
+      root: config.options.inputDir,
+    };
+
     config.logger = new Logger({
       inJSON: config.options.logJson,
       volume: config.options.volume,

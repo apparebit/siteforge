@@ -6,7 +6,7 @@
     ".": "./builder.js",
     "./transform": "./transform.js"
   },
-  "description": " TE ted musicComponents that are exposed to  to deal with everything else being for for basic, content-specific build functions  site:forge's basic content generators",
+  "description": "an assortment of content-specific builder functions for static website generation",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",

@@ -138,9 +138,11 @@ harness.test('@grr/fs', t => {
     const answer = join(tmp, 'answer.txt');
     try {
       const model = await Model.load();
-      pump(
-        render(theQuestion, { model }),
-        createWriteStream(answer, { highWaterMark: 8 })
+      (
+        await pump(
+          render(theQuestion, { model }),
+          createWriteStream(answer, { highWaterMark: 8 })
+        )
       ).end();
 
       t.equal(

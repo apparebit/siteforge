@@ -6,14 +6,18 @@
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
   "type": "module",
-  "main": "./siteforge.js",
   "files": [
-    "./usage.txt",
-    "./**/*.js"
+    "./cli.js",
+    "./config.js",
+    "./loader.js",
+    "./package.json",
+    "./start.js",
+    "./usage.txt"
   ],
   "engines": {
-    "node": ">=12.10.0"
+    "node": ">=13.7.0"
   },
+  "bin": "./start.js",
   "browserslist": [
     "> 1%",
     "not dead"

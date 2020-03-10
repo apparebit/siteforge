@@ -21,6 +21,7 @@
     "@grr/proact": "0.1.0",
     "@grr/reloader": "0.1.0",
     "@grr/sequitur": "0.1.0",
+    "@grr/siteforge": "0.1.0",
     "@grr/walk": "0.1.0",
     "babel-eslint": "10.1.0",
     "c8": "7.1.0",

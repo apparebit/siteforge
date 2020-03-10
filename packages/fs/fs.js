@@ -158,7 +158,9 @@ export function writeVersionedFile(path, data, options = {}) {
 
 // -----------------------------------------------------------------------------
 
-/** Create promise for a writable's pending writes having correctly drained. */
+/**
+ * Create a promise for a writable's pending writes having correctly drained.
+ */
 export function drain(writable) {
   // Copied from https://nodejs.org/docs/latest/api/stream.html
   // #stream_piping_to_writable_streams_from_async_iterators. Clearly,
@@ -176,4 +178,14 @@ export function drain(writable) {
       Promise.reject(new Error(`writable "${writable}" closed prematurely`))
     ),
   ]);
+}
+
+/** Pump the elements of an asynchronous iterable into a writable stream. */
+export async function pump(iterable, writable) {
+  for await (const element of iterable) {
+    if (!writable.write(element)) {
+      await drain(writable);
+    }
+  }
+  return writable;
 }

@@ -3,10 +3,10 @@
 import {
   copyFile,
   createWriteStream,
-  drain,
   injectIntoPath,
   isDotFile,
   isVersionedPath,
+  pump,
   readFile,
   rmdir,
   toDirectory,
@@ -138,14 +138,10 @@ harness.test('@grr/fs', t => {
     const answer = join(tmp, 'answer.txt');
     try {
       const model = await Model.load();
-      const writable = createWriteStream(answer, { highWaterMark: 8 });
-
-      for await (const fragment of render(theQuestion, { model })) {
-        if (!writable.write(fragment)) {
-          await drain(writable);
-        }
-      }
-      writable.end();
+      pump(
+        render(theQuestion, { model }),
+        createWriteStream(answer, { highWaterMark: 8 })
+      ).end();
 
       t.equal(
         await readFile(answer, 'utf8'),

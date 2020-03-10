@@ -136,6 +136,10 @@ export default class Inventory {
     this.#isStaticAsset = isStaticAsset;
   }
 
+  /**
+   * Add a file with the given path and optional properties. Intermediate
+   * directories are automatically generated as necessary.
+   */
   add(path, data = { __proto__: null }) {
     assert.ok(isAbsolute(path), 'path must be absolute');
 
@@ -161,6 +165,7 @@ export default class Inventory {
     return file;
   }
 
+  /** Get the root directory. */
   get root() {
     return this.#root;
   }

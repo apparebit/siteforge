@@ -146,13 +146,13 @@ export function parseJSON(file) {
 
 export function extractCopyrightNotice(file, context) {
   const { content } = file;
-  const [prefix, copyright] = content.match(NOTICE) || [];
+  const [prefix, copy1, copy2] = content.match(NOTICE) || [];
 
   if (prefix) {
     // If present, preserve copyright notice from source code.
     return {
       __proto__: null,
-      copyright: copyright.trim(),
+      copyright: (copy1 || copy2).trim(),
       content: content.slice(prefix.length),
     };
   } else if (context && context.options && context.options.copyright) {

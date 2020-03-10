@@ -14,7 +14,6 @@ import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
 const __directory = toDirectory(import.meta.url);
-
 const BUILD_HTACCESS = resolve(
   __directory,
   '../../server-configs-apache/bin/build.sh'
@@ -27,6 +26,9 @@ const IGNORED_VALIDATIONS = [
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];
+
+const LOADER_CONFIG = '@grr/siteforge/loader/config';
+const LOADER_HOOK = '@grr/siteforge/loader/hook';
 
 // -----------------------------------------------------------------------------
 // Inventory of File System
@@ -65,8 +67,9 @@ async function build(executor, config) {
       }
     }
 
-    // We effectively implement structured concurrency: All tasks spawned in an
-    // iteration of the outer loop are joined again by the following await.
+    // We effectively implement a poor man's version of structured concurrency:
+    // All tasks spawned in an iteration of the outer loop are joined again by
+    // the following await.
     await executor.onIdle();
   }
 }
@@ -137,18 +140,13 @@ function task(config, description) {
 
 async function main() {
   // ---------------------------------------------------------------------------
-  // Determine Configuration, Handle Version and Help Display
+  // Determine Configuration and Create Logger.
 
   const start = process.hrtime.bigint();
   let config;
 
   try {
     config = await configure();
-
-    global['@grr/siteforge/loader/config'] = {
-      __proto__: null,
-      root: config.options.inputDir,
-    };
 
     config.logger = new Logger({
       inJSON: config.options.logJson,
@@ -160,6 +158,9 @@ async function main() {
     config.logger.newline();
   }
 
+  // ---------------------------------------------------------------------------
+  // Handle Display of Version and Help
+
   if (config.options.version) {
     config.logger.notice(`site:forge ${config.forge.version}${EOL}`);
   }
@@ -168,6 +169,21 @@ async function main() {
     config.logger.notice(config.logger.embolden(help));
   }
   if (config.options.version || config.options.help) {
+    return;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Validate Presence of Module Loader Hook and Configure Hook
+
+  if (global[LOADER_HOOK] === true) {
+    config.logger.info(`@grr/siteforge's module loader hook is installed`);
+
+    global[LOADER_CONFIG] = {
+      __proto__: null,
+      root: config.options.inputDir,
+    };
+  } else {
+    config.logger.error(`@grr/siteforge's module loader hook is missing`);
     return;
   }
 

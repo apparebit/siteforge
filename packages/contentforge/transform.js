@@ -229,7 +229,7 @@ function toComponent(name, module) {
 }
 
 export async function loadComponent(name, context) {
-  const path = join(context.options.includeDir, name);
+  const path = join(context.options.componentDir, name);
 
   if (!context.components[name]) {
     context.logger.info(`Loading component "${name}"`);

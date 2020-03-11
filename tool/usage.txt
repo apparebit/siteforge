@@ -2,9 +2,9 @@
 
 The site:forge static website generator supports the following <b>tasks</b>:
 
-  build                      Build the website.
-  validate                   Validate the website.
-  deploy                     Deploy the website.
+  build                      Build the website
+  validate                   Validate the website
+  deploy                     Deploy the website
 
 
 It also supports the following <b>task-independent options</b>:
@@ -30,7 +30,8 @@ notice() is visible, though info() and debug() are suppressed.
 The <b>build task options</b> are:
 
   --content-dir <path>       Read content from directory ("./content")
-  --include-dir <path>       Read shared content from directory ("./include")
+  --component-dir <path>     Read components whose specifier is prefixed with
+                             dollar character from directory ("./components")
   --build-dir <path>         Write build to directory ("./build")
   --clean-build              Delete previous build instead of overwriting files
   --do-not-build <glob>      Exclude matching files from build
@@ -40,10 +41,11 @@ The <b>build task options</b> are:
   --version-assets           Version scripts and styles by injecting a hash of
                              that content into the filename.
 
-Unlike most static website generators, site:forge does not have "layouts." More
-like MDX, it has "page providers" instead:
+Unlike most static website generators, site:forge does not do "layouts". Instead
+it takes a cue from React.js and features "page providers":
 
-  --page-provider <path>     Use page provider ("page.js")
+  --page-provider <spec>     Use page provider ("$page.js", with $ indicating a
+                             shared component, e.g., "./components/page.js")
 
 
 The <b>validate task options</b> are:

@@ -7,7 +7,7 @@ const configurable = true;
 const { defineProperty } = Object;
 const LOADER_CONFIG = '@grr/siteforge/loader/config';
 const LOADER_HOOK = '@grr/siteforge/loader/hook';
-const MAGIC = '~'.charCodeAt(0);
+const MAGIC$ = '$'.charCodeAt(0);
 
 let didSignal = false;
 const signal = reason => {
@@ -38,7 +38,7 @@ const loaderConfig = () => {
 // -----------------------------------------------------------------------------
 
 export function resolve(specifier, context, builtinResolve) {
-  if (!didSignal && specifier.charCodeAt(0) === MAGIC) {
+  if (!didSignal && specifier.charCodeAt(0) === MAGIC$) {
     const { root } = loaderConfig();
     if (root) {
       return {

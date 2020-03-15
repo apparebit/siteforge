@@ -44,8 +44,9 @@ The <b>build task options</b> are:
 Unlike most static website generators, site:forge does not do "layouts". Instead
 it takes a cue from React.js and features "page providers":
 
-  --page-provider <spec>     Use page provider ("$page.js", with $ indicating a
-                             shared component, e.g., "./components/page.js")
+  --page-provider <spec>     Use page provider ("$layout/page.js") — a module
+                             specifier starting with `$` indicates a shared
+                             component, here "./components/layout/page.js".
 
 
 The <b>validate task options</b> are:

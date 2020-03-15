@@ -82,7 +82,7 @@ const optionDefaults = assign(create(null), {
   contentDir: resolve('./content'),
   doNotBuild: () => false,
   doNotValidate: () => false,
-  pageProvider: 'page.js',
+  pageProvider: 'layout/page.js',
   realm: process.env.NODE_ENV || 'development',
   staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
 });

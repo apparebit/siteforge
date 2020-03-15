@@ -13,6 +13,7 @@ import selectBuilderFor from '@grr/contentforge';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
+const { assign, create } = Object;
 const __directory = toDirectory(import.meta.url);
 const BUILD_HTACCESS = resolve(
   __directory,
@@ -178,10 +179,9 @@ async function main() {
   if (global[LOADER_HOOK] === true) {
     config.logger.info(`@grr/siteforge's module loader hook is installed`);
 
-    global[LOADER_CONFIG] = {
-      __proto__: null,
+    global[LOADER_CONFIG] = assign(create(null), {
       root: config.options.inputDir,
-    };
+    });
   } else {
     config.logger.error(`@grr/siteforge's module loader hook is missing`);
     return;

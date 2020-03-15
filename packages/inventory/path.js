@@ -7,23 +7,24 @@ const {
   join: joinUrlPath,
   parse: parseUrlPath,
 } = posix;
-const { freeze } = Object;
+const { assign, create, freeze } = Object;
 
-export const KIND = freeze({
-  __proto__: null,
-  CONFIG: 'config',
-  CONTENT_SCRIPT: 'content-script', // Executed during website generation.
-  DATA: 'data', // File objects.
-  FONT: 'font',
-  GRAPHIC: 'graphic', // Vector graphics.
-  IMAGE: 'image', // Bitmapped image.
-  MARKDOWN: 'markdown',
-  MARKUP: 'markup', // HTML.
-  SCRIPT: 'script', // Executed on client.
-  STYLE: 'style',
-  TEXT: 'text',
-  UNKNOWN: 'file',
-});
+export const KIND = freeze(
+  assign(create(null), {
+    CONFIG: 'config',
+    CONTENT_SCRIPT: 'content-script', // Executed during website generation.
+    DATA: 'data', // File objects.
+    FONT: 'font',
+    GRAPHIC: 'graphic', // Vector graphics.
+    IMAGE: 'image', // Bitmapped image.
+    MARKDOWN: 'markdown',
+    MARKUP: 'markup', // HTML.
+    SCRIPT: 'script', // Executed on client.
+    STYLE: 'style',
+    TEXT: 'text',
+    UNKNOWN: 'file',
+  })
+);
 
 export function isDefaultAssetPath(path) {
   return /^\/(assets?|static)\//iu.test(path);

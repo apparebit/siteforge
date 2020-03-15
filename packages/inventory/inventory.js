@@ -19,7 +19,7 @@ const escapeRegex = literal => literal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 // =============================================================================
 
 class File {
-  constructor(path, kind, data = { __proto__: null }) {
+  constructor(path, kind, data) {
     assign(this, data);
     defineProperties(this, {
       path: { configurable, enumerable, value: path },
@@ -89,7 +89,7 @@ class Directory {
     return cursor;
   }
 
-  _add(secret, name, kind, data = {}) {
+  _add(secret, name, kind, data) {
     assert.equal(secret, LA_FLOR, `Don't call me, I'll call you!`);
     assert.ok(name && typeof name === 'string');
 
@@ -140,7 +140,7 @@ export default class Inventory {
    * Add a file with the given path and optional properties. Intermediate
    * directories are automatically generated as necessary.
    */
-  add(path, data = { __proto__: null }) {
+  add(path, data = create(null)) {
     assert.ok(isAbsolute(path), 'path must be absolute');
 
     // Create new file object within directory hierarchy.

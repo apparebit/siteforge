@@ -5,6 +5,7 @@ import { promises } from 'fs';
 import { strict } from 'assert';
 
 const { apply } = Reflect;
+const { assign, create } = Object;
 const DIRECTORY = 'directory';
 const DOT = '.'.charCodeAt(0);
 const FILE = 'file';
@@ -58,14 +59,13 @@ export default function walk(
   // notifications are a reasonable starting point. Latency might also be
   // interesting.
 
-  const metrics = {
-    __proto__: null,
+  const metrics = assign(create(null), {
     readdir: 0,
     entries: 0,
     lstat: 0,
     realpath: 0,
     file: 0,
-  };
+  });
 
   // TRACE key operations of walk when debugging is enabled.
 

@@ -4,8 +4,8 @@ import { EOL } from 'os';
 import glob from '@grr/glob';
 import { resolve } from 'path';
 
+const { assign, create } = Object;
 const configurable = true;
-const { create } = Object;
 const DASH = '-'.charCodeAt(0);
 const enumerable = true;
 const { has } = Reflect;
@@ -49,33 +49,39 @@ export const FileGlob = (patterns, report) => {
  * Instantiate the default configuration with options for help, version, and
  * output volume.
  */
-export const defaults = () => ({
-  __proto__: null,
-
-  h: 'help',
-  help: Boolean,
-
-  q: 'quiet',
-  quiet: Boolean,
-
-  v: 'verbose',
-  verbose: Boolean,
-
-  V: 'version',
-  version: Boolean,
-
-  get volume() {
-    return (this.verbose || 0) - (this.quiet || 0);
-  },
-  set volume(v) {
-    defineProperty(this, 'volume', {
+export const defaults = () => {
+  const value = create(null, {
+    volume: {
       configurable,
       enumerable,
-      writable,
-      value: v,
-    });
-  },
-});
+      get() {
+        return (this.verbose || 0) - (this.quiet || 0);
+      },
+      set(v) {
+        defineProperty(this, 'volume', {
+          configurable,
+          enumerable,
+          writable,
+          value: v,
+        });
+      },
+    },
+  });
+
+  return assign(value, {
+    h: 'help',
+    help: Boolean,
+
+    q: 'quiet',
+    quiet: Boolean,
+
+    v: 'verbose',
+    verbose: Boolean,
+
+    V: 'version',
+    version: Boolean,
+  });
+};
 
 /** Add dashed alias for camel-cased options if they don't already exist. */
 export const aliased = config => {
@@ -96,7 +102,7 @@ const initializeOptions = config => {
   const options = create(null);
 
   for (const key of keysOf(descriptors)) {
-    if (key === '_') continue;
+    if (key === '_' || key === '__proto__') continue;
 
     const descriptor = descriptors[key];
     if (!has(descriptor, 'value')) {
@@ -156,6 +162,8 @@ export const optionsFromObject = (options, config) => {
   const errors = [];
 
   for (let option of keysOf(options)) {
+    if (option === '__proto__') continue;
+
     const { name, type, description } = lookUpConfiguration(option, config);
 
     if (type === undefined) {

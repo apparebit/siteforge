@@ -13,7 +13,7 @@ import glob from '@grr/glob';
 import { join, resolve } from 'path';
 import { readFile, toDirectory } from '@grr/fs';
 
-const { assign, defineProperty } = Object;
+const { assign, create, defineProperty } = Object;
 const configurable = true;
 const __directory = toDirectory(import.meta.url);
 const { parse: parseJSON } = JSON;
@@ -76,8 +76,7 @@ const optionTypes = aliased(
   })
 );
 
-const optionDefaults = {
-  __proto__: null,
+const optionDefaults = assign(create(null), {
   buildDir: resolve('./build'),
   componentDir: resolve('./components'),
   contentDir: resolve('./content'),
@@ -86,7 +85,7 @@ const optionDefaults = {
   pageProvider: 'page.js',
   realm: process.env.NODE_ENV || 'development',
   staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
-};
+});
 
 // -----------------------------------------------------------------------------
 // Determine Configuration
@@ -94,18 +93,14 @@ const optionDefaults = {
 const configure = async () => {
   // Load manifests for website and tool.
   const forgeManifest = await loadForgeManifest();
-  const forge = {
-    __proto__: null,
-    name: 'site:forge',
-    version: forgeManifest.version,
-  };
+  const forge = create(null);
+  forge.name = 'site:forge';
+  forge.version = forgeManifest.version;
 
   const siteManifest = await loadSiteManifest();
-  const site = {
-    __proto__: null,
-    name: siteManifest.name || 'website',
-    version: siteManifest.version || new Date().toISOString(),
-  };
+  const site = create(null);
+  site.name = siteManifest.name || 'website';
+  site.version = siteManifest.version || new Date().toISOString();
 
   // Ingest command line arguments.
   const argv = process.argv.slice(2);
@@ -131,21 +126,29 @@ const configure = async () => {
 
   // Validate website manifest.
   const pkg = optionsFromObject(
-    siteManifest['site:forge'] || siteManifest.siteforge || {},
+    siteManifest['site:forge'] || siteManifest.siteforge || create(null),
     optionTypes
   );
 
   // Merge options giving priority to CLI arguments over website manifest.
-  const options = assign({ __proto__: null }, optionDefaults, pkg, cli);
+  const options = assign(create(null), optionDefaults, pkg, cli);
 
   // Set up component cache. FIXME: Consider moving into inventory.
-  const components = { __proto__: null };
+  const components = create(null);
 
   // Set up statistics object;
-  const stats = { __proto__: null, resources: [], duration: 0n };
+  const stats = create(null);
+  stats.resources = [];
+  stats.duration = 0n;
 
   // Et voila!
-  return { __proto__: null, site, forge, options, components, stats };
+  return assign(create(null), {
+    site,
+    forge,
+    options,
+    components,
+    stats,
+  });
 };
 
 export default configure;

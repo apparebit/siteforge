@@ -54,9 +54,13 @@ export const defaults = () => {
     volume: {
       configurable,
       enumerable,
+
+      // The default volume is computed from verbose and quiet options.
       get() {
         return (this.verbose || 0) - (this.quiet || 0);
       },
+
+      // Setting volume replaces default with new value.
       set(v) {
         defineProperty(this, 'volume', {
           configurable,
@@ -99,11 +103,12 @@ export const aliased = config => {
 
 const initializeOptions = config => {
   const descriptors = getOwnPropertyDescriptors(config);
-  const options = create(null);
+  const options = create(null); // Create the object holding parsed results.
 
   for (const key of keysOf(descriptors)) {
     if (key === '_' || key === '__proto__') continue;
 
+    // Copy over properties with getter/setter.
     const descriptor = descriptors[key];
     if (!has(descriptor, 'value')) {
       defineProperty(options, key, descriptor);
@@ -114,7 +119,11 @@ const initializeOptions = config => {
 };
 
 const lookUpConfiguration = (option, config) => {
-  if (option === '_') {
+  if (option === '__proto__') {
+    return {
+      error: `Invalid option name "${option}"`,
+    };
+  } else if (option === '_') {
     return {
       name: '_',
       type: typeof config._ === 'function' ? config._ : v => v,
@@ -133,7 +142,7 @@ const lookUpConfiguration = (option, config) => {
     description = `"${option}"`;
     type = undefined;
   } else if (option !== name) {
-    description = `"${option}"/"${name}"`;
+    description = `"${option}" aka "${name}"`;
   } else {
     description = `"${option}"`;
   }
@@ -162,11 +171,14 @@ export const optionsFromObject = (options, config) => {
   const errors = [];
 
   for (let option of keysOf(options)) {
-    if (option === '__proto__') continue;
+    const { name, type, description, error } = lookUpConfiguration(
+      option,
+      config
+    );
 
-    const { name, type, description } = lookUpConfiguration(option, config);
-
-    if (type === undefined) {
+    if (error) {
+      errors.push(error);
+    } else if (type === undefined) {
       errors.push(`Unknown option ${description}`);
     } else if (type === Boolean) {
       const v = options[option];
@@ -216,9 +228,11 @@ export const optionsFromArguments = (
   let cursor = 0;
 
   const setopt = (arg, key, value) => {
-    const { name, type, description } = lookUpConfiguration(key, config);
+    const { name, type, description, error } = lookUpConfiguration(key, config);
 
-    if (type === undefined) {
+    if (error) {
+      errors.push(error);
+    } else if (type === undefined) {
       errors.push(`Unknown command line option ${description}`);
     } else if (type === Boolean) {
       options[name] = value + (options[name] || 0);

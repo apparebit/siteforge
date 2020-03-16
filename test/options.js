@@ -99,7 +99,7 @@ harness.test('tooling/options', t => {
         [
           'Several options are invalid:',
           'Unknown command line option "x"',
-          'Command line option "r"/"round" misconfigured to take value',
+          'Command line option "r" aka "round" misconfigured to take value',
           'Command line option "path" has another option "-x" as value',
           'Command line argument "everwhat" should be "whatever"',
           'Command line option "round" is missing required value',

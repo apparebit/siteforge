@@ -6,7 +6,7 @@ import { spawn } from 'child_process';
 
 const __directory = dirname(fileURLToPath(import.meta.url));
 const loader = join(__directory, 'loader.js');
-const cli = join(__directory, 'cli.js');
+const main = join(__directory, 'main.js');
 const LOADER_HOOK = '@grr/siteforge/loader/hook';
 
 function runWithLoader() {
@@ -18,7 +18,7 @@ function runWithLoader() {
     // Executable and most arguments are exactly the same as before, with the
     // critical difference being the activation of resolve module loader hook.
     argv0,
-    [...execArgv, '--experimental-loader', loader, cli, ...argv.slice(2)],
+    [...execArgv, '--experimental-loader', loader, main, ...argv.slice(2)],
     {
       cwd: cwd(),
       stdio: 'inherit',
@@ -35,7 +35,7 @@ function runWithLoader() {
 
 async function start() {
   if (global[LOADER_HOOK]) {
-    await import(cli);
+    await import(main);
   } else {
     runWithLoader();
   }

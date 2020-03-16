@@ -2,9 +2,15 @@
 
 import { format } from 'util';
 
+const {
+  assign,
+  create,
+  defineProperties,
+  defineProperty,
+  keys: keysOf,
+} = Object;
 const BOLD = /<b>(.*?)<\/b>/gu;
 const configurable = true;
-const { defineProperties, defineProperty, keys: keysOf } = Object;
 const EOL = /\r?\n/gu;
 const ERROR_PREFIX = /^([A-Za-z]*Error): /u;
 const { has } = Reflect;
@@ -15,8 +21,7 @@ const writable = true;
 
 // -----------------------------------------------------------------------------
 
-const styles = {
-  __proto__: null,
+const styles = assign(create(null), {
   bold: s => `\x1b[1m${s}\x1b[22m`,
   faint: s => `\x1b[90m${s}\x1b[39m`,
   green: s => `\x1b[1;32m${s}\x1b[39;22m`,
@@ -24,20 +29,19 @@ const styles = {
   orange: s => `\x1b[1;38;5;208m${s}\x1b[39;22m`,
   plain: s => s,
   red: s => `\x1b[1;31m${s}\x1b[39;22m`,
-};
+});
 
 const adjust = style => (isPlain ? s => s : style);
 
-const levels = {
+const levels = assign(create(null), {
   // Possibly add panic (-3) and trace (3).
-  __proto__: null,
   error: { volume: -2, format: adjust(styles.red) },
   warning: { volume: -1, format: adjust(styles.orange) },
   success: { volume: 0, format: adjust(styles.green) },
   notice: { volume: 0, format: adjust(styles.bold) },
   info: { volume: 1, format: adjust(styles.plain) },
   debug: { volume: 2, format: adjust(styles.faint) },
-};
+});
 
 // -----------------------------------------------------------------------------
 
@@ -182,7 +186,6 @@ function createJsonLogFunction(level, { label, println = console.error } = {}) {
   const normalize = value => {
     if (value instanceof Error) {
       const replacement = {
-        __proto__: null,
         name: value.name,
         message: value.message,
         stack: value.stack,

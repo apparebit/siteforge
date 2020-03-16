@@ -26,6 +26,22 @@ export const KIND = freeze(
   })
 );
 
+const EXTENSION_KIND = assign(create(null), {
+  '.css': KIND.STYLE,
+  '.htm': KIND.MARKUP,
+  '.html': KIND.MARKUP,
+  '.jpg': KIND.IMAGE,
+  '.jpeg': KIND.IMAGE,
+  '.md': KIND.MARKDOWN,
+  '.png': KIND.IMAGE,
+  '.svg': KIND.GRAPHIC,
+  '.txt': KIND.TEXT,
+  '.webmanifest': KIND.CONFIG,
+  '.webp': KIND.IMAGE,
+  '.woff': KIND.FONT,
+  '.woff2': KIND.FONT,
+});
+
 export function isDefaultAssetPath(path) {
   return /^\/(assets?|static)\//iu.test(path);
 }
@@ -37,23 +53,7 @@ export function toKind(path, isStaticAsset = isDefaultAssetPath) {
 
   const { name, ext } = parseUrlPath(path);
   if (ext !== '.js') {
-    return (
-      {
-        '.css': KIND.STYLE,
-        '.htm': KIND.MARKUP,
-        '.html': KIND.MARKUP,
-        '.jpg': KIND.IMAGE,
-        '.jpeg': KIND.IMAGE,
-        '.md': KIND.MARKDOWN,
-        '.png': KIND.IMAGE,
-        '.svg': KIND.GRAPHIC,
-        '.txt': KIND.TEXT,
-        '.webmanifest': KIND.CONFIG,
-        '.webp': KIND.IMAGE,
-        '.woff': KIND.FONT,
-        '.woff2': KIND.FONT,
-      }[ext] || KIND.UNKNOWN
-    );
+    return EXTENSION_KIND[ext] || KIND.UNKNOWN;
   }
 
   const ext2 = extnameUrlPath(name);

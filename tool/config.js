@@ -16,6 +16,8 @@ import { readFile, toDirectory } from '@grr/fs';
 const { assign, create, defineProperty } = Object;
 const configurable = true;
 const __directory = toDirectory(import.meta.url);
+const { has } = Reflect;
+const { max } = Math;
 const { parse: parseJSON } = JSON;
 const writable = true;
 
@@ -76,7 +78,7 @@ const optionTypes = aliased(
   })
 );
 
-const optionDefaults = assign(create(null), {
+const optionDefaults = {
   buildDir: resolve('./build'),
   componentDir: resolve('./components'),
   contentDir: resolve('./content'),
@@ -85,7 +87,11 @@ const optionDefaults = assign(create(null), {
   pageProvider: 'layout/page.js',
   realm: process.env.NODE_ENV || 'development',
   staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
-});
+};
+
+const enableTasks = options => {
+  if (options._) options._.forEach(task => task && (options[task] = true));
+};
 
 // -----------------------------------------------------------------------------
 // Determine Configuration
@@ -102,12 +108,12 @@ const configure = async () => {
   site.name = siteManifest.name || 'website';
   site.version = siteManifest.version || new Date().toISOString();
 
-  // Ingest command line arguments.
+  // CLI: Parse arguments.
   const argv = process.argv.slice(2);
   const cli = optionsFromArguments(argv, optionTypes);
-  if (cli._) cli._.forEach(task => task && (cli[task] = true));
+  enableTasks(cli);
 
-  // CLI Overrides: A couple of heuristics to improve user experience.
+  // CLI: Second-guess user by turning only -v (verbose) into -V (version)
   if (argv.length === 1) {
     const [arg] = argv;
     if (arg === '-v' || arg === '-hv' || arg === '-vh') {
@@ -116,22 +122,28 @@ const configure = async () => {
     }
   }
 
-  // Since site:forge already supports a comprehensive volume level, having a
-  // separate debug flag seems superfluous.
-  const debug = (process.env.DEBUG || '').split(',').some(c => {
-    const component = c.trim();
-    return component === 'site:forge' || component === 'siteforge';
-  });
-  if (debug) cli.volume = 3;
-
-  // Validate website manifest.
+  // Manifest: Parse options.
   const pkg = optionsFromObject(
     siteManifest['site:forge'] || siteManifest.siteforge || create(null),
     optionTypes
   );
+  enableTasks(pkg);
 
-  // Merge options giving priority to CLI arguments over website manifest.
-  const options = assign(create(null), optionDefaults, pkg, cli);
+  // Determine final volume: Give precedence to CLI & account for DEBUG.
+  const debug = (process.env.DEBUG || '').split(',').some(c => {
+    const component = c.trim();
+    return component === 'site:forge' || component === 'siteforge';
+  });
+
+  let volume;
+  if (has(cli, 'verbose') || has(cli, 'quiet')) {
+    volume = max(cli.volume, debug ? 3 : cli.volume);
+  } else {
+    volume = max(pkg.volume, debug ? 3 : pkg.volume);
+  }
+
+  // Merge Options.
+  const options = { ...optionDefaults, ...pkg, ...cli, volume };
 
   // Set up component cache. FIXME: Consider moving into inventory.
   const components = create(null);

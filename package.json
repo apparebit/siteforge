@@ -31,6 +31,9 @@
     "prettier": "1.19.1",
     "tap": "14.10.6"
   },
+  "resolutions": {
+    "minimist": "1.2.5"
+  },
   "scripts": {
     "coverage": "c8 report && open coverage/index.html",
     "test": "NODE_ENV=test NODE_V8_COVERAGE=.coverage node test/index.js"

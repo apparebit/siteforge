@@ -151,14 +151,12 @@ export function extractCopyrightNotice(file, context) {
   if (prefix) {
     // If present, preserve copyright notice from source code.
     return {
-      __proto__: null,
       copyright: (copy1 || copy2).trim(),
       content: content.slice(prefix.length),
     };
   } else if (context && context.options && context.options.copyright) {
     // If part of configuration, use that notice instead.
     return {
-      __proto__: null,
       copyright: context.options.copyright,
     };
   } else {
@@ -171,7 +169,6 @@ export function prefixCopyrightNotice(file) {
   if (!copyright) return undefined;
 
   return {
-    __proto__: null,
     copyright: undefined,
     content: `/* ${copyright} */ ${content}`,
   };
@@ -190,6 +187,7 @@ export function extractFrontMatter(file) {
   if (end === -1) {
     throw new Error(`front matter for "${file.path}" has no closing tag`);
   }
+  const frontMatterEnd = end + FRONT_CLOSE.length;
 
   // Evaluate and validate front matter.
   const metadata = runInNewContext(
@@ -208,13 +206,13 @@ export function extractFrontMatter(file) {
   if (metadata == null || typeof metadata !== 'object') {
     throw new Error(`front matter for "${file.path}" is not an object`);
   } else {
-    setPrototypeOf(metadata, null);
+    delete metadata.__proto__;
   }
 
   return {
-    __proto__: null,
     ...metadata,
-    content: content.slice(end + FRONT_CLOSE.length).trim(),
+    frontMatterEnd,
+    content: content.slice(frontMatterEnd).trim(),
   };
 }
 
@@ -255,7 +253,7 @@ export async function loadComponent(name, context) {
 }
 
 export function parseMarkup(file) {
-  return { __proto__: null, content: html([file.content], []) };
+  return { content: html([file.content], []) };
 }
 
 export async function assemblePage(file, context) {
@@ -327,14 +325,13 @@ export async function runModule(file, context) {
     throw error;
   }
 
-  return { __proto__: null, content };
+  return { content };
 }
 
 // -----------------------------------------------------------------------------
 
 export function minifyScript(file) {
   return {
-    __proto__: null,
     content: minify(file.content, {}, { comments: false }).code,
   };
 }

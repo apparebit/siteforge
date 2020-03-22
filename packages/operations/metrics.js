@@ -3,6 +3,7 @@
 import { performance } from 'perf_hooks';
 
 const COUNT = 'count';
+const { round } = Math;
 const TIME = 'time';
 
 const checkLabels = labels => {
@@ -50,7 +51,7 @@ export default class Metrics {
       this.#measurements.push({
         type: TIME,
         labels,
-        value: this.#clock() - start,
+        value: round(this.#clock() - start),
       });
     };
   }

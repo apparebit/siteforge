@@ -58,7 +58,6 @@ export default function walk(
   // BASIC STATISTICS: The counts of asynchronous I/O operations and event
   // notifications are a reasonable starting point. Latency might also be
   // interesting.
-
   const metrics = assign(create(null), {
     readdir: 0,
     entries: 0,
@@ -68,7 +67,6 @@ export default function walk(
   });
 
   // TRACE key operations of walk when debugging is enabled.
-
   const trace = (operation, ...args) => {
     if (!debug) return;
 
@@ -106,7 +104,6 @@ export default function walk(
   // `exit` events is far less compelling than a promise for termination. It
   // covers both successful and unsuccessful runs and integrates with
   // async/await.
-
   let resolveWalk, rejectWalk;
   const done = new Promise((yay, nay) => {
     resolveWalk = yay;
@@ -118,7 +115,6 @@ export default function walk(
   // complete. This test is very lightweight and easy to implement. It holds as
   // long as the entries of a directory are added to the count __before__
   // removing the parent from the count.
-
   let activeEntries = 1; // Account for initial processEntry().
   const aboutToProcess = entries => (activeEntries += entries.length);
   const doneWithEntry = () => {
@@ -128,7 +124,6 @@ export default function walk(
 
   // FORCED TERMINATION: Whether you call it abort(), cancel(), or stop(), the
   // semantics are those of best effort tear down.
-
   let aborted = false;
   const abort = x => {
     aborted = true;
@@ -137,19 +132,16 @@ export default function walk(
 
   // AVOID REPETITION: Use non-virtual file system path to detect namespace
   // cycles.
-
   const visited = new Set();
   const hasVisited = path => visited.has(path);
   const willVisit = path => visited.add(path);
 
   // ---------------------------------------------------------------------------
-
   // nano-EVENT-EMITTER:
   //  * Check for valid event names unlike Node.js.
   //    That implies that event names are static and cannot be extended.
   //  * Return undo() from registration unlike Node.js.
   //  * Deliver events synchronously just like Node.js.
-
   const registry = new Map();
   registry.set(DIRECTORY, onDirectory ? [onDirectory] : []);
   registry.set(FILE, onFile ? [onFile] : []);
@@ -181,11 +173,9 @@ export default function walk(
   };
 
   // ---------------------------------------------------------------------------
-
   // PROCESS ENTRY by following a symbolic link until there is none and then
   // handling directories and files separately. Directories are handled
   // recursively by reading in the entries and then processing them one by one.
-
   const doProcessEntry = async (path, virtualPath) => {
     let status;
 
@@ -255,7 +245,6 @@ export default function walk(
   };
 
   // ---------------------------------------------------------------------------
-
   // START WALK after determining root's real path. Since that operation is
   // asynchronous, the caller of this function can register event handlers upon
   // return. Pass real path to processEntry(), since it handles arbitrary file

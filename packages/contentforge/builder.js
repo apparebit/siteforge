@@ -8,7 +8,6 @@ import {
   extractFrontMatter,
   minifyScript,
   minifyStyle,
-  pipe,
   prefixCopyrightNotice,
   readSource,
   writeTarget,
@@ -18,11 +17,7 @@ import { KIND } from '@grr/inventory/path';
 
 // -----------------------------------------------------------------------------
 
-export const preparePage = pipe(readSource, extractFrontMatter);
-
-export const renderPage = pipe(assemblePage, writeTarget);
-
-// -----------------------------------------------------------------------------
+const copyResource = build('asset', copyAsset);
 
 const buildClientScript = build(
   'script',
@@ -42,7 +37,8 @@ const buildStyle = build(
   writeTarget
 );
 
-const copyResource = build('asset', copyAsset);
+const preparePage = build('pre-page', readSource, extractFrontMatter);
+const finishPage = build('page', assemblePage, writeTarget);
 
 export function prebuilderFor(kind) {
   return {
@@ -56,7 +52,7 @@ export function builderFor(kind) {
     [KIND.FONT]: copyResource,
     [KIND.GRAPHIC]: copyResource,
     [KIND.IMAGE]: copyResource,
-    [KIND.MARKUP]: renderPage,
+    [KIND.MARKUP]: finishPage,
     [KIND.SCRIPT]: buildClientScript,
     [KIND.STYLE]: buildStyle,
   }[kind];

@@ -2,24 +2,22 @@
 
 import {
   copyFile,
-  createWriteStream,
-  drain,
+  lstat,
   readFile,
   writeFile,
   writeVersionedFile,
 } from '@grr/fs';
 
 import cssnano from 'cssnano';
-import { html, render } from '@grr/proact';
 import { join } from 'path';
 import minify from 'babel-minify';
-import Model from '@grr/html';
 import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
 
-const { assign, create, setPrototypeOf } = Object;
-const { parse: doParseJSON } = JSON;
+const { assign, create, defineProperty, setPrototypeOf } = Object;
+const configurable = true;
+const { has } = Reflect;
 
 // -----------------------------------------------------------------------------
 // Regular expression madness
@@ -138,12 +136,6 @@ export async function copyAsset(file, context) {
 
 // -----------------------------------------------------------------------------
 
-export function parseJSON(file) {
-  return { content: doParseJSON(file.content) };
-}
-
-// -----------------------------------------------------------------------------
-
 export function extractCopyrightNotice(file, context) {
   const { content } = file;
   const [prefix, copy1, copy2] = content.match(NOTICE) || [];
@@ -218,114 +210,66 @@ export function extractFrontMatter(file) {
 
 // -----------------------------------------------------------------------------
 
+async function loadComponent(spec) {
+  const url = pathToFileURL(join(context.options.componentDir, spec));
+  let finalSpec;
+  try {
+    finalSpec = (await lstat(url)).isFile() ? url : spec;
+  } catch {
+    finalSpec = spec;
+  }
+
+  try {
+    return import(finalSpec);
+  } catch (x) {
+    const error = new Error(`unable to load component "${spec}"`);
+    error.cause = x;
+    throw error;
+  }
+}
+
+class CachingLoader {
+  #components = new Map();
+
+  load(spec) {
+    if (!this.#components.has(spec)) {
+      this.#components.set(spec, loadComponent(spec));
+    }
+    return this.#components.get(spec);
+  }
+}
+
 function toComponent(name, module) {
   if (typeof module.default === 'function') {
+    defineProperty(module.default, 'name', {
+      configurable,
+      value: name,
+    });
     return module.default;
   } else {
     throw new TypeError(`module "${name}" doesn't default export function`);
   }
 }
 
-export async function loadComponent(name, context) {
-  const path = join(context.options.componentDir, name);
-
-  if (!context.components[name]) {
-    context.logger.info(`Loading component "${name}"`);
-
-    let resolve, reject;
-    context.components[name] = new Promise((yay, nay) => {
-      resolve = yay;
-      reject = nay;
-    });
-
-    try {
-      resolve(toComponent(name, await import(pathToFileURL(path))));
-    } catch {
-      try {
-        resolve(toComponent(name, await import(name)));
-      } catch {
-        reject(new Error(`unable to locate component "${name}"`));
-      }
-    }
-  }
-
-  return context.components[name];
-}
-
-export function parseMarkup(file) {
-  return { content: html([file.content], []) };
+async function loadComponent0(name, context) {
+  context.logger.info(`Loading component "${name}"`);
 }
 
 export async function assemblePage(file, context) {
+  let pageProvider;
+  if (has(file, 'pageProvider')) {
+    // Use file.pageProvider if it exists, so that undefined disables assembly.
+    ({ pageProvider } = file);
+  } else {
+    ({ pageProvider } = context.options);
+  }
+  if (!pageProvider) return undefined;
+
+  // Load the page provider and apply it.
+  const Page = await loadComponent(pageProvider, context);
   const result = create(null);
-
-  let { page } = file;
-  if (!page && context.options.pageProvider) {
-    page = result.page = context.options.pageProvider;
-  }
-
-  const PageProvider = page
-    ? await loadComponent(page, context)
-    : ({ content }) => content;
-  result.content = await PageProvider(file, context);
-
+  result.content = await Page(file, context);
   return result;
-}
-
-export async function renderToFile(file, context) {
-  const result = create(null);
-  result.content = undefined;
-
-  let { content, path, target } = file;
-  if (!target) {
-    target = result.target = join(context.options.buildDir, path);
-  }
-
-  const model = await Model.load();
-  const writable = createWriteStream(target);
-  for await (const fragment of render(content, { model })) {
-    if (!writable.write(fragment)) {
-      await drain(writable);
-    }
-  }
-  writable.end();
-
-  return result;
-}
-
-// -----------------------------------------------------------------------------
-
-export async function loadModule(file, context) {
-  const result = create(null);
-
-  let { path, source } = file;
-  if (!source) {
-    source = result.source = join(context.options.contentDir, path);
-  }
-
-  result.content = await import(source);
-  return result;
-}
-
-export async function runModule(file, context) {
-  let { content } = file;
-  if (typeof content.default !== 'function') {
-    throw new Error(`default export of "${file.path}" is not a function`);
-  }
-
-  try {
-    // FIXME Make call consistent with VDOM rendering.
-    content = content.default(file, context);
-    if (content && typeof content === 'function') content = await content;
-  } catch (x) {
-    const error = new Error(
-      `default export of "${file.path}" signalled error: ${x.message}`
-    );
-    error.cause = x;
-    throw error;
-  }
-
-  return { content };
 }
 
 // -----------------------------------------------------------------------------

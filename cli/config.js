@@ -69,7 +69,7 @@ const optionTypes = aliased(
     doNotBuild: FileGlob,
     doNotValidate: FileGlob,
     dryRun: Boolean,
-    logJson: Boolean,
+    json: Boolean,
     pageProvider: FilePath,
     realm: String,
     staticAssets: FileGlob,
@@ -145,22 +145,12 @@ const configure = async () => {
   // Merge Options.
   const options = { ...optionDefaults, ...pkg, ...cli, volume };
 
-  // Set up component cache. FIXME: Consider moving into inventory.
-  const components = create(null);
-
-  // Set up statistics object;
-  const stats = create(null);
-  stats.resources = [];
-  stats.duration = 0n;
-
   // Et voila!
-  return assign(create(null), {
+  return {
     site,
     forge,
     options,
-    components,
-    stats,
-  });
+  };
 };
 
 export default configure;

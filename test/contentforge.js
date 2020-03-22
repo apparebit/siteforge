@@ -6,8 +6,6 @@ import {
   extractFrontMatter,
   minifyScript,
   minifyStyle,
-  parseJSON,
-  parseMarkup,
   extractCopyrightNotice,
   prefixCopyrightNotice,
   readSource,
@@ -135,21 +133,17 @@ harness.test('@grr/contentforge', async t => {
     /front matter for "\/some\/content" is not an object/u
   );
 
-  // Parse JSON.
-  ({ content } = parseJSON({ content: `[665]` }));
-  t.same(content, [665]);
-
-  // Parse HTML.
-  ({ content } = parseMarkup({
-    content: `<section><h2>Headline</h2><p>Paragraph</p></section>`,
-  }));
-  t.same(content, {
-    type: 'section',
-    children: [
-      { type: 'h2', children: ['Headline'] },
-      { type: 'p', children: ['Paragraph'] },
-    ],
-  });
+  // // Parse HTML.
+  // ({ content } = parseMarkup({
+  //   content: `<section><h2>Headline</h2><p>Paragraph</p></section>`,
+  // }));
+  // t.same(content, {
+  //   type: 'section',
+  //   children: [
+  //     { type: 'h2', children: ['Headline'] },
+  //     { type: 'p', children: ['Paragraph'] },
+  //   ],
+  // });
 
   // Minify Script.
   ({ content } = minifyScript(

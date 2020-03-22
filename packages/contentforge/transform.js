@@ -43,34 +43,22 @@ const NOTICE = new RegExp(
 
 // -----------------------------------------------------------------------------
 
-/**
- * Create a new function that serially applies the given steps, with the result
- * of one step becoming the argument of the next step. The new function and its
- * steps differ from a straight-forward functional pipeline implementation in
- * two important ways: First, they take a second argument with the execution
- * context (options, logger, and so on). Second, they do not modify the argument
- * but rather return an object with modified properties only. If a step does not
- * modify the argument, it should return `undefined`.
- */
-export function build(label, ...steps) {
-  return async function process(file, context) {
-    // Measure latency in nanoseconds. Log resource being built.
-    const start = global.process.hrtime.bigint();
-    const { path, kind } = file;
-    context.logger.info(`Building ${kind} "${path}"`);
-
-    const diff = await pipe(...steps)(file, context);
-
-    const end = global.process.hrtime.bigint();
-    const entry = { path, kind, label, duration: end - start };
-    context.stats.resources.push(entry);
-
-    return assign(file, diff);
+/** Create a file processing pipeline with the given tag and steps. */
+export function build(tag, ...steps) {
+  const run = pipe(...steps);
+  const build = async (file, context) => {
+    const done = context.metrics.time('build', tag, file.url);
+    const diff = await run(file, context);
+    assign(file, diff);
+    done();
+    return file;
   };
+  defineProperty(build, 'tag', { configurable, value: tag });
+  return build;
 }
 
 export function pipe(...steps) {
-  return async function process(file, context) {
+  return async function pipe(file, context) {
     const diff = create(file);
     for (const step of steps) {
       let delta = step(diff, context);

@@ -6,14 +6,11 @@ import {
   copyAsset,
   extractCopyrightNotice,
   extractFrontMatter,
-  loadModule,
   minifyScript,
   minifyStyle,
-  //parseMarkup,
+  pipe,
   prefixCopyrightNotice,
   readSource,
-  renderToFile,
-  runModule,
   writeTarget,
 } from './transform.js';
 
@@ -21,26 +18,13 @@ import { KIND } from '@grr/inventory/path';
 
 // -----------------------------------------------------------------------------
 
-export const buildPage = build(
-  'page',
-  readSource,
-  extractFrontMatter,
-  //parseMarkup,
-  assemblePage,
-  //renderToFile
-  writeTarget
-);
+export const preparePage = pipe(readSource, extractFrontMatter);
 
-// FIXME What is the equivalent of front matter?
-export const buildServerScript = build(
-  'scripted page',
-  loadModule,
-  runModule,
-  assemblePage,
-  renderToFile
-);
+export const renderPage = pipe(assemblePage, writeTarget);
 
-export const buildClientScript = build(
+// -----------------------------------------------------------------------------
+
+const buildClientScript = build(
   'script',
   readSource,
   extractCopyrightNotice,
@@ -49,7 +33,7 @@ export const buildClientScript = build(
   writeTarget
 );
 
-export const buildStyle = build(
+const buildStyle = build(
   'style',
   readSource,
   extractCopyrightNotice,
@@ -58,18 +42,21 @@ export const buildStyle = build(
   writeTarget
 );
 
-export const copyResource = build('asset', copyAsset);
+const copyResource = build('asset', copyAsset);
 
-// -----------------------------------------------------------------------------
+export function prebuilderFor(kind) {
+  return {
+    [KIND.MARKUP]: preparePage,
+  }[kind];
+}
 
-export default function selectBuilderFor(kind) {
+export function builderFor(kind) {
   return {
     [KIND.CONFIG]: copyResource,
-    [KIND.CONTENT_SCRIPT]: buildServerScript,
     [KIND.FONT]: copyResource,
     [KIND.GRAPHIC]: copyResource,
     [KIND.IMAGE]: copyResource,
-    [KIND.MARKUP]: buildPage,
+    [KIND.MARKUP]: renderPage,
     [KIND.SCRIPT]: buildClientScript,
     [KIND.STYLE]: buildStyle,
   }[kind];

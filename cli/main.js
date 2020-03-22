@@ -57,6 +57,8 @@ async function takeInventory(config) {
 
 const doBuild = (label, builder, file, config) => {
   if (builder) {
+    const verb = label[0].toUpperCase() + label.slice(1);
+    config.logger.info(`${verb}ing ${file.kind} "${file.path}"`);
     config.executor.run(builder, undefined, file, config).catch(reason => {
       config.logger.error(`Failed to ${label} "${file.path}"`, reason);
     });
@@ -291,7 +293,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Summarize Run
   doneWithMain();
-  config.logger.signOff(config.metrics.oneAndOnly('time', 'tool'));
+  config.logger.signOff(config.metrics.oneAndOnly('time', 'tool').value);
 }
 
 main();

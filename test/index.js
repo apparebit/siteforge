@@ -15,6 +15,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./html.js');
   await import('./inventory.js');
   await import('./contentforge.js');
+  await import('./operations.js');
   await import('./options.js');
   await import('./proact.js');
   await import('./reloader.js');

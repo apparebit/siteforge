@@ -1,9 +1,14 @@
 {
-  "name": "@grr/logger",
+  "name": "@grr/operations",
   "version": "0.1.0",
   "type": "module",
-  "main": "logger.js",
-  "description": "The one and only logger for Node.js",
+  "exports": {
+    ".": "./index.js",
+    "./format": "./format.js",
+    "./logger": "./logger.js",
+    "./metrics": "./metrics.js"
+  },
+  "description": "metrics and logging",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",

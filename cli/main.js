@@ -6,7 +6,7 @@ import { EOL } from 'os';
 import Executor from '@grr/async';
 import Inventory from '@grr/inventory';
 import { KIND } from '@grr/inventory/path';
-import Logger from '@grr/logger';
+import { Logger, Metrics } from '@grr/operations';
 import { join, resolve } from 'path';
 import run from '@grr/run';
 import selectBuilderFor from '@grr/contentforge';
@@ -143,7 +143,8 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Determine Configuration and Create Logger.
 
-  const start = process.hrtime.bigint();
+  const metrics = new Metrics();
+  const doneWithMain = metrics.time('tool');
   let config;
 
   try {
@@ -271,9 +272,8 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // Summarize Run
-  const { stats } = config;
-  stats.duration = process.hrtime.bigint() - start;
-  config.logger.signOff(stats);
+  doneWithMain();
+  config.logger.signOff(config.metrics.oneAndOnly('time', 'tool'));
 }
 
 main();

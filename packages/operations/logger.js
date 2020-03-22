@@ -12,6 +12,7 @@ import { types } from 'util';
 const BOLDED = /<b>(.*?)<\/b>/gu;
 const configurable = true;
 const { defineProperties, defineProperty, keys: keysOf } = Object;
+const { has } = Reflect;
 const { isArray } = Array;
 const { isNativeError } = types;
 const { stringify } = JSON;
@@ -45,7 +46,8 @@ const createTextLogger = ({
 }) => {
   const count = `${level}s`;
   label = label ? `[${label}] ` : '';
-  level = level.padEnd(LEVEL_WIDTH);
+  level = level[0].toUpperCase() + level.slice(1);
+  level = `${level}:`.padEnd(LEVEL_WIDTH + 1);
   const labelAndLevel = label + level;
 
   return function(message, detail) {
@@ -110,13 +112,13 @@ function signOff(duration) {
 export default function Logger(options = {}) {
   if (!new.target) return new Logger(options);
 
-  const { NODE_DISABLE_COLORS, NO_COLOR } = process.env;
+  const { env } = process;
 
   const {
     json = false,
     label,
     println = console.error,
-    stylish = NODE_DISABLE_COLORS === undefined && NO_COLOR === undefined,
+    stylish = !has(env, 'NODE_DISABLE_COLORS') && !has(env, 'NO_COLOR'),
     volume = 0,
   } = options;
 

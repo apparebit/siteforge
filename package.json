@@ -39,7 +39,7 @@
     "coverage": "c8 report && open coverage/index.html",
     "test": "NODE_ENV=test NODE_V8_COVERAGE=.coverage node test/index.js"
   },
-  "workspaces": ["tool", "packages/*"],
+  "workspaces": ["cli", "packages/*"],
   "c8": {
     "exclude": [
       "test",

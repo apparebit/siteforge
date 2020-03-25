@@ -6,6 +6,7 @@ import {
   copyAsset,
   extractCopyrightNotice,
   extractFrontMatter,
+  indexByKeywords,
   minifyScript,
   minifyStyle,
   prefixCopyrightNotice,
@@ -17,10 +18,9 @@ import { KIND } from '@grr/inventory/path';
 
 // -----------------------------------------------------------------------------
 
-const copyResource = build('asset', copyAsset);
+const copyResource = build(copyAsset);
 
 const buildClientScript = build(
-  'script',
   readSource,
   extractCopyrightNotice,
   minifyScript,
@@ -29,7 +29,6 @@ const buildClientScript = build(
 );
 
 const buildStyle = build(
-  'style',
   readSource,
   extractCopyrightNotice,
   minifyStyle,
@@ -37,8 +36,9 @@ const buildStyle = build(
   writeTarget
 );
 
-const preparePage = build('pre-page', readSource, extractFrontMatter);
-const finishPage = build('page', assemblePage, writeTarget);
+const preparePage = build(readSource, extractFrontMatter, indexByKeywords);
+
+const finishPage = build(assemblePage, writeTarget);
 
 export function prebuilderFor(kind) {
   return {

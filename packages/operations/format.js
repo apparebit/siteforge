@@ -2,7 +2,7 @@
 
 import { types } from 'util';
 
-const { freeze, getOwnPropertyNames, keys: keysOf } = Object;
+const { freeze, getOwnPropertyNames } = Object;
 const { has } = Reflect;
 const { isArray } = Array;
 const { isNativeError } = types;
@@ -18,21 +18,13 @@ export const STYLES = freeze({
 });
 
 export const LEVELS = freeze({
-  // Possibly add panic (-3) and trace (3).
-  error: { volume: -2, format: STYLES.red },
-  warning: { volume: -1, format: STYLES.orange },
-  success: { volume: 0, format: STYLES.green },
-  notice: { volume: 0, format: STYLES.bold },
-  info: { volume: 1, format: STYLES.plain },
-  debug: { volume: 2, format: STYLES.faint },
+  error: { display: 'ERROR  ', volume: -2, format: STYLES.red },
+  warning: { display: 'WARNING', volume: -1, format: STYLES.orange },
+  success: { display: 'SUCCESS', volume: 0, format: STYLES.green },
+  notice: { display: 'NOTICE ', volume: 0, format: STYLES.bold },
+  info: { display: 'INFO   ', volume: 1, format: STYLES.plain },
+  debug: { display: 'DEBUG  ', volume: 2, format: STYLES.faint },
 });
-
-export const LEVEL_WIDTH =
-  1 +
-  keysOf(LEVELS).reduce(
-    (max, level) => (level.length > max ? level.length : max),
-    0
-  );
 
 // -----------------------------------------------------------------------------
 
@@ -63,7 +55,11 @@ export const objectify = value => {
 
 // -----------------------------------------------------------------------------
 
-export function toHumanTime(duration) {
+export function toCount(quantity, item) {
+  return `${quantity} ${item}${quantity !== 1 ? 's' : ''}`;
+}
+
+export function toTime(duration) {
   // Break duration into milliseconds, seconds, and minutes.
   const units = [1000, 60];
   for (const [index, unit] of units.entries()) {

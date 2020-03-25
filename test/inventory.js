@@ -144,5 +144,26 @@ harness.test('@grr/inventory', t => {
 
   t.equal(inventory.matchOriginals().toString(), '/\\/some\\/style\\.css/u');
 
+  // Keywords.
+  const files = [
+    '/index.html',
+    '/about/apparebit.html',
+    '/about/robert-grimm.js',
+  ].map(path => inventory.byPath(path));
+
+  files[0].keywords = ['key', 'word'];
+  files[1].keywords = ['key', 'appear'];
+  files[2].keywords = ['word'];
+  files.forEach(file => inventory.indexByKeywords(file));
+
+  t.same([...inventory.keywords()], ['key', 'word', 'appear']);
+
+  const resolve = keyword =>
+    [...inventory.byKeyword(keyword)].map(file => file.path);
+
+  t.same(resolve('key'), ['/index.html', '/about/apparebit.html']);
+  t.same(resolve('word'), ['/index.html', '/about/robert-grimm.js']);
+  t.same(resolve('appear'), ['/about/apparebit.html']);
+
   t.end();
 });

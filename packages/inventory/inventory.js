@@ -4,13 +4,20 @@ import { isDefaultAssetPath, toKind, KIND } from './path.js';
 import { posix } from 'path';
 import { strict as assert } from 'assert';
 
-const { assign, create, defineProperties } = Object;
+const { assign, create, defineProperties, freeze } = Object;
 const { dirname, isAbsolute, join, parse, relative } = posix;
 const configurable = true;
 const EMPTY_ARRAY = [];
 const enumerable = true;
+const { iterator } = Symbol;
 const LA_FLOR = Symbol('secret');
 const { stringify: stringifyJson } = JSON;
+
+const PHASE = freeze({
+  DATA: 1,
+  ASSET: 2,
+  PAGE: 3,
+});
 
 // Popular copy pasta refined with local seasoning
 // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
@@ -127,13 +134,24 @@ class Directory {
 // =============================================================================
 
 export default class Inventory {
+  /** Enumerate phases `DATA`, `ASSET`, and `PAGE` in proper order. */
+  static get PHASE() {
+    return PHASE;
+  }
+
+  #size = 0;
   #root = new Directory();
   #byKind = new Map();
+  #byKeyword = new Map();
   #versionedPaths = new Map();
   #isStaticAsset;
 
   constructor({ isStaticAsset = isDefaultAssetPath } = {}) {
     this.#isStaticAsset = isStaticAsset;
+  }
+
+  get size() {
+    return this.#size;
   }
 
   /**
@@ -154,8 +172,9 @@ export default class Inventory {
     }
     const kind = toKind(path, this.#isStaticAsset);
     const file = parent._add(LA_FLOR, base, kind, data);
+    this.#size++;
 
-    // Add file's path to secondary
+    // Add file to kind index.
     if (this.#byKind.has(kind)) {
       this.#byKind.get(kind).push(file);
     } else {
@@ -163,6 +182,21 @@ export default class Inventory {
     }
 
     return file;
+  }
+
+  /** Index the file by its keywords. */
+  indexByKeywords(file) {
+    const { keywords } = file;
+
+    if (keywords && typeof keywords[iterator] === 'function') {
+      for (const keyword of keywords) {
+        if (!this.#byKeyword.has(keyword)) {
+          this.#byKeyword.set(keyword, [file]);
+        } else {
+          this.#byKeyword.get(keyword).push(file);
+        }
+      }
+    }
   }
 
   /** Get the root directory. */
@@ -189,10 +223,10 @@ export default class Inventory {
   /** Look up files by tool phase. */
   *byPhase(phase) {
     switch (phase) {
-      case 1:
+      case PHASE.DATA:
         yield* this.#byKind.get(KIND.DATA) || EMPTY_ARRAY;
         break;
-      case 2:
+      case PHASE.ASSET:
         for (const [kind, index] of this.#byKind) {
           if (
             kind === KIND.CONTENT_SCRIPT ||
@@ -204,13 +238,24 @@ export default class Inventory {
           yield* index || EMPTY_ARRAY;
         }
         break;
-      case 3:
+      case PHASE.PAGE:
         yield* this.#byKind.get(KIND.CONTENT_SCRIPT) || EMPTY_ARRAY;
         yield* this.#byKind.get(KIND.MARKUP) || EMPTY_ARRAY;
         break;
       default:
         assert.fail('phase must be 1, 2, or 3');
     }
+  }
+
+  /** Get all keywords currently in use. */
+  keywords() {
+    return this.#byKeyword.keys();
+  }
+
+  /** Look up files by keyword. */
+  *byKeyword(keyword) {
+    const files = this.#byKeyword.get(keyword);
+    if (files) yield* files; // Don't expose array to outside.
   }
 
   // ---------------------------------------------------------------------------

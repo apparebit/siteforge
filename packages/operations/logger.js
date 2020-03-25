@@ -1,12 +1,6 @@
 /* © 2019–2020 Robert Grimm */
 
-import {
-  LEVELS,
-  LEVEL_WIDTH,
-  objectify,
-  STYLES,
-  toHumanTime,
-} from './format.js';
+import { LEVELS, objectify, STYLES, toCount, toTime } from './format.js';
 import { types } from 'util';
 
 const BOLDED = /<b>(.*?)<\/b>/gu;
@@ -37,6 +31,15 @@ const createJSONLogger = ({ println, level, label }) => {
   };
 };
 
+const signOffJSON = function signOff({ files, duration }) {
+  const { errors, warnings } = this;
+  const details = { files, duration, errors, warnings };
+  const method = errors ? 'error' : warnings ? 'warning' : 'success';
+  this[method](`site:forge is done`, details);
+};
+
+// -----------------------------------------------------------------------------
+
 const createTextLogger = ({
   println,
   formatPrimary,
@@ -45,19 +48,17 @@ const createTextLogger = ({
   label,
 }) => {
   const count = `${level}s`;
-  label = label ? `[${label}] ` : '';
-  level = level[0].toUpperCase() + level.slice(1);
-  level = `${level}:`.padEnd(LEVEL_WIDTH + 1);
-  const labelAndLevel = label + level;
+  const status =
+    ` ` + (label ? `[${label}] ` : ``) + LEVELS[level].display + ` `;
 
   return function(message, detail) {
     this[count]++;
 
-    const timestamp = new Date().toISOString() + ' ';
-    println(timestamp + formatPrimary(labelAndLevel + message));
+    const timestamp = new Date().toISOString();
+    println(timestamp + formatPrimary(status + message));
     if (detail == null || typeof detail !== 'object') return;
 
-    const indent = ''.padEnd(timestamp.length);
+    const indent = ''.padEnd(timestamp.length + 1);
     if (isNativeError(detail)) {
       // For errors, print message and stack trace.
       const lines = detail.stack.split(/\r?\n/u);
@@ -85,27 +86,25 @@ const createTextLogger = ({
   };
 };
 
-function signOff(duration) {
-  const detail = [`site:forge ran for ${toHumanTime(duration)}`];
-  if (!this.errors && !this.warnings) {
-    return this.success(`Happy, happy, joy, joy!`, detail);
-  }
+const signOffText = function signOff({ files, duration }) {
+  let { errors, warnings } = this;
+  let message =
+    'site:forge processed ' +
+    toCount(files, 'file') +
+    ' in ' +
+    toTime(duration);
 
-  const fmtErrors = () =>
-    `${this.errors} error` + (this.errors !== 1 ? 's' : '');
-  const fmtWarnings = () =>
-    `${this.warnings} warning` + (this.warnings !== 1 ? 's' : '');
-
-  let message;
-  if (this.errors) {
-    message = fmtErrors();
-    if (this.warnings) message += ` and ` + fmtWarnings();
+  if (errors) {
+    message += ` with ${toCount(errors, 'error')}`;
+    if (warnings) message += ` and ${toCount(warnings, 'warning')}`;
+    this.error(message);
+  } else if (warnings) {
+    message += ` with ${toCount(warnings, 'warning')}`;
+    this.warning(message);
   } else {
-    message = fmtWarnings();
+    this.success(message);
   }
-
-  return this.error(message, detail);
-}
+};
 
 // -----------------------------------------------------------------------------
 
@@ -113,7 +112,6 @@ export default function Logger(options = {}) {
   if (!new.target) return new Logger(options);
 
   const { env } = process;
-
   const {
     json = false,
     label,
@@ -155,7 +153,7 @@ export default function Logger(options = {}) {
     },
     signOff: {
       configurable,
-      value: signOff,
+      value: json ? signOffJSON : signOffText,
     },
   });
 }

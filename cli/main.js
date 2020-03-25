@@ -294,7 +294,7 @@ async function main() {
   // Summarize Run
 
   config.logger.signOff({
-    files: config.inventory.size,
+    files: (config.inventory && config.inventory.size) || 0,
     duration: endMain().get(),
   });
 }

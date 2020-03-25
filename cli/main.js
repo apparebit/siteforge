@@ -30,6 +30,7 @@ const IGNORED_VALIDATIONS = [
 
 const LOADER_CONFIG = '@grr/siteforge/loader/config';
 const LOADER_HOOK = '@grr/siteforge/loader/hook';
+const { PHASE } = Inventory;
 
 // -----------------------------------------------------------------------------
 // Inventory of File System
@@ -68,7 +69,7 @@ const doBuild = (label, builder, file, config) => {
 };
 
 async function build(config) {
-  for (const phase of [1, 2]) {
+  for (const phase of [PHASE.DATA, PHASE.ASSET]) {
     for (const file of config.inventory.byPhase(phase)) {
       doBuild('build', builderFor(file.kind), file, config);
     }
@@ -79,15 +80,14 @@ async function build(config) {
     await config.executor.onIdle();
   }
 
-  const content = config.inventory.byPhase(3);
   // (1) Determine page metadata for global indexing.
-  for (const file of content) {
+  for (const file of config.inventory.byPhase(PHASE.PAGE)) {
     doBuild('pre-build', prebuilderFor(file.kind), file, config);
   }
   await config.executor.onIdle();
 
   // (2) Actually generate pages.
-  for (const file of content) {
+  for (const file of config.inventory.byPhase(PHASE.PAGE)) {
     doBuild('build', builderFor(file.kind), file, config);
   }
   await config.executor.onIdle();
@@ -162,7 +162,7 @@ async function main() {
   // Determine Configuration and Create Logger.
 
   const metrics = new Metrics();
-  const doneWithMain = metrics.time('tool');
+  const endMain = metrics.timer('main').start();
   let config;
 
   try {
@@ -292,8 +292,11 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // Summarize Run
-  doneWithMain();
-  config.logger.signOff(config.metrics.oneAndOnly('time', 'tool').value);
+
+  config.logger.signOff({
+    files: config.inventory.size,
+    duration: endMain().get(),
+  });
 }
 
 main();

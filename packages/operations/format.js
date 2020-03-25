@@ -6,6 +6,7 @@ const { freeze, getOwnPropertyNames } = Object;
 const { has } = Reflect;
 const { isArray } = Array;
 const { isNativeError } = types;
+const { round } = Math;
 
 export const STYLES = freeze({
   bold: s => `\x1b[1m${s}\x1b[22m`,
@@ -70,7 +71,7 @@ export function toTime(duration) {
 
   // NowNow format every component.
   if (units[1] === 0 && units[2] === 0) {
-    return `${units[0]}ms`;
+    return `${round(units[0])}ms`;
   }
   units[0] = `${units[0]}`.padStart(3, '0');
   if (units[2] === 0) {

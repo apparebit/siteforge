@@ -26,7 +26,7 @@ harness.test('@grr/contentforge', async t => {
   t.comment(`Using "${contentDir}" for content`);
   t.comment(`Using "${buildDir}" for build`);
 
-  const logged = [];
+  const trace = [];
   const context = {
     options: {
       buildDir,
@@ -34,11 +34,15 @@ harness.test('@grr/contentforge', async t => {
       versionAssets: false,
     },
     logger: {
-      info: msg => logged.push(['info', msg]),
-      error: msg => logged.push(['error', msg]),
+      info: message => trace.push({ type: 'log', level: 'info', message }),
+      error: message => trace.push({ type: 'log', level: 'error', message }),
     },
-    stats: {
-      resources: [],
+    metrics: {
+      timer() {
+        return {
+          start: path => () => trace.push({ type: 'timer', path }),
+        };
+      },
     },
   };
 
@@ -53,7 +57,6 @@ harness.test('@grr/contentforge', async t => {
   file = assign(
     file,
     await build(
-      'resource',
       readSource,
       file => {
         t.equal(file.content, 'de mi secreto');
@@ -73,7 +76,8 @@ harness.test('@grr/contentforge', async t => {
     await readFile(join(buildDir, 'la-flor.txt'), 'utf8'),
     'de mi secreto'
   );
-  t.same(logged, [['info', 'Building text "/la-flor.txt"']]);
+  t.same(trace, [{ type: 'timer', path: '/la-flor.txt' }]);
+  // t.same(logged, [['info', 'Building text "/la-flor.txt"']]);
 
   await writeFile(join(contentDir, 'Amanda'), 'Gris', 'utf8');
   file = await copyAsset({ path: '/Amanda' }, context);

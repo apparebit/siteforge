@@ -1,120 +1,155 @@
 /* © 2020 Robert Grimm */
 
+import { strict as assert } from 'assert';
 import { performance } from 'perf_hooks';
 
-const COUNT = 'count';
-const { round } = Math;
-const TIME = 'time';
+const { toStringTag } = Symbol;
 
-const checkLabels = labels => {
-  if (!labels.length) {
-    throw new Error(`at least one string label must be specified`);
-  } else if (labels.filter(l => !l || typeof l !== 'string').length) {
-    throw new Error(`labels must be non-empty strings`);
-  }
-};
+class Metric {
+  #name;
+  #bigint;
+  #data;
 
-// -----------------------------------------------------------------------------
-
-export default class Metrics {
-  #clock;
-  #measurements = [];
-
-  constructor({ clock = performance.now } = {}) {
-    this.#clock = clock;
+  constructor(name, { bigint = false } = {}) {
+    assert(typeof name === 'string');
+    assert(this.constructor !== Metric);
+    this.#name = name;
+    this.#bigint = !!bigint;
+    this.#data = new Map();
   }
 
-  /** Erase all measurements collected so far. */
-  clear() {
-    this.#measurements.length = 0;
+  get [toStringTag]() {
+    return assert.fail(`class Metric is abstract`);
   }
 
-  /** Record the given increment for the labelled count. Labels are ordered. */
-  count(increment, ...labels) {
-    checkLabels(labels);
-    this.#measurements.push({ type: COUNT, labels, value: increment });
+  get name() {
+    return this.#name;
   }
 
-  /**
-   * Start measuring the labelled time duration. It is completed by invoking
-   * the returned function. Labels are ordered.
-   */
-  time(...labels) {
-    checkLabels(labels);
-    const start = this.#clock();
-
-    let done = false;
-    return () => {
-      if (done) throw new Error(`timer "${labels.join(', ')}" is done already`);
-      done = true;
-
-      this.#measurements.push({
-        type: TIME,
-        labels,
-        value: round(this.#clock() - start),
-      });
-    };
+  get bigint() {
+    return this.#bigint;
   }
 
-  // ---------------------------------------------------------------------------
+  get size() {
+    return this.#data.size;
+  }
 
-  /**
-   * Filter all measurements taken so far by the given type and ordered labels.
-   * All arguments must be strings and match upon string equality—unless the
-   * given type or label is `*`, which matches any string.
-   */
-  *byTypeAndLabels(type, ...labels) {
-    const hasType = type !== '*' ? t => t === type : () => true;
-    const indices = labels
-      .map((e, i) => [i, e])
-      .filter(e => e[1] !== '*')
-      .map(e => e[0]);
-    const hasLabels = actual => {
-      if (actual.length < labels.length) return false;
-      for (const index of indices) {
-        if (actual[index] !== labels[index]) return false;
-      }
-      return true;
-    };
+  record(value, key = '') {
+    const type = typeof value;
+    assert(this.#bigint ? type === 'bigint' : type === 'number');
+    assert(typeof key === 'string');
 
-    for (const metric of this.#measurements) {
-      const { type, labels } = metric;
-      if (hasType(type) && hasLabels(labels)) {
-        yield metric;
-      }
+    const data = this.#data;
+    if (data.has(key)) {
+      data.set(key, data.get(key) + value);
+    } else {
+      data.set(key, value);
     }
   }
 
-  oneAndOnly(type, ...labels) {
-    const measurements = [...this.byTypeAndLabels(type, ...labels)];
-    const { length } = measurements;
-    if (length !== 1) {
-      throw new Error(`there are ${length} matching measurements`);
-    }
-    return measurements[0];
+  get() {
+    const data = this.#data;
+    if (data.size === 1) return [...data.values()][0];
+    throw new Error(`metric ${this.#name} has ${this.size} values`);
   }
 
-  /**
-   * Summarize the data for the given type and labels. This function returns an
-   * object with the count, sum, mean, min, and max.
-   */
-  summarize(type, ...labels) {
+  summarize() {
     let count = 0;
-    let sum = 0;
     let mean = 0;
     let min = Infinity;
     let max = -Infinity;
 
-    for (const metric of this.byTypeAndLabels(type, ...labels)) {
-      let { value } = metric;
-
+    for (const value of this.#data.values()) {
       count += 1;
-      sum += value;
-      mean = mean + (value - mean) / count;
+      mean += (value - mean) / count;
       if (value < min) min = value;
       if (value > max) max = value;
     }
 
-    return { count, sum, mean, min, max };
+    return { count, mean, min, max };
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+class Counter extends Metric {
+  get [toStringTag]() {
+    return 'Counter';
+  }
+
+  add(value, key = '') {
+    this.record(value, key);
+  }
+}
+
+class Timer extends Metric {
+  #clock;
+
+  constructor(name, clock) {
+    super(name, {}); // No bigint for now!
+    this.#clock = clock;
+  }
+
+  get [toStringTag]() {
+    return 'Timer';
+  }
+
+  start(key = '') {
+    // Check key and start measuring.
+    assert(typeof key === 'string');
+    const started = this.#clock();
+
+    // Each start should have an end. Not several.
+    let done = false;
+    return () => {
+      assert(!done);
+      done = true;
+
+      // Protect against shifty clocks.
+      const ended = this.#clock();
+      assert(ended > started, `clock must increase between readings`);
+      this.record(ended - started, key);
+      return this;
+    };
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+export default class Metrics {
+  #metrics = new Map();
+  #clock;
+
+  constructor({ clock = performance.now } = {}) {
+    assert(typeof clock === 'function');
+    this.#clock = clock;
+  }
+
+  counter(name) {
+    assert(typeof name === 'string' && name !== '');
+    let counter = this.#metrics.get(name);
+    if (!counter) {
+      counter = new Counter(name);
+      this.#metrics.set(name, counter);
+    } else {
+      assert(counter[toStringTag] === 'Counter');
+    }
+    return counter;
+  }
+
+  timer(name) {
+    assert(typeof name === 'string' && name !== '');
+    let timer = this.#metrics.get(name);
+    if (!timer) {
+      timer = new Timer(name, this.#clock);
+      this.#metrics.set(name, timer);
+    } else {
+      assert(timer[toStringTag] === 'Timer');
+    }
+    return timer;
+  }
+
+  get(name) {
+    return this.#metrics.get(name);
   }
 }

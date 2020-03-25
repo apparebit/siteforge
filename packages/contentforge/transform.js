@@ -15,8 +15,7 @@ import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
 
-const { assign, create, defineProperty, setPrototypeOf } = Object;
-const configurable = true;
+const { assign, create, setPrototypeOf } = Object;
 const { has } = Reflect;
 
 // -----------------------------------------------------------------------------
@@ -43,20 +42,22 @@ const NOTICE = new RegExp(
 
 // -----------------------------------------------------------------------------
 
-/** Create a file processing pipeline with the given tag and steps. */
-export function build(tag, ...steps) {
+/** Create a fully featured file processing pipeline ("batteries included"). */
+export function build(...steps) {
   const run = pipe(...steps);
   const build = async (file, context) => {
-    const done = context.metrics.time('build', tag, file.url);
+    const end = context.metrics.timer('build.time').start(file.path);
+
     const diff = await run(file, context);
     assign(file, diff);
-    done();
+
+    end();
     return file;
   };
-  defineProperty(build, 'tag', { configurable, value: tag });
   return build;
 }
 
+/** Create a bare file processing pipeline. */
 export function pipe(...steps) {
   return async function pipe(file, context) {
     const diff = create(file);
@@ -196,9 +197,14 @@ export function extractFrontMatter(file) {
   };
 }
 
+export function indexByKeywords(file, context) {
+  context.inventory.indexByKeywords(file);
+  return undefined;
+}
+
 // -----------------------------------------------------------------------------
 
-async function loadComponent(spec) {
+async function loadComponent(spec, context) {
   const url = pathToFileURL(join(context.options.componentDir, spec));
   let finalSpec;
   try {
@@ -207,40 +213,20 @@ async function loadComponent(spec) {
     finalSpec = spec;
   }
 
+  let component;
   try {
-    return import(finalSpec);
+    component = import(finalSpec);
   } catch (x) {
     const error = new Error(`unable to load component "${spec}"`);
     error.cause = x;
     throw error;
   }
-}
 
-class CachingLoader {
-  #components = new Map();
-
-  load(spec) {
-    if (!this.#components.has(spec)) {
-      this.#components.set(spec, loadComponent(spec));
-    }
-    return this.#components.get(spec);
+  if (typeof component.default !== 'function') {
+    throw new TypeError(
+      `component module "${spec}" doesn't default export function`
+    );
   }
-}
-
-function toComponent(name, module) {
-  if (typeof module.default === 'function') {
-    defineProperty(module.default, 'name', {
-      configurable,
-      value: name,
-    });
-    return module.default;
-  } else {
-    throw new TypeError(`module "${name}" doesn't default export function`);
-  }
-}
-
-async function loadComponent0(name, context) {
-  context.logger.info(`Loading component "${name}"`);
 }
 
 export async function assemblePage(file, context) {

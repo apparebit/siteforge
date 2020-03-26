@@ -1,5 +1,6 @@
 /* © 2019–2020 Robert Grimm */
 
+import { strict as assert } from 'assert';
 import { types } from 'util';
 
 const { freeze, getOwnPropertyNames } = Object;
@@ -60,23 +61,67 @@ export function toCount(quantity, item) {
   return `${quantity} ${item}${quantity !== 1 ? 's' : ''}`;
 }
 
-export function toTime(duration) {
-  // Break duration into milliseconds, seconds, and minutes.
-  const units = [1000, 60];
-  for (const [index, unit] of units.entries()) {
-    units[index] = duration % unit;
-    duration = (duration - units[index]) / unit;
-  }
-  units.push(duration);
+const formats = [
+  { unit: 'ms', digits: 3, separator: '' },
+  { unit: 's', digits: 2, separator: '.' },
+  { unit: 'min', digits: 2, separator: ':' },
+];
 
-  // NowNow format every component.
-  if (units[1] === 0 && units[2] === 0) {
-    return `${round(units[0])}ms`;
+/**
+ * Format the given duration in `MM:SS.LLL UNIT` format. If possible, the
+ * minutes or seconds are omitted and the unit is adjusted from `min` to `s`
+ * or `ms`. This function accepts durations measured in either of two ways:
+ *
+ *   * Use `performance.now()` to measure the duration in milliseconds as a
+ *     `Number`.
+ *   * Use `process.hrtime.bigint()` to measure the duration in nanoseconds
+ *     as a `BigInt`.
+ */
+export function toTime(duration) {
+  // ------------------------------------------------ Break into components.
+  const type = typeof duration;
+  assert.ok(type === 'number' || type === 'bigint');
+
+  let values = [1000, 60];
+  if (type === 'bigint') {
+    values = values.map(BigInt);
+    duration += 500_000n;
+    duration /= 1_000_000n;
   }
-  units[0] = `${units[0]}`.padStart(3, '0');
-  if (units[2] === 0) {
-    return `${units[1]}.${units[0]}s`;
+
+  for (const [index, unit] of values.entries()) {
+    values[index] = duration % unit;
+    duration = (duration - values[index]) / unit;
   }
-  units[1] = `${units[1]}`.padStart(2, '0');
-  return `${units[2]}:${units[1]}.${units[0]}m`;
+  values.push(duration);
+
+  if (type === 'number') {
+    // performance.now() returns non-integral numbers.
+    values[0] = round(values[0]);
+  }
+
+  // ------------------------------------------------ Format components.
+  let leading = true;
+  let text = '';
+  let unit;
+
+  for (let index = values.length - 1; index >= 0; index--) {
+    let value = values[index];
+
+    // eslint-disable-next-line eqeqeq
+    if (leading && value == 0) continue;
+    value = String(value);
+
+    const format = formats[index];
+    if (leading) {
+      unit = format.unit;
+      leading = false;
+    } else {
+      value = value.padStart(format.digits, '0');
+    }
+    text += value + format.separator;
+  }
+
+  text += ' ' + unit;
+  return text;
 }

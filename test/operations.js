@@ -30,9 +30,19 @@ harness.test('@grr/operations', t => {
     t.is(toCount(665, 'second'), '665 seconds');
 
     // --------------------------------------------- toTime():
-    t.is(toTime(3), '3ms');
-    t.is(toTime(1003), '1.003s');
-    t.is(toTime(61003), '1:01.003m');
+    t.is(toTime(3), '3 ms');
+    t.is(toTime(1003), '1.003 s');
+    t.is(toTime(61003), '1:01.003 min');
+
+    // Check rounding to whole milliseconds.
+    t.is(toTime(3.69), '4 ms');
+    t.is(toTime(1003.69), '1.004 s');
+    t.is(toTime(61003.21), '1:01.003 min');
+
+    // Check bigints, which start in nanoseconds.
+    t.is(toTime(3_690_000n), '4 ms');
+    t.is(toTime(1_003_690_000n), '1.004 s');
+    t.is(toTime(61_003_210_000n), '1:01.003 min');
 
     // --------------------------------------------- STYLES:
     t.is(STYLES.bold('bold'), '\x1b[1mbold\x1b[22m');
@@ -95,7 +105,7 @@ harness.test('@grr/operations', t => {
     record = logged.shift();
     t.match(
       record,
-      /^[TZ\d.:-]{24} SUCCESS site:forge processed 42 files in 665ms$/u
+      /^[TZ\d.:-]{24} SUCCESS site:forge processed 42 files in 665 ms$/u
     );
 
     t.end();

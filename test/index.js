@@ -15,6 +15,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./html.js');
   await import('./inventory.js');
   await import('./contentforge.js');
+  await import('./oddjob.js');
   await import('./operations.js');
   await import('./options.js');
   await import('./proact.js');
@@ -36,9 +37,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
       process.exitCode = 70; // X_SOFTWARE
     }
 
-    const spacer = Array(slogan.length)
-      .fill(' ')
-      .join('');
+    const spacer = Array(slogan.length).fill(' ').join('');
     for (const text of [spacer, slogan, spacer]) {
       console.log(`\x1b[${color}m${text}\x1b[0m`);
     }

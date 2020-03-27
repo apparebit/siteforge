@@ -1,0 +1,15 @@
+{
+  "name": "@grr/oddjob",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./string": "./string.js"
+  },
+  "description": "letting you focus on the flying circus!",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

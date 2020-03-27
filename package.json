@@ -17,6 +17,7 @@
     "@grr/glob": "0.1.0",
     "@grr/html": "0.1.0",
     "@grr/inventory": "0.1.0",
+    "@grr/oddjob": "0.1.0",
     "@grr/operations": "0.1.0",
     "@grr/options": "0.1.0",
     "@grr/proact": "0.1.0",

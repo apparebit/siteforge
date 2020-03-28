@@ -17,7 +17,7 @@ const writable = true;
 const createJSONLogger = ({ println, level, label }) => {
   const count = `${level}s`;
 
-  return function(message, detail) {
+  const log = function log(message, detail) {
     this[count]++;
 
     let line = `{"timestamp":"${new Date().toISOString()}",`;
@@ -29,6 +29,13 @@ const createJSONLogger = ({ println, level, label }) => {
 
     println(line);
   };
+
+  defineProperty(log, 'name', {
+    configurable,
+    value: level,
+  });
+
+  return log;
 };
 
 const signOffJSON = function signOff({ files, duration }) {
@@ -48,42 +55,56 @@ const createTextLogger = ({
   label,
 }) => {
   const count = `${level}s`;
-  const status =
-    ` ` + (label ? `[${label}] ` : ``) + LEVELS[level].display + ` `;
-
-  return function(message, detail) {
+  const status = `${label ? ` ${label}` : ``} [${LEVELS[level].display}] `;
+  const log = function log(message, detail) {
     this[count]++;
 
     const timestamp = new Date().toISOString();
-    println(timestamp + formatPrimary(status + message));
-    if (detail == null || typeof detail !== 'object') return;
+    message = status + message;
 
-    const indent = ''.padEnd(timestamp.length + 1);
-    if (isNativeError(detail)) {
-      // For errors, print message and stack trace.
-      const lines = detail.stack.split(/\r?\n/u);
-      lines[0] = detail.message;
-      for (const line of lines) {
-        println(formatDetail(indent + line));
+    let extraLines;
+    if (isNativeError(detail) || detail instanceof Error) {
+      // Check stack even if formatDetail is null...
+      extraLines = detail.stack.split(/\r?\n/u);
+      if (extraLines.length === 1) {
+        // Since we hoist error message if stack trace is missing.
+        message += ': ' + detail.message;
+        // FIXME: Check for cause
+        extraLines = null;
+      } else {
+        extraLines[0] = detail.message;
       }
+    } else if (
+      formatDetail == null ||
+      detail == null ||
+      typeof detail !== 'object'
+    ) {
+      extraLines = null;
     } else if (isArray(detail)) {
-      // For arrays, print each element as its own line.
-      for (const line of detail) {
-        println(formatDetail(`${indent}${line}`));
-      }
+      extraLines = detail.map(String);
     } else {
-      // For all other objects, print each enumerable own property.
       const keys = keysOf(detail);
       const width = keys.reduce((w, n) => (n.length > w ? n.length : w), 0);
-      for (const key of keys) {
-        println(
-          formatDetail(
-            `${indent}${key.padEnd(width)}: ${stringify(detail[key])}`
-          )
-        );
+      extraLines = keys.map(
+        key => `${key.padEnd(width)}: ${stringify(detail[key])}`
+      );
+    }
+
+    println(timestamp + formatPrimary(message));
+    if (formatDetail && extraLines) {
+      const indent = ''.padEnd(timestamp.length + 1);
+      for (const line of extraLines) {
+        println(indent + formatDetail(line));
       }
     }
   };
+
+  defineProperty(log, 'name', {
+    configurable,
+    value: level,
+  });
+
+  return log;
 };
 
 const signOffText = function signOff({ files, duration }) {
@@ -121,7 +142,8 @@ export default function Logger(options = {}) {
   } = options;
 
   const formatBold = stylish ? STYLES.bold : STYLES.plain;
-  const formatDetail = stylish ? STYLES.faint : STYLES.plain;
+  const formatDetail =
+    volume < LEVELS['info'] ? null : stylish ? STYLES.faint : STYLES.plain;
 
   for (const level of keysOf(LEVELS)) {
     const descriptor = LEVELS[level];

@@ -93,19 +93,20 @@ harness.test('@grr/operations', t => {
 
     // --------------------------------------------- Logging stylish text:
     logger = new Logger({ println, stylish: false, volume: 2 });
+    const ts = `^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z`;
 
     logger.debug(`Testing logger`);
     record = logged.shift();
-    t.match(
-      record,
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z DEBUG {3}Testing logger$/u
-    );
+    t.match(record, new RegExp(`${ts} \\[DEBUG\\] Testing logger$`, `u`));
 
     logger.signOff({ files: 42, duration: 665 });
     record = logged.shift();
     t.match(
       record,
-      /^[TZ\d.:-]{24} SUCCESS site:forge processed 42 files in 665 ms$/u
+      new RegExp(
+        `${ts} \\[SUCCESS\\] site:forge processed 42 files in 665 ms$`,
+        `u`
+      )
     );
 
     t.end();

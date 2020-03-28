@@ -20,12 +20,12 @@ export const STYLES = freeze({
 });
 
 export const LEVELS = freeze({
-  error: { display: 'ERROR  ', volume: -2, format: STYLES.red },
+  error: { display: 'ERROR', volume: -2, format: STYLES.red },
   warning: { display: 'WARNING', volume: -1, format: STYLES.orange },
   success: { display: 'SUCCESS', volume: 0, format: STYLES.green },
-  notice: { display: 'NOTICE ', volume: 0, format: STYLES.bold },
-  info: { display: 'INFO   ', volume: 1, format: STYLES.plain },
-  debug: { display: 'DEBUG  ', volume: 2, format: STYLES.faint },
+  notice: { display: 'NOTICE', volume: 0, format: STYLES.bold },
+  info: { display: 'INFO', volume: 1, format: STYLES.plain },
+  debug: { display: 'DEBUG', volume: 2, format: STYLES.faint },
 });
 
 // -----------------------------------------------------------------------------
@@ -33,7 +33,7 @@ export const LEVELS = freeze({
 export const objectify = value => {
   if (isArray(value)) {
     return value.map(objectify);
-  } else if (isNativeError(value)) {
+  } else if (isNativeError(value) || value instanceof Error) {
     let { name, stack } = value;
     let index = stack.indexOf('\n');
     if (index !== -1) {
@@ -65,6 +65,7 @@ const formats = [
   { unit: 'ms', digits: 3, separator: '' },
   { unit: 's', digits: 2, separator: '.' },
   { unit: 'min', digits: 2, separator: ':' },
+  { unit: 'h', digits: 2, separator: ':' },
 ];
 
 /**

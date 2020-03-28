@@ -78,11 +78,13 @@ export function pipe(...steps) {
 export async function readSource(file, context) {
   const result = create(null);
 
+  // Update the metadata.
   let { encoding, path, source } = file;
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
   }
 
+  // Read in the data and remove byte order mark (if any).
   let content = await readFile(source, encoding || 'utf8');
   if (typeof content === 'string' && content.charCodeAt(0) === 0xfeff) {
     content = content.slice(1);
@@ -93,24 +95,27 @@ export async function readSource(file, context) {
 
 export async function writeTarget(file, context) {
   const result = create(null);
-  result.content = undefined;
 
+  // Update the metadata.
   let { content, encoding, path, target } = file;
   if (!target) {
     target = result.target = join(context.options.buildDir, path);
   }
 
+  // Write out the data.
   if (!context.options.versionAssets || path === '/sw.js') {
     await writeFile(target, content, encoding || 'utf8');
   } else {
     target = await writeVersionedFile(target, content, encoding || 'utf8');
   }
+  result.content = undefined;
   return result;
 }
 
 export async function copyAsset(file, context) {
   const result = create(null);
 
+  // Update the metadata.
   let { path, source, target } = file;
   if (!source) {
     source = result.source = join(context.options.contentDir, path);
@@ -119,6 +124,7 @@ export async function copyAsset(file, context) {
     target = result.target = join(context.options.buildDir, path);
   }
 
+  // Copy the data.
   await copyFile(source, target);
   return result;
 }
@@ -130,17 +136,18 @@ export function extractCopyrightNotice(file, context) {
   const [prefix, copy1, copy2] = content.match(NOTICE) || [];
 
   if (prefix) {
-    // If present, preserve copyright notice from source code.
+    // If available, preserve copyright notice from source code.
     return {
       copyright: (copy1 || copy2).trim(),
       content: content.slice(prefix.length),
     };
   } else if (context && context.options && context.options.copyright) {
-    // If part of configuration, use that notice instead.
+    // Otherwise, if configured, use that copyright notice.
     return {
       copyright: context.options.copyright,
     };
   } else {
+    // Otherwise, there is none.
     return undefined;
   }
 }
@@ -215,7 +222,7 @@ async function loadComponent(spec, context) {
 
   let component;
   try {
-    component = import(finalSpec);
+    component = await import(finalSpec);
   } catch (x) {
     const error = new Error(`unable to load component "${spec}"`);
     error.cause = x;
@@ -227,6 +234,7 @@ async function loadComponent(spec, context) {
       `component module "${spec}" doesn't default export function`
     );
   }
+  return component;
 }
 
 export async function assemblePage(file, context) {

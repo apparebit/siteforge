@@ -57,11 +57,11 @@ harness.test('@grr/walk', async t => {
 
   const expectedFiles = [
     ...expectedFilesShortWalk.slice(0, 4),
-    '/contentforge/LICENSE',
-    '/contentforge/README.md',
-    '/contentforge/builder.js',
-    '/contentforge/package.json',
-    '/contentforge/transform.js',
+    '/builder/LICENSE',
+    '/builder/README.md',
+    '/builder/builder.js',
+    '/builder/package.json',
+    '/builder/transform.js',
     '/fs/LICENSE',
     '/fs/README.md',
     '/fs/fs.js',

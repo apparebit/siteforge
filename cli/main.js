@@ -9,7 +9,7 @@ import { KIND } from '@grr/inventory/path';
 import { Logger, Metrics } from '@grr/operations';
 import { join, resolve } from 'path';
 import run from '@grr/run';
-import { prebuilderFor, builderFor } from '@grr/contentforge';
+import { prebuilderFor, builderFor } from '@grr/builder';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 

@@ -10,7 +10,7 @@ import {
   prefixCopyrightNotice,
   readSource,
   writeTarget,
-} from '@grr/contentforge/transform';
+} from '@grr/builder/transform';
 import harness from './harness.js';
 import { join } from 'path';
 import { KIND } from '@grr/inventory/path';
@@ -19,7 +19,7 @@ import { mkdir, readFile, rmdir, writeFile } from '@grr/fs';
 
 const { assign, keys: keysOf } = Object;
 
-harness.test('@grr/contentforge', async t => {
+harness.test('@grr/builder', async t => {
   const tmp = tmpdir();
   const buildDir = join(tmp, 'build');
   const contentDir = join(tmp, 'content');

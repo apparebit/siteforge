@@ -16,7 +16,7 @@
   ],
   "dependencies": {
     "@grr/async": "0.1.0",
-    "@grr/contentforge": "0.1.0",
+    "@grr/builder": "0.1.0",
     "@grr/fs": "0.1.0",
     "@grr/glob": "0.1.0",
     "@grr/html": "0.1.0",

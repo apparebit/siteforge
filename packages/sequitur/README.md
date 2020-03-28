@@ -9,7 +9,7 @@ THE NEXT VERSION WILL BE MOSTLY SYNCHRONOUS:
     should adhere to a fork-join or structured concurrency model. They
     definitely should implement cooperative cancellation because they may just
     do the heavy lifting. The pipelines in
-    [__@grr/contentforge__](../contentforge) certainly do. In short, runtime
+    [__@grr/builder__](../builder) certainly do. In short, runtime
     support for such pipelines belongs into a future rewrite of
     [__@grr/async__](../async).
 

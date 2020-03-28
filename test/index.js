@@ -14,7 +14,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./glob.js');
   await import('./html.js');
   await import('./inventory.js');
-  await import('./contentforge.js');
+  await import('./builder.js');
   await import('./oddjob.js');
   await import('./operations.js');
   await import('./options.js');

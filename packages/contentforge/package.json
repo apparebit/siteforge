@@ -16,6 +16,7 @@
   "dependencies": {
     "@babel/core": "7.8.4",
     "@grr/inventory": "0.1.0",
+    "@grr/oddjob": "0.1.0",
     "@grr/proact": "0.1.0",
     "babel-minify": "0.5.1",
     "cssnano": "4.1.10",

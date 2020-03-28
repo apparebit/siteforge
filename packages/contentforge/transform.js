@@ -8,6 +8,7 @@ import {
   writeVersionedFile,
 } from '@grr/fs';
 
+import { TracelessError } from '@grr/oddjob/error';
 import cssnano from 'cssnano';
 import { join } from 'path';
 import minify from 'babel-minify';
@@ -173,7 +174,7 @@ export function extractFrontMatter(file) {
   const start = match[0].length;
   const end = content.indexOf(FRONT_CLOSE);
   if (end === -1) {
-    throw new Error(`front matter for "${file.path}" has no closing tag`);
+    throw TracelessError(`front matter for "${file.path}" has no closing tag`);
   }
   const frontMatterEnd = end + FRONT_CLOSE.length;
 
@@ -192,7 +193,7 @@ export function extractFrontMatter(file) {
   );
 
   if (metadata == null || typeof metadata !== 'object') {
-    throw new Error(`front matter for "${file.path}" is not an object`);
+    throw TracelessError(`front matter for "${file.path}" is not an object`);
   } else {
     delete metadata.__proto__;
   }
@@ -224,15 +225,13 @@ async function loadComponent(spec, context) {
   try {
     component = await import(finalSpec);
   } catch (x) {
-    const error = new Error(`unable to load component "${spec}"`);
+    const error = TracelessError(`unable to load component "${spec}"`);
     error.cause = x;
     throw error;
   }
 
   if (typeof component.default !== 'function') {
-    throw new TypeError(
-      `component module "${spec}" doesn't default export function`
-    );
+    throw TracelessError(`component "${spec}" doesn't default export function`);
   }
   return component;
 }

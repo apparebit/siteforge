@@ -247,9 +247,9 @@ export async function assemblePage(file, context) {
   if (!pageProvider) return undefined;
 
   // Load the page provider and apply it.
-  const Page = await loadComponent(pageProvider, context);
   const result = create(null);
-  result.content = await Page(file, context);
+  const component = await loadComponent(pageProvider, context);
+  result.content = await component.default(file, context);
   return result;
 }
 

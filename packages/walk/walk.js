@@ -2,7 +2,7 @@
 
 import { basename, join, posix } from 'path';
 import { promises } from 'fs';
-import { strict } from 'assert';
+import { strict as assert } from 'assert';
 
 const { apply } = Reflect;
 const { assign, create } = Object;
@@ -46,12 +46,12 @@ export default function walk(
     realpath = promises.realpath,
   } = {}
 ) {
-  strict.equal(typeof root, 'string');
-  strict.equal(typeof isExcluded, 'function');
-  if (onDirectory !== undefined) strict.equal(typeof onDirectory, 'function');
-  if (onFile !== undefined) strict.equal(typeof onFile, 'function');
-  if (onSymlink !== undefined) strict.equal(typeof onSymlink, 'function');
-  strict.equal(typeof run, 'function');
+  assert.equal(typeof root, 'string');
+  assert.equal(typeof isExcluded, 'function');
+  if (onDirectory !== undefined) assert.equal(typeof onDirectory, 'function');
+  if (onFile !== undefined) assert.equal(typeof onFile, 'function');
+  if (onSymlink !== undefined) assert.equal(typeof onSymlink, 'function');
+  assert.equal(typeof run, 'function');
 
   // ---------------------------------------------------------------------------
 
@@ -148,8 +148,8 @@ export default function walk(
   registry.set(SYMLINK, onSymlink ? [onSymlink] : []);
 
   const on = (event, handler) => {
-    strict.ok(registry.has(event));
-    strict.equal(typeof handler, 'function');
+    assert.ok(registry.has(event));
+    assert.equal(typeof handler, 'function');
 
     const handlers = registry.get(event);
     handlers.push(handler);
@@ -165,7 +165,7 @@ export default function walk(
 
   const emit = (event, ...args) => {
     trace('emit', event, ...args);
-    strict.ok(registry.has(event));
+    assert.ok(registry.has(event));
     const handlers = registry.get(event).slice();
     for (const handler of handlers) {
       handler(event, ...args);

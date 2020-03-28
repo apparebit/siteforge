@@ -1,9 +1,45 @@
 /* © 2020 Robert Grimm */
 
+import { isError, TracelessError } from '@grr/oddjob/error';
 import { asciify, slugify } from '@grr/oddjob/string';
 import harness from './harness.js';
+import { types } from 'util';
+
+const { isNativeError } = types;
 
 harness.test('@grr/oddjob', t => {
+  t.test('error', t => {
+    function X() {}
+    X.prototype = new Error();
+
+    let x = new X();
+    t.ok(x instanceof Error);
+    t.notOk(isNativeError(x));
+    t.ok(isError(x));
+
+    x = new Error();
+    t.ok(x instanceof Error);
+    t.ok(isNativeError(x));
+    t.ok(isError(x));
+
+    x = TracelessError();
+    t.ok(x instanceof Error);
+    t.ok(isNativeError(x));
+    t.ok(isError(x));
+
+    x = new TypeError('boo');
+    t.ok(x instanceof Error);
+    t.ok(isNativeError(x));
+    t.ok(isError(x));
+
+    x = TracelessError('boo', TypeError);
+    t.ok(x instanceof Error);
+    t.ok(isNativeError(x));
+    t.ok(isError(x));
+
+    t.end();
+  });
+
   t.test('string', t => {
     // ------------------------------------------------------- asciify()
     t.is(

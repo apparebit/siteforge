@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    "./error": "./error.js",
     "./string": "./string.js"
   },
   "description": "letting you focus on the flying circus!",

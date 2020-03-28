@@ -5,12 +5,23 @@ import { performance } from 'perf_hooks';
 
 const { toStringTag } = Symbol;
 
+// =============================================================================
+
+/**
+ * An abstract metric. This class captures some number of measurements that
+ * together provide the metric. Each such measurement has a key and a value. The
+ * key is a string. Measurements with the same key are cumulative and not stored
+ * individually. The value is either a number or bigint, depending on the
+ * metric's configuration. `add()` captures a measurement, `get()` returns the
+ * only measurement, and `summarize()` computes salient statistics.
+ */
 class Metric {
   #name;
   #bigint;
   #data;
 
   constructor(name, { bigint = false } = {}) {
+    assert(new.target !== Metric);
     assert(typeof name === 'string');
     assert(this.constructor !== Metric);
     this.#name = name;
@@ -18,23 +29,23 @@ class Metric {
     this.#data = new Map();
   }
 
-  get [toStringTag]() {
-    return assert.fail(`class Metric is abstract`);
-  }
-
+  /** Get the name. */
   get name() {
     return this.#name;
   }
 
+  /** Determine whether this metric uses big integers. */
   get bigint() {
     return this.#bigint;
   }
 
+  /** Get the number of recorded measurements. */
   get size() {
     return this.#data.size;
   }
 
-  record(value, key = '') {
+  /** Record a measurement. */
+  add(value, key = '') {
     const type = typeof value;
     assert(this.#bigint ? type === 'bigint' : type === 'number');
     assert(typeof key === 'string');
@@ -47,12 +58,14 @@ class Metric {
     }
   }
 
+  /** Get the only measurement and throw otherwise. */
   get() {
     const data = this.#data;
     if (data.size === 1) return [...data.values()][0];
     throw new Error(`metric ${this.#name} has ${this.size} values`);
   }
 
+  /** Summarize this metric. */
   summarize() {
     let count = 0;
     let mean = 0;
@@ -72,16 +85,14 @@ class Metric {
 
 // -----------------------------------------------------------------------------
 
+/** A concrete counter. */
 class Counter extends Metric {
   get [toStringTag]() {
     return 'Counter';
   }
-
-  add(value, key = '') {
-    this.record(value, key);
-  }
 }
 
+/** A concrete timer. */
 class Timer extends Metric {
   #clock;
 
@@ -94,6 +105,7 @@ class Timer extends Metric {
     return 'Timer';
   }
 
+  /** Start the timer and return a function to stop it again. */
   start(key = '') {
     // Check key and start measuring.
     assert(typeof key === 'string');
@@ -108,14 +120,15 @@ class Timer extends Metric {
       // Protect against shifty clocks.
       const ended = this.#clock();
       assert(ended > started, `clock must increase between readings`);
-      this.record(ended - started, key);
+      this.add(ended - started, key);
       return this;
     };
   }
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 
+/** A collection of named metrics. */
 export default class Metrics {
   #metrics = new Map();
   #clock;
@@ -125,6 +138,11 @@ export default class Metrics {
     this.#clock = clock;
   }
 
+  /**
+   * Return the counter with the given name. This method creates a new counter
+   * if no metric with the name exists. It returns the existing metric if it is
+   * a counter, throwing otherwise.
+   */
   counter(name) {
     assert(typeof name === 'string' && name !== '');
     let counter = this.#metrics.get(name);
@@ -137,6 +155,11 @@ export default class Metrics {
     return counter;
   }
 
+  /**
+   * Return the timer with the given name. This method creates a new timer if no
+   * metric with the name exists. It returns the existing metric if it is a
+   * timer, throwing otherwise.
+   */
   timer(name) {
     assert(typeof name === 'string' && name !== '');
     let timer = this.#metrics.get(name);
@@ -149,6 +172,7 @@ export default class Metrics {
     return timer;
   }
 
+  /** Return the metric with the given name. */
   get(name) {
     return this.#metrics.get(name);
   }

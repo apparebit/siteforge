@@ -124,7 +124,7 @@ harness.test('@grr/operations', t => {
     counter.add(1);
 
     t.is(counter[toStringTag], 'Counter');
-    t.throws(() => getPrototypeOf(getPrototypeOf(counter))[toStringTag]);
+    t.throws(() => new getPrototypeOf(getPrototypeOf(counter)).constructor());
     t.is(counter.name, 'one count');
     t.notOk(counter.bigint);
     t.is(counter.size, 1);

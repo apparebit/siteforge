@@ -212,6 +212,28 @@ export function indexByKeywords(file, context) {
 
 // -----------------------------------------------------------------------------
 
+// async function loadData(file, context) {
+//   const { path } = file;
+//   const url = pathToFileURL(join(context.options.contentDir, path));
+
+//   let module;
+//   try {
+//     module = await import(url);
+//   } catch (x) {
+//     const error = TracelessError(`unable to load data "${path}"`);
+//     error.cause = x;
+//     throw error;
+//   }
+
+//   if (typeof module.default !== 'function') return module;
+
+//   const data = await module.default(module, context);
+//   if (data == null || typeof data !== 'object') {
+//     throw TracelessError(`data source "${path}" is not an object`);
+//   }
+//   return data;
+// }
+
 async function loadComponent(spec, context) {
   const url = pathToFileURL(join(context.options.componentDir, spec));
   let finalSpec;

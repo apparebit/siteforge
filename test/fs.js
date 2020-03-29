@@ -62,8 +62,10 @@ harness.test('@grr/fs', t => {
       const to2 = join(__directory, 'down/the/rabbit/hole/copy.js');
       await copyFile(from, to1);
 
-      const original = await readFile(from, 'utf8');
-      const copy1 = await readFile(to1, 'utf8');
+      const [original, copy1] = await Promise.all([
+        readFile(from, 'utf8'),
+        readFile(to1, 'utf8'),
+      ]);
       t.equal(copy1, original);
 
       await copyFile(from, to2);
@@ -84,12 +86,7 @@ harness.test('@grr/fs', t => {
     const hash =
       'd9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5';
 
-    t.equal(
-      createHash('sha256')
-        .update(data)
-        .digest('hex'),
-      hash
-    );
+    t.equal(createHash('sha256').update(data).digest('hex'), hash);
 
     // Path injection.
     t.equal(

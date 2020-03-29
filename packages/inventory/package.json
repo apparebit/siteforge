@@ -2,6 +2,9 @@
   "name": "@grr/inventory",
   "version": "0.1.0",
   "type": "module",
+  "dependencies": {
+    "@grr/oddjob": "0.1.0"
+  },
   "exports": {
     ".": "./inventory.js",
     "./path": "./path.js"

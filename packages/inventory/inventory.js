@@ -2,6 +2,7 @@
 
 import { isDefaultAssetPath, toKind, KIND } from './path.js';
 import { posix } from 'path';
+import { slugify } from '@grr/oddjob/string';
 import { strict as assert } from 'assert';
 
 const { assign, create, defineProperties, freeze } = Object;
@@ -57,10 +58,38 @@ class Directory {
     this.#entries.set('..', parent);
   }
 
+  /** Determine this directory's path. */
   get path() {
     return this.#path;
   }
 
+  /**
+   * Create an iterator over this directory's entries. The iterator skips the
+   * `.` and `..` entries naming this directory and its parent.
+   */
+  *entries() {
+    for (const name of this.#entries.keys()) {
+      if (name !== '.' && name !== '..') {
+        yield this.#entries.get(name);
+      }
+    }
+  }
+
+  /**
+   * Create an iterator over this directory's files. The iterator recurses into
+   * nested directories.
+   */
+  *files() {
+    for (const entry of this.entries()) {
+      if (entry instanceof Directory) {
+        yield* entry.files();
+      } else {
+        yield entry;
+      }
+    }
+  }
+
+  /** Look up the directory or file with the given relative path. */
   lookup(
     path,
     { fillInMissingSegments = false, validateLastSegment = false } = {}
@@ -184,16 +213,28 @@ export default class Inventory {
     return file;
   }
 
-  /** Index the file by its keywords. */
+  /**
+   * Index the file by its keywords. Each keyword is first converted into
+   * the corresponding slug, though the original is also preserved.
+   */
   indexByKeywords(file) {
     const { keywords } = file;
 
     if (keywords && typeof keywords[iterator] === 'function') {
-      for (const keyword of keywords) {
-        if (!this.#byKeyword.has(keyword)) {
-          this.#byKeyword.set(keyword, [file]);
+      for (let keyword of keywords) {
+        keyword = keyword.normalize('NFC');
+        const slug = slugify(keyword);
+
+        if (!this.#byKeyword.has(slug)) {
+          this.#byKeyword.set(slug, {
+            keyword: slug,
+            display: [keyword],
+            files: [file],
+          });
         } else {
-          this.#byKeyword.get(keyword).push(file);
+          const { display, files } = this.#byKeyword.get(slug);
+          if (!display.includes(keyword)) display.push(keyword);
+          if (!files.includes(file)) files.push(file);
         }
       }
     }
@@ -253,9 +294,15 @@ export default class Inventory {
   }
 
   /** Look up files by keyword. */
-  *byKeyword(keyword) {
-    const files = this.#byKeyword.get(keyword);
-    if (files) yield* files; // Don't expose array to outside.
+  byKeyword(keyword) {
+    const slug = slugify(keyword);
+    const entry = this.#byKeyword.get(slug);
+
+    return {
+      keyword: slug,
+      display: entry ? [...entry.display] : [keyword],
+      files: entry ? [...entry.files] : [],
+    };
   }
 
   // ---------------------------------------------------------------------------

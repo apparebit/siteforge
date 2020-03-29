@@ -14,17 +14,14 @@ import {
 import harness from './harness.js';
 import { join } from 'path';
 import { KIND } from '@grr/inventory/path';
-import { tmpdir } from 'os';
-import { mkdir, readFile, rmdir, writeFile } from '@grr/fs';
+import { readFile, rmdir, toDirectory } from '@grr/fs';
 
+const __directory = toDirectory(import.meta.url);
 const { assign, keys: keysOf } = Object;
 
 harness.test('@grr/builder', async t => {
-  const tmp = tmpdir();
-  const buildDir = join(tmp, 'build');
-  const contentDir = join(tmp, 'content');
-  t.comment(`Using "${contentDir}" for content`);
-  t.comment(`Using "${buildDir}" for build`);
+  const buildDir = join(__directory, 'fixtures', 'build');
+  const contentDir = join(__directory, 'fixtures', 'content');
 
   const trace = [];
   const context = {
@@ -47,44 +44,57 @@ harness.test('@grr/builder', async t => {
   };
 
   // Read, Write
-  let file = { path: '/la-flor.txt', kind: KIND.TEXT };
-  await rmdir(buildDir, { recursive: true });
-  await rmdir(contentDir, { recursive: true });
-  await mkdir(buildDir);
-  await mkdir(contentDir);
-  await writeFile(join(contentDir, 'la-flor.txt'), 'de mi secreto', 'utf8');
+  try {
+    let file = { path: '/la-flor.html', kind: KIND.TEXT };
 
-  file = assign(
-    file,
-    await build(
-      readSource,
-      file => {
-        t.equal(file.content, 'de mi secreto');
-        return undefined; // Nothing changed.
-      },
-      writeTarget
-    )(file, context)
-  );
+    file = assign(
+      file,
+      await build(
+        readSource,
+        file => {
+          t.equal(
+            file.content,
+            '<!DOCTYPE html><title>La Flor</title><p>De Mi Secreto</p>\n'
+          );
+          return undefined; // Nothing changed.
+        },
+        writeTarget
+      )(file, context)
+    );
 
-  t.same(keysOf(file).sort(), ['content', 'kind', 'path', 'source', 'target']);
-  t.equal(file.path, '/la-flor.txt');
-  t.equal(file.kind, KIND.TEXT);
-  t.equal(file.content, undefined);
-  t.equal(file.source, join(contentDir, '/la-flor.txt'));
-  t.equal(file.target, join(buildDir, '/la-flor.txt'));
-  t.equal(
-    await readFile(join(buildDir, 'la-flor.txt'), 'utf8'),
-    'de mi secreto'
-  );
-  t.same(trace, [{ type: 'timer', path: '/la-flor.txt' }]);
-  // t.same(logged, [['info', 'Building text "/la-flor.txt"']]);
+    t.same(keysOf(file).sort(), [
+      'content',
+      'kind',
+      'path',
+      'source',
+      'target',
+    ]);
+    t.equal(file.path, '/la-flor.html');
+    t.equal(file.kind, KIND.TEXT);
+    t.equal(file.content, undefined);
+    t.equal(file.source, join(contentDir, '/la-flor.html'));
+    t.equal(file.target, join(buildDir, '/la-flor.html'));
+    t.equal(
+      await readFile(join(buildDir, '/la-flor.html'), 'utf8'),
+      '<!DOCTYPE html><title>La Flor</title><p>De Mi Secreto</p>\n'
+    );
+    t.same(trace, [{ type: 'timer', path: '/la-flor.html' }]);
+    // t.same(logged, [['info', 'Building text "/la-flor.txt"']]);
 
-  await writeFile(join(contentDir, 'Amanda'), 'Gris', 'utf8');
-  file = await copyAsset({ path: '/Amanda' }, context);
-
-  t.equal(file.source, join(contentDir, '/Amanda'));
-  t.equal(file.target, join(buildDir, '/Amanda'));
-  t.equal(await readFile(join(buildDir, 'Amanda'), 'utf8'), 'Gris');
+    file = await copyAsset({ path: '/amanda-gris.css' }, context);
+    t.equal(file.source, join(contentDir, '/amanda-gris.css'));
+    t.equal(file.target, join(buildDir, '/amanda-gris.css'));
+    t.equal(
+      await readFile(join(buildDir, '/amanda-gris.css'), 'utf8'),
+      `body::before {
+  content: 'Leocadia Macías';
+  content: 'Marisa Paredes';
+}
+`
+    );
+  } finally {
+    await rmdir(buildDir, { recursive: true });
+  }
 
   // Extract and Prefix Copyright Notice.
   let { copyright, content } = extractCopyrightNotice({
@@ -105,7 +115,7 @@ harness.test('@grr/builder', async t => {
   t.equal(prefixCopyrightNotice({ content: 'Boo!' }), undefined);
 
   // Extract Front Matter.
-  file = {
+  let file = {
     path: '/some/content',
     content: `<script>({
       name: 'Apparebit',

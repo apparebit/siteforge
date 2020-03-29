@@ -10,11 +10,11 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
 (async function run() {
   await rmdir(COVERAGE_DATA, { recursive: true });
   await import('./async.js');
+  await import('./builder.js');
   await import('./fs.js');
   await import('./glob.js');
   await import('./html.js');
   await import('./inventory.js');
-  await import('./builder.js');
   await import('./oddjob.js');
   await import('./operations.js');
   await import('./options.js');
@@ -29,7 +29,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
     let color, slogan;
 
     if (fail === 0) {
-      color = '102;1';
+      color = '48;5;47;1';
       slogan = `  Yay, all ${pass} tests passed!  `;
     } else {
       color = '48;5;210;1';
@@ -37,7 +37,7 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
       process.exitCode = 70; // X_SOFTWARE
     }
 
-    const spacer = Array(slogan.length).fill(' ').join('');
+    const spacer = ''.padEnd(slogan.length);
     for (const text of [spacer, slogan, spacer]) {
       console.log(`\x1b[${color}m${text}\x1b[0m`);
     }

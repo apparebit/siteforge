@@ -39,18 +39,20 @@ harness.test('@grr/operations', t => {
     t.is(toTime(1003.69), '1.004 s');
     t.is(toTime(61003.21), '1:01.003 min');
 
-    // Check bigints, which start in nanoseconds.
+    // Check big integers, which start in nanoseconds.
     t.is(toTime(3_690_000n), '4 ms');
     t.is(toTime(1_003_690_000n), '1.004 s');
     t.is(toTime(61_003_210_000n), '1:01.003 min');
 
     // --------------------------------------------- STYLES:
+    // cspell:disable
     t.is(STYLES.bold('bold'), '\x1b[1mbold\x1b[22m');
     t.is(STYLES.faint('faint'), '\x1b[90mfaint\x1b[39m');
     t.is(STYLES.green('green'), '\x1b[1;32mgreen\x1b[39;22m');
     t.is(STYLES.magenta('magenta'), '\x1b[1;35mmagenta\x1b[39;22m');
     t.is(STYLES.orange('orange'), '\x1b[1;38;5;208morange\x1b[39;22m');
     t.is(STYLES.red('red'), '\x1b[1;31mred\x1b[39;22m');
+    // cspell:enable
 
     t.end();
   });
@@ -114,10 +116,17 @@ harness.test('@grr/operations', t => {
 
   t.test('Metrics', t => {
     let clockwerk = 0;
-    const metrics = new Metrics({ clock: () => clockwerk });
+    const clock = () => clockwerk;
+    const metrics = new Metrics();
 
-    // --------------------------------------------- Counting one count:
+    // --------------------------------------------- Counter: 0 measurements
     let counter = metrics.counter('one count');
+    t.is(counter.size, 0);
+    t.same(counter.summarize(), { count: 0 });
+    t.is(metrics.counter('one count'), counter);
+    t.throws(() => metrics.counter('one count', { isBigInt: true }));
+
+    // --------------------------------------------- Counter: 1 measurement
     counter.add(3);
     counter.add(7);
     counter.add(9);
@@ -126,9 +135,10 @@ harness.test('@grr/operations', t => {
     t.is(counter[toStringTag], 'Counter');
     t.throws(() => new getPrototypeOf(getPrototypeOf(counter)).constructor());
     t.is(counter.name, 'one count');
-    t.notOk(counter.bigint);
+    t.notOk(counter.isBigInt);
     t.is(counter.size, 1);
     t.is(counter.get(), 20);
+    t.is(counter.get(''), 20);
     t.same(counter.summarize(), {
       count: 1,
       mean: 20,
@@ -136,18 +146,23 @@ harness.test('@grr/operations', t => {
       max: 20,
     });
 
-    // --------------------------------------------- Counting four counts:
+    // --------------------------------------------- Counter: 4 measurements
     counter = metrics.counter('four counts');
     counter.add(3, 'a');
     counter.add(7, 'b');
     counter.add(9, 'c');
     counter.add(1, 'd');
+    t.throws(() => counter.add(665n));
 
     t.is(counter[toStringTag], 'Counter');
     t.is(counter.name, 'four counts');
-    t.notOk(counter.bigint);
+    t.notOk(counter.isBigInt);
     t.is(counter.size, 4);
-    t.throws(() => counter.get());
+    t.is(counter.get(), undefined);
+    t.is(counter.get('a'), 3);
+    t.is(counter.get('b'), 7);
+    t.is(counter.get('c'), 9);
+    t.is(counter.get('d'), 1);
     t.same(counter.summarize(), {
       count: 4,
       mean: 5,
@@ -155,8 +170,34 @@ harness.test('@grr/operations', t => {
       max: 9,
     });
 
+    // --------------------------------------------- Counter: big integers
+    counter = metrics.counter('big integer', { isBigInt: true });
+    counter.add(3n, 'a');
+    counter.add(7n, 'b');
+    counter.add(9n, 'c');
+    counter.add(1n, 'd');
+
+    t.is(counter[toStringTag], 'Counter');
+    t.is(counter.name, 'big integer');
+    t.ok(counter.isBigInt);
+    t.is(counter.size, 4);
+    t.is(counter.get(), undefined);
+    t.is(counter.get('a'), 3n);
+    t.is(counter.get('b'), 7n);
+    t.is(counter.get('c'), 9n);
+    t.is(counter.get('d'), 1n);
+    t.same(counter.summarize(), {
+      count: 4,
+      mean: 5n,
+      min: 1n,
+      max: 9n,
+    });
+
     // --------------------------------------------- Timing two times:
-    let timer = metrics.timer('watch');
+    let timer = metrics.timer('watch', { clock });
+    t.is(metrics.timer('watch'), timer);
+    t.is(metrics.timer('watch', { clock }), timer);
+
     let end = timer.start('a');
     clockwerk = 500;
     end();
@@ -172,8 +213,10 @@ harness.test('@grr/operations', t => {
 
     t.is(timer[toStringTag], 'Timer');
     t.is(timer.name, 'watch');
-    t.notOk(timer.bigint);
+    t.notOk(timer.isBigInt);
     t.is(timer.size, 2);
+    t.is(timer.get('a'), 500);
+    t.is(timer.get('b'), 1500);
     t.same(timer.summarize(), {
       count: 2,
       mean: 1000,

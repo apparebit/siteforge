@@ -10,15 +10,20 @@ const main = join(__directory, 'main.js');
 const LOADER_HOOK = '@grr/siteforge/loader/hook';
 
 function runWithLoader() {
-  // A more targeted and hence much simpler version of foreground-child
-  // (https://github.com/tapjs/foreground-child/blob/master/index.js)
+  // Node doesn't support installing a custom module loader at runtime. So we
+  // have to spawn another node process, with this process forwarding I/O and
+  // signals like foreground-child (https://github.com/tapjs/foreground-child/).
   const { argv, argv0, cwd, execArgv } = process;
 
   const child = spawn(
-    // Executable and most arguments are exactly the same as before, with the
-    // critical difference being the activation of resolve module loader hook.
     argv0,
-    [...execArgv, '--experimental-loader', loader, main, ...argv.slice(2)],
+    [
+      ...execArgv,
+      `--title=site:forge`,
+      `--experimental-loader=${loader}`,
+      main,
+      ...argv.slice(2),
+    ],
     {
       cwd: cwd(),
       stdio: 'inherit',

@@ -1,14 +1,9 @@
 {
-  "name": "@grr/operations",
+  "name": "@grr/metrics",
   "version": "0.1.0",
   "type": "module",
-  "exports": {
-    ".": "./index.js",
-    "./format": "./format.js",
-    "./logger": "./logger.js",
-    "./metrics": "./metrics.js"
-  },
-  "description": "metrics and logging",
+  "main": "./metrics.js",
+  "description": "Counting and timing things with numbers and big integers",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",

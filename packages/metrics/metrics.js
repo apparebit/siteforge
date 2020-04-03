@@ -222,4 +222,9 @@ export default class Metrics {
   get(name) {
     return this.#metrics.get(name);
   }
+
+  /** Delete the metric with the given name. */
+  delete(name) {
+    return this.#metrics.delete(name);
+  }
 }

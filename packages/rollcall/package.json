@@ -1,0 +1,16 @@
+{
+  "name": "@grr/rollcall",
+  "description": "a simple console logger equally comfortable with producing stylish text or JSON",
+  "version": "0.1.0",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./rollcall.js",
+  "dependencies": {
+    "@grr/oddjob": "0.1.0"
+  },
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

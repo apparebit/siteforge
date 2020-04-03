@@ -15,11 +15,12 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./glob.js');
   await import('./html.js');
   await import('./inventory.js');
+  await import('./metrics.js');
   await import('./oddjob.js');
-  await import('./operations.js');
   await import('./options.js');
   await import('./proact.js');
   await import('./reloader.js');
+  await import('./rollcall.js');
   await import('./sequitur.js');
   await import('./walk.js');
   await import('./run.js');
@@ -29,15 +30,15 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
     let color, slogan;
 
     if (fail === 0) {
-      color = '48;5;47;1';
+      color = '102;1';
       slogan = `  Yay, all ${pass} tests passed!  `;
     } else {
-      color = '48;5;210;1';
+      color = '97;41;1';
       slogan = `  Nope, ${fail} out of ${pass + fail} tests failed!  `;
       process.exitCode = 70; // X_SOFTWARE
     }
 
-    const spacer = ''.padEnd(slogan.length);
+    const spacer = ' '.repeat(slogan.length);
     for (const text of [spacer, slogan, spacer]) {
       console.log(`\x1b[${color}m${text}\x1b[0m`);
     }

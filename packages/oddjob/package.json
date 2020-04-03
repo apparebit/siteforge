@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    "./candy": "./candy.js",
     "./error": "./error.js",
-    "./string": "./string.js"
+    "./format": "./format.js",
+    "./pickle": "./pickle.js",
+    "./string": "./string.js",
+    "./types": "./types.js"
   },
   "description": "letting you focus on the flying circus!",
   "repository": "https://github.com/apparebit/siteforge",

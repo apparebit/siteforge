@@ -6,10 +6,11 @@ import { EOL } from 'os';
 import Executor from '@grr/async';
 import Inventory from '@grr/inventory';
 import { KIND } from '@grr/inventory/path';
-import { Logger, Metrics } from '@grr/operations';
 import { join, resolve } from 'path';
-import run from '@grr/run';
+import Metrics from '@grr/metrics';
+import Rollcall from '@grr/rollcall';
 import { prebuilderFor, builderFor } from '@grr/builder';
+import run from '@grr/run';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
@@ -169,13 +170,13 @@ async function main() {
     config = await configure();
 
     config.executor = new Executor();
-    config.logger = new Logger({
+    config.logger = new Rollcall({
       json: config.options.json,
       volume: config.options.volume,
     });
     config.metrics = metrics;
   } catch (x) {
-    config = { options: { help: true }, logger: new Logger() };
+    config = { options: { help: true }, logger: new Rollcall() };
     config.logger.error(x.message);
     config.logger.newline();
   }
@@ -213,7 +214,7 @@ async function main() {
 
   if (
     (config.options.htaccess || config.options.build) &&
-    config.options.cleanBuild
+    config.options.cleanRun
   ) {
     task(config, `Clean previous build in "${config.options.buildDir}"`);
     await rmdir(config.options.buildDir, { recursive: true });

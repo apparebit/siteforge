@@ -1,23 +1,29 @@
-> site:forge (<option> | <task>)*
+> site:forge <option>* <task>*
 
-The site:forge static website generator supports the following <b>tasks</b>:
+The site:forge static website generator can perform the following <b>tasks</b>:
 
   build                      Build the website
   validate                   Validate the website
   deploy                     Deploy the website
 
 
-It also supports the following <b>task-independent options</b>:
+The following <b>options</b> further control task execution. If a project
+follows the naming conventions documented below, the use of options should be
+mostly unnecessary.
 
-  -V, --version              Print tool version, exit before running tasks
-  -h, --help                 Print tool help, exit before running tasks
+                              <b>Help</b>
+
+  -V, --version              Display tool version, exit before running tasks
+  -h, --help                 Display tool help, exit before running tasks
+
+If either help option is specified, site:forge ignores tasks and other options.
+
+                        <b>Console Output</b>
+
   -v, --verbose              Increase the volume by one level
   -q, --quiet                Decrease the volume by one level
-
-  --json                     Log in newline-separated JSON format
+  --json                     Format output in newline-separated JSON
                              instead of (colorful) plain text.
-
-  --realm <label>            `development` or `production`
 
 If the only command line argument is "-v", "-vh", or "-hv", site:forge treats
 the "-v" as an "-V" on assumption that printing the tool version is more helpful
@@ -26,42 +32,34 @@ than increasing the volume when not generating output besides maybe this help.
 The default volume is 0. At that level, the output of error(), warning(), and
 notice() is visible, though info() and debug() are suppressed.
 
-
-The <b>build task options</b> are:
+                    <b>Directories and Files</b>
 
   --content-dir <path>       Read content from directory ("./content")
-  --component-dir <path>     Read components whose specifier is prefixed with
-                             dollar character from directory ("./components")
+  --component-dir <path>     Read components from directory ("./components")
+                             before falling back on builtin module loader
+  --page-provider <spec>     Use component for page layout ("layout/page.js")
   --build-dir <path>         Write build to directory ("./build")
-  --clean-build              Delete previous build instead of overwriting files
+  --deployment-dir <remote>  Copy build to rsync host and directory
+
+                        <b>Exclusions</b>
+
   --do-not-build <glob>      Exclude matching files from build
-  --copyright <notice>       Prepend copyright notice to scripts and styles
+  --do-not-validate <glob>   Exclude matching files from validation
+
+  --clean-run                Delete previous build instead of overwriting files
+  --dry-run                  Run rsync without actually making changes
+
+                        <b>Content</b>
+
   --static-assets <glob>     Treat JavaScript files as static assets, not as
                              views ("**/asset/**|**/assets/**|**/static/**")
   --version-assets           Version scripts and styles by injecting a hash of
                              that content into the filename.
-
-Unlike most static website generators, site:forge does not do "layouts". Instead
-it takes a cue from React.js and features "page providers":
-
-  --page-provider <spec>     Use page provider ("$layout/page.js") — a module
-                             specifier starting with `$` indicates a shared
-                             component, here "./components/layout/page.js".
+  --copyright <notice>       Prepend copyright notice to scripts and styles
 
 
-The <b>validate task options</b> are:
-
-  --do-not-validate <glob>   Exclude matching files from validation
-
-
-The <b>deploy task options</b> are:
-
-  --build-dir <path>         Read build from directory ("./build")
-  --deployment-dir <remote>  Deploy build to rsync host and directory
-  --dry-run                  Run rsync without actually making changes
-
-
-site:forge respects the following <b>environment variables</b>:
+In addition to the above options, site:forge respects the following
+<b>environment variables</b>:
 
   NO_COLOR                  If defined, log without color.
   NODE_DISABLE_COLORS       If defined, log without color.

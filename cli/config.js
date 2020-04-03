@@ -61,7 +61,7 @@ const validateTask = (name, report) => {
 const optionTypes = aliased(
   assign(defaults(), {
     buildDir: FilePath,
-    cleanBuild: Boolean,
+    cleanRun: Boolean,
     componentDir: FilePath,
     contentDir: FilePath,
     copyright: String,
@@ -71,7 +71,6 @@ const optionTypes = aliased(
     dryRun: Boolean,
     json: Boolean,
     pageProvider: FilePath,
-    realm: String,
     staticAssets: FileGlob,
     versionAssets: Boolean,
     _: validateTask,

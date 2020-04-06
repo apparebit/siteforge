@@ -156,6 +156,7 @@ export default function Rollcall(options = {}) {
   if (!new.target) return new Rollcall(options);
 
   const {
+    banner = false,
     candy = makeCandy({ stream: console._stderr }),
     json = false,
     println = console.error,
@@ -202,6 +203,7 @@ export default function Rollcall(options = {}) {
     signOff: {
       configurable,
       value: createSignOff(println, {
+        banner,
         service,
         styleFailure,
         styleSuccess,

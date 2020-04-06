@@ -1,22 +1,28 @@
 /* © 2020 Robert Grimm */
 
-import { asciify, slugify } from '@grr/oddjob/string';
-import { COLOR, countColors, default as candy } from '@grr/oddjob/candy';
+import { asciify, escapeRegex, slugify } from '@grr/oddjob/string';
+import {
+  candyColorStyles,
+  COLOR,
+  countColors,
+  default as candy,
+} from '@grr/oddjob/candy';
 import { count, duration } from '@grr/oddjob/format';
 import harness from './harness.js';
-import { isError, TracelessError } from '@grr/oddjob/error';
+import { isError, TracelessError, traceErrorPosition } from '@grr/oddjob/error';
 import { isMap, isSet } from '@grr/oddjob/types';
 import pickle from '@grr/oddjob/pickle';
 import { runInNewContext } from 'vm';
 import { types } from 'util';
 
+const { isArray } = Array;
 const { isNativeError } = types;
 const { BASIC, FULL, INDEXED, NONE } = COLOR;
 
 harness.test('@grr/oddjob', t => {
   // ===========================================================================
   t.test('candy', t => {
-    // ------------------------------------------------------- countColors()
+    // ---------------------------------------------------------- countColors()
     t.is(countColors({ env: { NODE_DISABLE_COLORS: '', stream: {} } }), NONE);
     t.is(countColors({ env: { NO_COLOR: '', stream: {} } }), NONE);
     t.is(countColors({ env: {}, stream: { isTTY: false } }), NONE);
@@ -60,7 +66,10 @@ harness.test('@grr/oddjob', t => {
       NONE
     );
 
-    // ------------------------------------------------------- candy()
+    // ----------------------------------------------------- candyColorStyles()
+    t.throws(() => candyColorStyles(665));
+
+    // ---------------------------------------------------------------- candy()
     let sweet = candy({ env: { TERM: 'dumb' }, stream: { isTTY: true } });
     t.is(sweet.colors, NONE);
     t.is(sweet.orange(''), '');
@@ -78,7 +87,7 @@ harness.test('@grr/oddjob', t => {
 
   // ===========================================================================
   t.test('error', t => {
-    // ------------------------------------------------------- isError()
+    // -------------------------------------------------------------- isError()
     function X() {}
     X.prototype = new Error();
 
@@ -108,17 +117,26 @@ harness.test('@grr/oddjob', t => {
     t.ok(isNativeError(x));
     t.ok(isError(x));
 
+    // --------------------------------------------------- traceErrorPosition()
+    x = new Error('boo');
+    const trace = traceErrorPosition(x);
+    t.ok(isArray(trace));
+    t.ok(trace.length > 5);
+    t.ok(trace.every(line => typeof line === 'string'));
+    t.ok(!trace.some(line => /^ +at /u.test(line)));
+    t.ok(trace[0].startsWith('Test.<anonymous> (file://'));
+
     t.end();
   });
 
   // ===========================================================================
   t.test('format', t => {
-    // ------------------------------------------------------- count()
+    // ---------------------------------------------------------------- count()
     t.is(count(0, 'second'), '0 seconds');
     t.is(count(1, 'second'), '1 second');
     t.is(count(665, 'second'), '665 seconds');
 
-    // ------------------------------------------------------- duration()
+    // ------------------------------------------------------------- duration()
     t.is(duration(3), '3 ms');
     t.is(duration(1003), '1.003 s');
     t.is(duration(61003), '1:01.003 min');
@@ -138,7 +156,7 @@ harness.test('@grr/oddjob', t => {
 
   // ===========================================================================
   t.test('string', t => {
-    // ------------------------------------------------------- asciify()
+    // -------------------------------------------------------------- asciify()
     t.is(
       asciify('àáâ ãäå æçè éêë ìíî ïñò óôõ öœø ùúû üýÿ ðłß Ǆǅǆ'),
       'aaa aaeaa aece eee iii ino ooo oeoeoe uuu ueyy dlss DZDzdz'
@@ -150,7 +168,10 @@ harness.test('@grr/oddjob', t => {
     t.is(asciify('㎧ ㏗ ⓠ ſ Ⅷ 🅏 ẚ ŉ'), `m/s pH q s VIII WC a' 'n`);
     t.is(asciify('-﹣－‐‑﹘–—'), '--------');
 
-    // ------------------------------------------------------- slugify()
+    // ---------------------------------------------------------- escapeRegex()
+    t.is(escapeRegex('[a-z]{26}(00)*?'), '\\[a\\-z\\]\\{26\\}\\(00\\)\\*\\?');
+
+    // -------------------------------------------------------------- slugify()
     t.is(slugify('Çäłÿ at - 7 ㎯?'), 'caely-at-7-rads2');
 
     t.end();
@@ -163,6 +184,7 @@ harness.test('@grr/oddjob', t => {
     t.is(pickle(Infinity), `null`);
     t.is(pickle('ooh la la'), `"ooh la la"`);
     t.is(pickle(665n), `665`);
+    t.is(pickle(null), `null`);
     t.is(pickle(), undefined);
     t.is(pickle([undefined]), `[null]`);
     t.is(pickle(Symbol.iterator), `"@@iterator"`);
@@ -199,18 +221,53 @@ harness.test('@grr/oddjob', t => {
       `{"name":"TracelessError","stack":[],"message":"boo"}`
     );
 
-    // FIXME: Test Map with string and object keys. Also test sorted option.
+    const fn = number => number === 42;
+    t.is(pickle(fn), `{"@fn":"number => number === 42"}`);
+
+    t.is(
+      pickle(
+        new Map([
+          ['key1', 2],
+          [{}, 1],
+        ])
+      ),
+      `{}`
+    );
+
+    t.is(
+      pickle(
+        new Map([
+          ['key1', 2],
+          ['key2', 1],
+        ])
+      ),
+      `{"key1":2,"key2":1}`
+    );
+
+    t.is(
+      pickle(
+        {
+          z: 1,
+          a: 2,
+          f: 3,
+        },
+        { sorted: true }
+      ),
+      `{"a":2,"f":3,"z":1}`
+    );
 
     t.end();
   });
 
   // ===========================================================================
   t.test('types', t => {
+    // ---------------------------------------------------------------- isSet()
     t.ok(isSet(new Set()));
     t.ok(isSet(runInNewContext('new Set()')));
     t.ok(!isSet(new Map()));
     t.ok(!isSet(runInNewContext('new Map()')));
 
+    // ---------------------------------------------------------------- isMap()
     t.ok(!isMap(new Set()));
     t.ok(!isMap(runInNewContext('new Set()')));
     t.ok(isMap(new Map()));

@@ -79,7 +79,7 @@ export default function pickle(value, { sorted = false } = {}) {
       case 'symbol':
         return pickleSymbol(value, fragments);
       case 'function':
-        return fragments.push('null');
+        return fragments.push(`{"@fn":${stringify(value.toString())}}`);
       default:
         assert(type === 'object');
         if (value === null) return fragments.push('null');

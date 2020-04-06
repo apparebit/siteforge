@@ -46,3 +46,11 @@ export function traceErrorPosition(error) {
       return line;
     });
 }
+
+/** Relocate the trace's lines and columns by the given deltas. */
+export function relocate(trace, 𝛿Line, 𝛿Column = 0) {
+  return trace.replace(
+    /:(\d+):(\d+)\)/gu,
+    (_, l, c) => `:${Number(l) + 𝛿Line}:${Number(c) + 𝛿Column})`
+  );
+}

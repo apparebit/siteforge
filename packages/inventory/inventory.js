@@ -2,7 +2,7 @@
 
 import { isDefaultAssetPath, toKind, KIND } from './path.js';
 import { posix } from 'path';
-import { slugify } from '@grr/oddjob/string';
+import { escapeRegex, slugify } from '@grr/oddjob/string';
 import { strict as assert } from 'assert';
 
 const { assign, create, defineProperties, freeze } = Object;
@@ -19,10 +19,6 @@ const PHASE = freeze({
   ASSET: 2,
   PAGE: 3,
 });
-
-// Popular copy pasta refined with local seasoning
-// (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
-const escapeRegex = literal => literal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 
 // =============================================================================
 

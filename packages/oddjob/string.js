@@ -2,6 +2,21 @@
 
 const { create } = Object;
 
+// =============================================================================
+
+/**
+ * Escape the given string for use in a regular expression. The implementation
+ * uses popular copy pasta from
+ * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions).
+ * and [Stack
+ * Overflow](https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript).
+ */
+export function escapeRegex(literal) {
+  return literal.replace(/[.*+\-?^${}()|[\]\\]/gu, '\\$&');
+}
+
+// -----------------------------------------------------------------------------
+
 // Overrides to be applied before NFKD normalization written as equivalence
 // classes with source characters following their replacement.
 const OVERRIDES = [

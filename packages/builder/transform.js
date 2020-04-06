@@ -238,7 +238,7 @@ async function loadComponent(spec, context) {
   const url = pathToFileURL(join(context.options.componentDir, spec));
   let finalSpec;
   try {
-    finalSpec = (await lstat(url)).isFile() ? url : spec;
+    finalSpec = (await lstat(url)).isFile() ? url.href : spec;
   } catch {
     finalSpec = spec;
   }

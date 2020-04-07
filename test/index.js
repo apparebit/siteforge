@@ -3,11 +3,16 @@
 import { rmdir, toDirectory } from '@grr/fs';
 import harness from './harness.js';
 import { join } from 'path';
+import Metrics from '@grr/metrics';
+import Rollcall from '@grr/rollcall';
 
 const ROOT = join(toDirectory(import.meta.url), '..');
 const COVERAGE_DATA = join(ROOT, '.coverage');
 
 (async function run() {
+  const metrics = new Metrics();
+  const endMain = metrics.timer('main').start();
+
   await rmdir(COVERAGE_DATA, { recursive: true });
   await import('./async.js');
   await import('./builder.js');
@@ -27,22 +32,11 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
 
   const done = () => {
     const { pass, fail } = harness.counts;
-    let color, slogan;
-
-    if (fail === 0) {
-      color = '102;1';
-      slogan = `  Yay, all ${pass} tests passed!  `;
-    } else {
-      color = '97;41;1';
-      slogan = `  Nope, ${fail} out of ${pass + fail} tests failed!  `;
-      process.exitCode = 70; // X_SOFTWARE
-    }
-
-    const spacer = ' '.repeat(slogan.length);
-    for (const text of [spacer, slogan, spacer]) {
-      console.log(`\x1b[${color}m${text}\x1b[0m`);
-    }
-    console.log();
+    new Rollcall({ banner: true }).signOff({
+      pass,
+      fail,
+      duration: endMain().get(),
+    });
   };
 
   if (harness.onFinish) {

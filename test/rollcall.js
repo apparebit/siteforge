@@ -53,7 +53,7 @@ harness.test('@grr/rollcall', t => {
 
   logger.debug(`Testing logger`);
   record = logged.shift();
-  t.is(record, `[DEBUG] <site:forge> Testing logger`);
+  t.is(record, `[DEBUG] site:forge: Testing logger`);
 
   logger.signOff({ files: 42, duration: 665 });
   record = logged.shift();

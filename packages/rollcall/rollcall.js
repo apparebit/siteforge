@@ -42,9 +42,18 @@ const createJSONLogger = (println, level, { service }) => {
 };
 
 const createJSONSignOff = () => {
-  return function signOff({ files, duration }) {
+  return function signOff({ files, pass, fail, duration }) {
     const { errors, warnings } = this;
-    const details = { files, duration, errors, warnings };
+    const details = { duration, errors, warnings };
+
+    if (typeof files === 'number') {
+      details.files = files;
+    }
+    if (typeof pass === 'number' || typeof fail === 'number') {
+      details.pass = pass;
+      details.fail = fail;
+    }
+
     const method = errors ? 'error' : warnings ? 'warning' : 'success';
     this[method](`Done!`, details);
   };
@@ -57,7 +66,7 @@ const createTextLogger = (
   level,
   { service, stylePrimary, styleDetail }
 ) => {
-  const status = `[${level.toUpperCase()}] ${service ? `<${service}> ` : ``}`;
+  const status = `[${level.toUpperCase()}] ${service ? `${service}: ` : ``}`;
   const count = `${level}s`;
 
   const log = function log(...args) {
@@ -110,30 +119,56 @@ const createTextSignOff = (
   println,
   { service, styleFailure, styleSuccess, banner }
 ) => {
-  return function signOff({ files, duration }) {
+  return function signOff({ files, pass, fail, duration }) {
     // Build message.
-    let { errors, warnings } = this;
-    let message =
-      (errors ? '[ERROR]' : warnings ? '[WARNING]' : '[SUCCESS]') +
-      (service ? ` ${service} processed ` : ` Processed `) +
-      format.count(files, 'file') +
-      ' in ' +
-      format.duration(duration);
-    if (errors) {
-      message += ` with ${format.count(errors, 'error')}`;
-      if (warnings) message += ` and ${format.count(warnings, 'warning')}`;
-    } else if (warnings) {
-      message += ` with ${format.count(warnings, 'warning')}`;
-    }
-    message += '!';
+    const { errors, warnings } = this;
 
-    // Format and print message.
-    const style = errors || warnings ? styleFailure : styleSuccess;
+    let message;
+    if (typeof files === 'number') {
+      // The tool processed some number of files.
+      message =
+        (errors ? '[ERROR]' : warnings ? '[WARNING]' : '[SUCCESS]') +
+        (service ? ` ${service} processed ` : ` Processed `) +
+        format.count(files, 'file') +
+        ' in ' +
+        format.duration(duration);
+      if (errors) {
+        message += ` with ${format.count(errors, 'error')}`;
+        if (warnings) message += ` and ${format.count(warnings, 'warning')}`;
+      } else if (warnings) {
+        message += ` with ${format.count(warnings, 'warning')}`;
+      }
+      message += '!';
+    } else if (fail) {
+      // The tool failed some number of tests.
+      message =
+        `[ERROR] ` +
+        (service ? `${service}: ` : ``) +
+        `Oh oh, ${fail} out of ${pass + fail} tests failed` +
+        ` in ${format.duration(duration)}!`;
+    } else {
+      // The tool passed all tests.
+      message = `[SUCCESS] ${
+        service ? `${service}: ` : ``
+      }Yay, all ${pass} tests passed in ${format.duration(duration)}!`;
+    }
+
+    // Style and print message.
+    let style;
+    if (errors || warnings || fail) {
+      process.exitCode = 70; // X_SOFTWARE
+      style = styleFailure;
+    } else {
+      style = styleSuccess;
+    }
+
     if (banner) {
+      println();
       const spacer = ' '.repeat(message.length + 4);
       for (const line of [spacer, '  ' + message + '  ', spacer]) {
         println(style(line));
       }
+      println();
     } else {
       println(style(message));
     }

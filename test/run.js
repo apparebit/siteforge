@@ -23,15 +23,19 @@ harness.test('tooling/run', async t => {
   } catch (x) {
     t.match(
       x.message,
-      /^Child process failed with exit code "42" \(sh -c "exit 42"\)/u
+      /^Child process terminated with exit code "42" \(sh -c "exit 42"\)/u
     );
   }
 
   try {
-    await run('this-command-most-certainly-does-not-exist', []);
-    t.fail(`running non-existent command should fail`);
+    const ondone = run('sh', ['-c', 'sleep 5']);
+    ondone.child.kill();
+    await ondone;
   } catch (x) {
-    t.equal(x.code, 'ENOENT');
+    t.match(
+      x.message,
+      /^Child process terminated with signal "SIGTERM" \(sh -c "sleep 5"\)/u
+    );
   }
 
   t.end();

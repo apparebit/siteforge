@@ -272,7 +272,8 @@ export default class Inventory {
           ) {
             continue;
           }
-          yield* index || EMPTY_ARRAY;
+          // index is array b/c it originates from #byKind.
+          yield* index;
         }
         break;
       case PHASE.PAGE:

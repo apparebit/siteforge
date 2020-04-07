@@ -9,7 +9,12 @@ import {
 } from '@grr/oddjob/candy';
 import { count, duration } from '@grr/oddjob/format';
 import harness from './harness.js';
-import { isError, TracelessError, traceErrorPosition } from '@grr/oddjob/error';
+import {
+  isError,
+  relocate,
+  TracelessError,
+  traceErrorPosition,
+} from '@grr/oddjob/error';
 import { isMap, isSet } from '@grr/oddjob/types';
 import pickle from '@grr/oddjob/pickle';
 import { runInNewContext } from 'vm';
@@ -125,6 +130,24 @@ harness.test('@grr/oddjob', t => {
     t.ok(trace.every(line => typeof line === 'string'));
     t.ok(!trace.some(line => /^ +at /u.test(line)));
     t.ok(trace[0].startsWith('Test.<anonymous> (file://'));
+
+    // ------------------------------------------------------------- relocate()
+    t.is(
+      relocate(
+        `Uncaught Error: boo
+    at c (repl:1:22)
+    at b (repl:1:23)
+    at a (repl:1:23)
+`,
+        665,
+        19
+      ),
+      `Uncaught Error: boo
+    at c (repl:666:41)
+    at b (repl:666:42)
+    at a (repl:666:42)
+`
+    );
 
     t.end();
   });

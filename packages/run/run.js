@@ -39,23 +39,27 @@ export default function run(cmd, args = [], options = {}) {
     });
 
   let done = false;
-  const sub = doSpawn(cmd, args, options);
+  const child = doSpawn(cmd, args, options);
 
-  sub.on('error', err => {
+  // This is admittedly clunky. But it also is much less clunky
+  // than returning an object with the promise and child.
+  promise.child = child;
+
+  child.on('error', err => {
     if (done) return;
     done = true;
 
     reject(err);
   });
 
-  sub.on('exit', (code, signal) => {
+  child.on('exit', (code, signal) => {
     if (done) return;
     done = true;
 
     if (!code && !signal) {
       resolve(create(null));
     } else {
-      let message = `Child process failed`;
+      let message = `Child process terminated`;
       if (signal) {
         message += ` with signal "${signal}"`;
       } else {

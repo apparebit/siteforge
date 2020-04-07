@@ -73,6 +73,8 @@ harness.test('@grr/metrics', t => {
   t.is(counter.name, 'big integer');
   t.ok(counter.isBigInt);
   t.is(counter.size, 4);
+  t.ok(counter.has('a'));
+  t.ok(!counter.has('x'));
   t.is(counter.get(), undefined);
   t.is(counter.get('a'), 3n);
   t.is(counter.get('b'), 7n);
@@ -115,6 +117,12 @@ harness.test('@grr/metrics', t => {
     min: 500,
     max: 1500,
   });
+
+  t.is(metrics.get('watch'), timer);
+  t.is(metrics.get('wtf'), undefined);
+  t.is(metrics.get('big integer'), counter);
+  t.is(metrics.delete('big integer'), true);
+  t.is(metrics.get('big integer'), undefined);
 
   t.end();
 });

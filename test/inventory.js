@@ -33,6 +33,8 @@ harness.test('@grr/inventory', t => {
       t.is(toKind(path), kind);
     }
 
+    t.is(toKind('/a/b/f.booboo'), KIND.UNKNOWN);
+
     t.end();
   });
 
@@ -63,6 +65,8 @@ harness.test('@grr/inventory', t => {
     for (const path of fauxPaths.slice(2)) {
       inventory.add(path);
     }
+
+    t.is(inventory.size, keysOf(FAUX).length);
 
     let ent = inventory.byPath('/');
     t.is(ent.path, '/');
@@ -126,6 +130,12 @@ harness.test('@grr/inventory', t => {
       '/features/utopia/sundown.jpg',
     ]);
 
+    t.same(Inventory.PHASE, {
+      DATA: 1,
+      ASSET: 2,
+      PAGE: 3,
+    });
+
     checkPaths(t, inventory.byPhase(1), ['/data/2020.data.js']);
     checkPaths(t, inventory.byPhase(2), [
       '/.htaccess',
@@ -140,6 +150,12 @@ harness.test('@grr/inventory', t => {
       '/about/apparebit.html',
       '/index.html',
     ]);
+
+    const empty = new Inventory();
+    t.same([...empty.byKind('.booboo')], []);
+    t.same([...empty.byPhase(1)], []);
+    t.same([...empty.byPhase(2)], []);
+    t.same([...empty.byPhase(3)], []);
 
     t.end();
   });

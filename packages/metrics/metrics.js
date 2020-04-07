@@ -168,10 +168,6 @@ class Timer extends Metric {
  * A collection of named metrics.
  */
 export default class Metrics {
-  static nowMillis() {
-    return nowMillis();
-  }
-
   #metrics = new Map();
 
   /**

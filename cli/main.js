@@ -155,7 +155,7 @@ function deploy(config) {
 
 let taskNo = 1;
 function task(config, description) {
-  config.logger.notice(`site:forge §${taskNo++}: ${description}`);
+  config.logger.notice(`§${taskNo++} ${description}`);
 }
 
 async function main() {
@@ -172,6 +172,7 @@ async function main() {
     config.executor = new Executor();
     config.logger = new Rollcall({
       json: config.options.json,
+      service: 'site:forge',
       volume: config.options.volume,
     });
     config.metrics = metrics;
@@ -214,7 +215,8 @@ async function main() {
 
   if (
     (config.options.htaccess || config.options.build) &&
-    config.options.cleanRun
+    config.options.cleanRun &&
+    !config.options.dryRun
   ) {
     task(config, `Clean previous build in "${config.options.buildDir}"`);
     await rmdir(config.options.buildDir, { recursive: true });
@@ -241,7 +243,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Build .htaccess
 
-  if (config.options.htaccess) {
+  if (config.options.htaccess && !config.options.dryRun) {
     task(config, `Build ".htaccess"`);
     try {
       await run('bash', [BUILD_HTACCESS], { cwd: config.options.contentDir });
@@ -263,7 +265,7 @@ async function main() {
 
   if (config.options.validate && config.logger.errors) {
     config.logger.warning(`Build has errors, skipping validation`);
-  } else if (config.options.validate) {
+  } else if (config.options.validate && !config.options.dryRun) {
     task(config, `Validate markup in "${config.options.buildDir}"`);
 
     try {
@@ -293,6 +295,12 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // Summarize Run
+
+  if (config.options.dryRun) {
+    config.logger.notice(
+      `Since option "dry-run" was enabled, no changes were persisted.`
+    );
+  }
 
   config.logger.signOff({
     files: (config.inventory && config.inventory.size) || 0,

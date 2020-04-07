@@ -95,6 +95,7 @@ export async function readSource(file, context) {
 }
 
 export async function writeTarget(file, context) {
+  if (context.options.dryRun) return undefined;
   const result = create(null);
 
   // Update the metadata.
@@ -104,12 +105,14 @@ export async function writeTarget(file, context) {
   }
 
   // Write out the data.
-  if (!context.options.versionAssets || path === '/sw.js') {
-    await writeFile(target, content, encoding || 'utf8');
-  } else {
-    target = await writeVersionedFile(target, content, encoding || 'utf8');
+  if (!context.options.dryRun) {
+    if (!context.options.versionAssets || path === '/sw.js') {
+      await writeFile(target, content, encoding || 'utf8');
+    } else {
+      target = await writeVersionedFile(target, content, encoding || 'utf8');
+    }
+    result.content = undefined;
   }
-  result.content = undefined;
   return result;
 }
 
@@ -126,7 +129,9 @@ export async function copyAsset(file, context) {
   }
 
   // Copy the data.
-  await copyFile(source, target);
+  if (!context.options.dryRun) {
+    await copyFile(source, target);
+  }
   return result;
 }
 

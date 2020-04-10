@@ -57,7 +57,11 @@ harness.test('@grr/rollcall', t => {
 
   logger.signOff({ files: 42, duration: 665 });
   record = logged.shift();
-  t.is(record, `[SUCCESS] site:forge processed 42 files in 665 ms!`);
+  t.is(
+    record,
+    `[W00T]  ` +
+      `site:forge processed 42 files in 665 ms with no errors and no warnings!`
+  );
 
   t.end();
 });

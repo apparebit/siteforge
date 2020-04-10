@@ -15,6 +15,20 @@ const writable = true;
 
 // -----------------------------------------------------------------------------
 
+const noop = () => {};
+noop.active = false;
+
+const levels = {
+  error: { label: '[ERROR]', threshold: -2, style: 'red' },
+  warning: { label: '[WARN] ', threshold: -1, style: 'orange' },
+  success: { label: '[W00T] ', threshold: 0, style: 'bold' },
+  notice: { label: '[NOTE] ', threshold: 0, style: 'bold' },
+  info: { label: '[INFO] ', threshold: 1, style: 'plain' },
+  debug: { label: '[DEBUG]', threshold: 2, style: 'faint' },
+};
+
+// -----------------------------------------------------------------------------
+
 const createJSONLogger = (println, level, { service }) => {
   const status =
     (service ? `,"service":"${service}"` : ``) + `,"level":"${level}"`;
@@ -48,8 +62,7 @@ const createJSONSignOff = () => {
 
     if (typeof files === 'number') {
       details.files = files;
-    }
-    if (typeof pass === 'number' || typeof fail === 'number') {
+    } else if (typeof fail === 'number' && typeof pass === 'number') {
       details.pass = pass;
       details.fail = fail;
     }
@@ -64,9 +77,10 @@ const createJSONSignOff = () => {
 const createTextLogger = (
   println,
   level,
-  { service, stylePrimary, styleDetail }
+  { label, service, stylePrimary, styleDetail }
 ) => {
-  const status = `[${level.toUpperCase()}] ${service ? `${service}: ` : ``}`;
+  label = label || `[${level.toUpperCase()}]`;
+  const status = `${label} ${service ? `${service}: ` : ``}`;
   const count = `${level}s`;
 
   const log = function log(...args) {
@@ -117,40 +131,58 @@ const createTextLogger = (
 
 const createTextSignOff = (
   println,
-  { service, styleFailure, styleSuccess, banner }
+  { labels, service, styleFailure, styleSuccess, banner }
 ) => {
   return function signOff({ files, pass, fail, duration }) {
-    // Build message.
+    // Construct Sign Off Message
     const { errors, warnings } = this;
 
     let message;
-    if (typeof files === 'number') {
-      // The tool processed some number of files.
-      message =
-        (errors ? '[ERROR]' : warnings ? '[WARNING]' : '[SUCCESS]') +
-        (service ? ` ${service} processed ` : ` Processed `) +
-        format.count(files, 'file') +
-        ' in ' +
-        format.duration(duration);
+    const withErrorsAndWarnings = () => {
       if (errors) {
         message += ` with ${format.count(errors, 'error')}`;
         if (warnings) message += ` and ${format.count(warnings, 'warning')}`;
       } else if (warnings) {
         message += ` with ${format.count(warnings, 'warning')}`;
+      } else {
+        message += ` with no errors and no warnings`;
       }
       message += '!';
-    } else if (fail) {
-      // The tool failed some number of tests.
+    };
+
+    if (typeof files === 'number') {
+      // ------------------------------------------------------------------
+      // <s> processed <f> files in <d> s with <e> errors and <w> warnings!
+      // ------------------------------------------------------------------
       message =
-        `[ERROR] ` +
-        (service ? `${service}: ` : ``) +
-        `Oh oh, ${fail} out of ${pass + fail} tests failed` +
-        ` in ${format.duration(duration)}!`;
+        (errors ? labels.error : warnings ? labels.warning : labels.success) +
+        (service ? ` ${service} processed ` : ` Processed `) +
+        format.count(files, 'file') +
+        ' in ' +
+        format.duration(duration);
+      withErrorsAndWarnings();
+    } else if (typeof fail === 'number' && typeof pass === 'number') {
+      if (fail) {
+        // ---------------------------------------
+        // <f> out of <f+p> tests failed in <d> s!
+        // ---------------------------------------
+        message =
+          labels.error +
+          (service ? ` ${service}: ` : ``) +
+          ` ${fail} out of ${pass + fail} tests failed` +
+          ` in ${format.duration(duration)}!`;
+      } else {
+        // ------------------------------
+        // All <p> tests passed in <d> s!
+        // ------------------------------
+        message = `${labels.success} ${
+          service ? `${service}: ` : ``
+        }All ${pass} tests passed in ${format.duration(duration)}!`;
+      }
     } else {
-      // The tool passed all tests.
-      message = `[SUCCESS] ${
-        service ? `${service}: ` : ``
-      }Yay, all ${pass} tests passed in ${format.duration(duration)}!`;
+      // Done with <e> errors and <w> warnings!
+      message = `Script "${process.argv[1]}" ran`;
+      withErrorsAndWarnings();
     }
 
     // Style and print message.
@@ -177,16 +209,6 @@ const createTextSignOff = (
 
 // -----------------------------------------------------------------------------
 
-const noop = () => {};
-
-const levels = {
-  error: { threshold: -2, style: 'red' },
-  warning: { threshold: -1, style: 'orange' },
-  notice: { threshold: 0, style: 'bold' },
-  info: { threshold: 1, style: 'plain' },
-  debug: { threshold: 2, style: 'faint' },
-};
-
 export default function Rollcall(options = {}) {
   if (!new.target) return new Rollcall(options);
 
@@ -203,7 +225,7 @@ export default function Rollcall(options = {}) {
   const createSignOff = json ? createJSONSignOff : createTextSignOff;
 
   for (const level of keysOf(levels)) {
-    const { style, threshold } = levels[level];
+    const { label, style, threshold } = levels[level];
     const stylePrimary = candy[style];
     const styleDetail = candy.faint;
 
@@ -213,6 +235,7 @@ export default function Rollcall(options = {}) {
       defineProperty(this, level, {
         configurable,
         value: createLogger(println, level, {
+          label,
           service,
           stylePrimary,
           styleDetail,
@@ -225,6 +248,10 @@ export default function Rollcall(options = {}) {
 
   const styleFailure = candy.redBg;
   const styleSuccess = candy.greenBg;
+  const labels = ['success', 'warning', 'error'].reduce(
+    (labels, level) => ((labels[level] = levels[level].label), labels),
+    {}
+  );
 
   defineProperties(this, {
     embolden: {
@@ -239,6 +266,7 @@ export default function Rollcall(options = {}) {
       configurable,
       value: createSignOff(println, {
         banner,
+        labels,
         service,
         styleFailure,
         styleSuccess,

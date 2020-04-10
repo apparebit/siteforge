@@ -1,0 +1,22 @@
+{
+  "name": "@grr/loader",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./loader.js",
+    "./call": "./call.js",
+    "./control": "./control.js",
+    "./status": "./dummy.js",
+    "./invoke": "./invoke.js"
+  },
+  "dependencies": {
+    "@grr/oddjob": "0.1.0"
+  },
+  "description": "bespoke ESM loading and reloading",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

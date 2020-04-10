@@ -1,13 +1,9 @@
 #!/usr/bin/env node
 
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURL } from '@grr/loader';
 import { spawn } from 'child_process';
 
-const __directory = dirname(fileURLToPath(import.meta.url));
-const loader = join(__directory, 'loader.js');
-const main = join(__directory, 'main.js');
-const LOADER_HOOK = '@grr/siteforge/loader/hook';
+const main = new URL('./main.js', import.meta.url);
 const SIGNALS = ['SIGABRT', 'SIGALRM', 'SIGHUP', 'SIGINT', 'SIGTERM'];
 
 function runWithLoader() {
@@ -24,7 +20,7 @@ function runWithLoader() {
     [
       ...execArgv,
       `--title=site:forge`,
-      `--experimental-loader=${loader}`,
+      `--experimental-loader=${fileURL}`,
       main,
       ...argv.slice(2),
     ],
@@ -47,12 +43,11 @@ function runWithLoader() {
   });
 }
 
-async function start() {
-  if (global[LOADER_HOOK]) {
-    await import(main);
-  } else {
+(async function start() {
+  const status = await import('@grr/loader/status');
+  if (status === 'no loader') {
     runWithLoader();
+  } else {
+    await import(main);
   }
-}
-
-start();
+})();

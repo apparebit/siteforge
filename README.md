@@ -10,9 +10,11 @@ site:forge is a static website generator.
     in React.js and similar frameworks. In fact, they are little more than
     __functions implementing the same signature__.
  3. It is written in __modern JavaScript__ and fully embraces asynchronous code
-    as well as ECMAScript modules. It also is composed from several __packages
-    designed for interoperability__. Changes that reduce hard dependencies and
-    improve extensibility are forthcoming.
+    and ECMAScript modules. It has __few external dependencies__ and instead
+    relies on a number of packages co-developed with site:forge. These packages
+    are __designed for interoperability with limited interdependency__. They
+    also are well-tested, with almost all packages having 100% test coverage or
+    being close to it.
 
 ## Getting Started
 

@@ -78,7 +78,7 @@ const [SGR16, SGR256] = (function () {
     greenBg: freeze(['102;1', '49;22']),
     magenta: freeze(['35;1', '39;22']),
     orange: freeze(['33;1', '39;22']),
-    red: freeze(['31;1', '39:22']),
+    red: freeze(['31;1', '39;22']),
     redBg: freeze(['97;41;1', '39;49;22']),
     plain: null,
   });

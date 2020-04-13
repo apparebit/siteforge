@@ -256,7 +256,7 @@ export default function Rollcall(options = {}) {
   defineProperties(this, {
     embolden: {
       configurable,
-      value: s => s.replace(BOLDED, span => candy.bold(span)),
+      value: s => s.replace(BOLDED, (_, text) => candy.bold(text)),
     },
     newline: {
       configurable,

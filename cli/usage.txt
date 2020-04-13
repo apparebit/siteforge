@@ -11,14 +11,14 @@ The following <b>options</b> further control task execution. If a project
 follows the naming conventions documented below, the use of options should be
 mostly unnecessary.
 
-                              <b>Help</b>
+                                  <b>Help</b>
 
   -V, --version              Display tool version, exit before running tasks
   -h, --help                 Display tool help, exit before running tasks
 
 If either help option is specified, site:forge ignores tasks and other options.
 
-                        <b>Console Output</b>
+                             <b>Console Output</b>
 
   -v, --verbose              Increase the volume by one level
   -q, --quiet                Decrease the volume by one level
@@ -32,7 +32,7 @@ than increasing the volume when not generating output besides maybe this help.
 The default volume is 0. At that level, the output of error(), warning(), and
 notice() is visible, though info() and debug() are suppressed.
 
-                    <b>Directories and Files</b>
+                         <b>Directories and Files</b>
 
   --content-dir <path>       Read content from directory ("./content")
   --component-dir <path>     Read components from directory ("./components")
@@ -41,7 +41,7 @@ notice() is visible, though info() and debug() are suppressed.
   --build-dir <path>         Write build to directory ("./build")
   --deployment-dir <remote>  Copy build to rsync host and directory
 
-                        <b>Exclusions</b>
+                             <b>Exclusions</b>
 
   --do-not-build <glob>      Exclude matching files from build
   --do-not-validate <glob>   Exclude matching files from validation
@@ -49,7 +49,7 @@ notice() is visible, though info() and debug() are suppressed.
   --clean-run                Delete previous build instead of overwriting files
   --dry-run                  Run rsync without actually making changes
 
-                        <b>Content</b>
+                              <b>Content</b>
 
   --static-assets <glob>     Treat JavaScript files as static assets, not as
                              views ("**/asset/**|**/assets/**|**/static/**")

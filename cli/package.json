@@ -9,7 +9,7 @@
   "engines": {
     "node": ">=13.7.0"
   },
-  "bin": "./start.js",
+  "bin": "./main.js",
   "browserslist": [
     "> 1%",
     "not dead"

@@ -1,3 +1,5 @@
+#!/usr/bin/env node --title=site:forge
+
 // © 2020 Robert Grimm
 
 import configure from './config.js';
@@ -5,22 +7,21 @@ import { readFile, rmdir, toDirectory } from '@grr/fs';
 import { EOL } from 'os';
 import Executor from '@grr/async';
 import Inventory from '@grr/inventory';
-import { KIND } from '@grr/inventory/path';
 import { join, resolve } from 'path';
+import { KIND } from '@grr/inventory/path';
+import launch from '@grr/loader/launch';
 import Metrics from '@grr/metrics';
-import Rollcall from '@grr/rollcall';
 import { prebuilderFor, builderFor } from '@grr/builder';
+import Rollcall from '@grr/rollcall';
 import run from '@grr/run';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
-const { assign, create } = Object;
 const __directory = toDirectory(import.meta.url);
 const BUILD_HTACCESS = resolve(
   __directory,
   '../../server-configs-apache/bin/build.sh'
 );
-
 const IGNORED_VALIDATIONS = [
   `CSS: “backdrop-filter”: Property “backdrop-filter” doesn't exist.`,
   `CSS: “background-image”: “0%” is not a “color” value.`,
@@ -28,9 +29,6 @@ const IGNORED_VALIDATIONS = [
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];
-
-const LOADER_CONFIG = '@grr/siteforge/loader/config';
-const LOADER_HOOK = '@grr/siteforge/loader/hook';
 const { PHASE } = Inventory;
 
 // -----------------------------------------------------------------------------
@@ -108,12 +106,12 @@ function validate(config) {
 
   // prettier-ignore
   return run('java', [
-      '-jar', vnuPath,
-      '--skip-non-html',
-      '--filterpattern', IGNORED_VALIDATIONS.join('|'),
-      ...(config.options.volume >= 2 ? ['--verbose'] : []),
-      ...paths,
-    ]);
+    '-jar', vnuPath,
+    '--skip-non-html',
+    '--filterpattern', IGNORED_VALIDATIONS.join('|'),
+    ...(config.options.volume >= 2 ? ['--verbose'] : []),
+    ...paths,
+  ]);
 }
 
 // -----------------------------------------------------------------------------
@@ -179,7 +177,7 @@ async function main() {
   } catch (x) {
     config = { options: { help: true }, logger: new Rollcall() };
     config.logger.error(x.message);
-    config.logger.newline();
+    config.logger.println();
   }
 
   // ---------------------------------------------------------------------------
@@ -190,23 +188,9 @@ async function main() {
   }
   if (config.options.help) {
     const help = await readFile(join(__directory, 'usage.txt'), 'utf8');
-    config.logger.notice(config.logger.embolden(help));
+    config.logger.println(config.logger.embolden(help));
   }
   if (config.options.version || config.options.help) {
-    return;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Validate Presence of Module Loader Hook and Configure Hook
-
-  if (global[LOADER_HOOK] === true) {
-    config.logger.info(`@grr/siteforge's module loader hook is installed`);
-
-    global[LOADER_CONFIG] = assign(create(null), {
-      root: config.options.inputDir,
-    });
-  } else {
-    config.logger.error(`@grr/siteforge's module loader hook is missing`);
     return;
   }
 
@@ -308,4 +292,4 @@ async function main() {
   });
 }
 
-main();
+launch({ fn: main });

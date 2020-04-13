@@ -89,7 +89,7 @@ export default class Call {
 
     let result;
     if (command == null) {
-      result = { error: `malformed XPC request "${specifier}"` };
+      result = { error: `Malformed XPC request "${specifier}"` };
     } else if (typeof action !== 'function') {
       result = { error: `XPC command "${command}" is not implemented` };
     } else {

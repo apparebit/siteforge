@@ -17,8 +17,7 @@ async function invoke(command, data) {
     typeof response !== 'object' ||
     (!has(response, 'value') && !has(response, 'error'))
   ) {
-    // ----- Internal Error -----
-    throw new SyntaxError(`malformed XPC response "${response}"!`);
+    throw new SyntaxError(`Malformed XPC response "${response}"!`);
   } else if (has(response, 'error')) {
     // ----- Command Error -----
     const error = new Error(response.error);

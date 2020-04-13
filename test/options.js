@@ -24,6 +24,9 @@ const { has } = Reflect;
 const escapeRegex = literal => literal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 
 harness.test('tooling/options', t => {
+  // ---------------------------------------------------------------------------
+  // The Basic: Parsing Options from the Command Line and the Manifest
+
   const configuration = defaults();
   aliased(
     assign(configuration, {
@@ -83,6 +86,9 @@ harness.test('tooling/options', t => {
     configuration
   );
   check(options);
+
+  // ---------------------------------------------------------------------------
+  // Basic Error Conditions
 
   configuration.r = 'round';
   configuration._ = (arg, report) => {
@@ -157,6 +163,76 @@ harness.test('tooling/options', t => {
     )
   );
 
+  // ---------------------------------------------------------------------------
+  // More Obscure Errors for 100% Test Coverage
+
+  const schema = {
+    _: (value, report) => report('is something'),
+    filePath: FilePath,
+    'file-path': 'filePath',
+    hugeNumber: (value, report) => {
+      try {
+        return BigInt(value);
+      } catch {
+        return report(`is not a big integer.`);
+      }
+    },
+    'huge-number': 'hugeNumber',
+  };
+
+  defineProperty(schema, '__proto__', {
+    configurable,
+    enumerable,
+    value: BigInt,
+  });
+
+  const object = {
+    filePath: Symbol.iterator,
+    _: [1, 2],
+  };
+
+  defineProperty(object, '__proto__', {
+    configurable,
+    enumerable,
+    value: 665n,
+  });
+
+  t.throws(
+    () => optionsFromObject(object, schema),
+    new RegExp(
+      escapeRegex(
+        [
+          `Option "filePath" is not a valid file path`,
+          `Element of option "_" is something`,
+          `Element of option "_" is something`,
+          `Invalid option name "__proto__"`,
+        ].join(EOL)
+      ),
+      'u'
+    )
+  );
+
+  t.throws(
+    () =>
+      optionsFromArguments(
+        ['--__proto__', 665, '--huge-number', 'abc'],
+        schema
+      ),
+    new RegExp(
+      escapeRegex(
+        [
+          `Invalid option name "__proto__"`,
+          `Command line argument "665" is something`,
+          `Command line option "huge-number" aka "hugeNumber" is not a big integer`,
+        ].join(EOL)
+      ),
+      'u'
+    )
+  );
+
+  // ---------------------------------------------------------------------------
+  // Pre-defined options and their types.
+
   options.quiet = 0;
   options.verbose = 665;
   t.equal(options.volume, 665);
@@ -176,63 +252,6 @@ harness.test('tooling/options', t => {
     'is not an array of valid file globs',
     'contains an invalid segment glob expression',
   ]);
-
-  // Errors in all their skittishness.
-  const schema = {
-    filePath: FilePath,
-    'file-path': 'filePath',
-    hugeNumber: String, //BigInt,
-    'huge-number': 'hugeNumber',
-  };
-
-  defineProperty(schema, '__proto__', {
-    configurable,
-    enumerable,
-    value: BigInt,
-  });
-
-  const object = {
-    _: [],
-    filePath: Symbol.iterator,
-  };
-
-  defineProperty(object, '__proto__', {
-    configurable,
-    enumerable,
-    value: 665n,
-  });
-
-  t.throws(
-    () => optionsFromObject(object, schema),
-    new RegExp(
-      escapeRegex(
-        [
-          `Option "filePath" is not a valid file path`,
-          `Invalid option name "__proto__"`,
-        ].join(EOL)
-      ),
-      'u'
-    )
-  );
-
-  t.throws(
-    () =>
-      optionsFromArguments(
-        ['--__proto__', 665, '--huge-number', 'abc'],
-        schema
-      ),
-    new RegExp(
-      escapeRegex(
-        [
-          `Invalid option name "__proto__"`,
-          //`Command line option "huge-number"`,
-        ].join(EOL)
-      ),
-      'u'
-    )
-  );
-
-  // Et voila.
 
   t.end();
 });

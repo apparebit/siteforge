@@ -258,9 +258,9 @@ export default function Rollcall(options = {}) {
       configurable,
       value: s => s.replace(BOLDED, (_, text) => candy.bold(text)),
     },
-    newline: {
+    println: {
       configurable,
-      value: () => println(),
+      value: println,
     },
     signOff: {
       configurable,

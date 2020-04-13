@@ -46,6 +46,7 @@ export default function run(cmd, args = [], options = {}) {
   promise.child = child;
 
   child.on('error', err => {
+    /* c8 ignore next */
     if (done) return;
     done = true;
 
@@ -53,6 +54,7 @@ export default function run(cmd, args = [], options = {}) {
   });
 
   child.on('exit', (code, signal) => {
+    /* c8 ignore next */
     if (done) return;
     done = true;
 

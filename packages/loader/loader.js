@@ -20,7 +20,7 @@ const call = new Call({
 
 /** Resolve the module specifier to a valid URL. */
 export function resolve(specifier, context, builtinResolve) {
-  /* c8 ignore next 4 */
+  /* c8 ignore next 6 */
   if (DEBUG) {
     const { parentURL } = context;
     console.error(

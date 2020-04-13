@@ -38,5 +38,7 @@ harness.test('tooling/run', async t => {
     );
   }
 
+  t.rejects(run('program-that-does-not-possibly-exist-665'));
+
   t.end();
 });

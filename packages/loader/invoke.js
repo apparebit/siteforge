@@ -5,13 +5,8 @@ import pickle from '@grr/oddjob/pickle';
 const { has } = Reflect;
 const MAGIC_PREFIX = '@grr/loader/invoke/';
 
-async function invoke(command, data) {
-  // Issue the request and await the response.
-  let { default: response } = await import(
-    `${MAGIC_PREFIX}${command}/${pickle(data)}`
-  );
-
-  // For error conditions, turn data back into an effect of executiomn.
+/**  Convert given response from data record to execution effect. */
+export function returnOrThrow(response) {
   if (
     response == null ||
     typeof response !== 'object' ||
@@ -19,14 +14,18 @@ async function invoke(command, data) {
   ) {
     throw new SyntaxError(`Malformed XPC response "${response}"!`);
   } else if (has(response, 'error')) {
-    // ----- Command Error -----
     const error = new Error(response.error);
     if (response.stack) error.stack = response.stack;
     throw error;
   } else {
-    // ----- Value -----
     return response.value;
   }
 }
 
-export default invoke;
+/** Invoke the given command on the given data within the module loader. */
+export default async function invoke(command, data) {
+  let { default: response } = await import(
+    `${MAGIC_PREFIX}${command}/${pickle(data)}`
+  );
+  return returnOrThrow(response);
+}

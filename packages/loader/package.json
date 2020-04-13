@@ -5,9 +5,9 @@
   "exports": {
     ".": "./loader.js",
     "./call": "./call.js",
-    "./control": "./control.js",
-    "./status": "./dummy.js",
-    "./invoke": "./invoke.js"
+    "./invoke": "./invoke.js",
+    "./launch": "./launch.js",
+    "./status": "./dummy.js"
   },
   "dependencies": {
     "@grr/oddjob": "0.1.0"

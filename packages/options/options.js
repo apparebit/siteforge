@@ -245,7 +245,7 @@ export const optionsFromArguments = (
         `Command line option ${description} is missing required value`
       );
     } else {
-      value = argv[++cursor];
+      value = String(argv[++cursor]);
       if (value.startsWith('-')) {
         errors.push(
           `Command line option ${description} has another option "${value}" as value`
@@ -263,7 +263,7 @@ export const optionsFromArguments = (
   let processOptions = true;
 
   while (cursor < argv.length) {
-    let arg = argv[cursor];
+    let arg = String(argv[cursor]);
 
     // Process as option.
     if (processOptions && arg.charCodeAt(0) === DASH) {

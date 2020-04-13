@@ -13,8 +13,10 @@ import { EOL } from 'os';
 import harness from './harness.js';
 import { toDirectory } from '@grr/fs';
 
-const { assign, keys: keysOf } = Object;
+const { assign, defineProperty, keys: keysOf } = Object;
+const configurable = true;
 const __directory = toDirectory(import.meta.url);
+const enumerable = true;
 const { has } = Reflect;
 
 // Popular copy pasta refined with local seasoning
@@ -174,6 +176,63 @@ harness.test('tooling/options', t => {
     'is not an array of valid file globs',
     'contains an invalid segment glob expression',
   ]);
+
+  // Errors in all their skittishness.
+  const schema = {
+    filePath: FilePath,
+    'file-path': 'filePath',
+    hugeNumber: String, //BigInt,
+    'huge-number': 'hugeNumber',
+  };
+
+  defineProperty(schema, '__proto__', {
+    configurable,
+    enumerable,
+    value: BigInt,
+  });
+
+  const object = {
+    _: [],
+    filePath: Symbol.iterator,
+  };
+
+  defineProperty(object, '__proto__', {
+    configurable,
+    enumerable,
+    value: 665n,
+  });
+
+  t.throws(
+    () => optionsFromObject(object, schema),
+    new RegExp(
+      escapeRegex(
+        [
+          `Option "filePath" is not a valid file path`,
+          `Invalid option name "__proto__"`,
+        ].join(EOL)
+      ),
+      'u'
+    )
+  );
+
+  t.throws(
+    () =>
+      optionsFromArguments(
+        ['--__proto__', 665, '--huge-number', 'abc'],
+        schema
+      ),
+    new RegExp(
+      escapeRegex(
+        [
+          `Invalid option name "__proto__"`,
+          //`Command line option "huge-number"`,
+        ].join(EOL)
+      ),
+      'u'
+    )
+  );
+
+  // Et voila.
 
   t.end();
 });

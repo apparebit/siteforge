@@ -103,7 +103,7 @@ export default async function* render(
   {
     context = {},
     hooks = {},
-    model = Model.load(),
+    model = Model.default(),
     traverseChildren = true,
     collapseWhiteSpace = true,
   } = {}

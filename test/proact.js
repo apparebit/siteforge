@@ -163,7 +163,7 @@ harness.test('@grr/proact', t => {
     t.notOk(isValidComment('This is not --> a valid comment.'));
     t.notOk(isValidComment('This is not --!> a valid comment.'));
 
-    const model = await Model.load();
+    const model = await Model.default();
     const steps = [];
     for await (const step of render(theQuestion, { model })) {
       steps.push(step);

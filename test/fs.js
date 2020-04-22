@@ -134,7 +134,7 @@ harness.test('@grr/fs', t => {
 
     const answer = join(tmp, 'answer.txt');
     try {
-      const model = await Model.load();
+      const model = await Model.default();
       (
         await pump(
           render(theQuestion, { model }),

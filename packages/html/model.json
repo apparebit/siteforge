@@ -11,7 +11,7 @@
     "             : {{ <attribute> : (<cases> | <set> | <base>)) }}",
     "    <cases>  = { cases: { <element> : ( <set> | <base> ) } }",
     "    <set>    = { separator: (space | comma), ...<base> }",
-    "    <base>   = { instance: <type> } | { tokens: [[<xtoken>]] }",
+    "    <base>   = { type: <type> } | { enum: [[<xtoken>]] }",
     "    <xtoken> = { default: <token> } | <token>",
     " -- `categories` defines the elements for each content category",
     "             : {{ <category>: [[ <element> ]] }}",
@@ -22,88 +22,95 @@
     " -- `events` defines valid events for elements and for window object",
     "              : { *: [[ <event> ]], window: [[ <event> ]] }",
     "",
-    "A few attribute specs have both an `instance` and `tokens` property, ie",
-    "their values may either be of the type or the list tokens. Valid instance",
-    "types are: boolean, codePoint (Unicode), color (CSS), contentType (MIME),",
-    "contextName, css, date, date/time/duration, elementName, featurePolicy,",
-    "hashName, html, id, imageCandidate, integer (optionally prefixed with",
-    "unsigned or positive), mediaQueryList, number (optionally prefixed with",
-    "unsigned), regularExpression,sourceSizeList, text, token, and url.",
+    "A few attribute specs have both an `type` and `enum` property, i.e.,",
+    "their values may be any instance or any listed token. Valid types are:",
+    "Boolean, CodePoint (Unicode), Color (CSS), ContentType (MIME),",
+    "ContextName, CSS, Date, DateTimeDuration, ElementName, FeaturePolicy,",
+    "HashName, HTML, ID, ImageCandidate, Integer, MediaQueryList, Number,",
+    "OnOff, PositiveInteger, RegularExpression, SourceSizeList, Text, Token,",
+    "TrueFalse, TrueFalseMixed, TrueFalseUndefined, UnsignedInteger,",
+    "UnsignedNumber, URL, and YesNo.",
     "",
     "An element spec omits the `attributes` property if it only supports the",
     "global attributes. It omits the `children` if the element is void. If the",
     "`children` are present, either `category`, `elements` or both must be",
     "present. In the latter case, the element has the union of named elements",
     "as children. The non-existent `*` wildcard element lists the global",
-    "attributes, `custom-element` refers to all custom elements, and `text`",
+    "attributes, `<custom-element>` refers to all custom elements, and `text`",
     "is inter-element text. Properties named `//` are comments and should be",
-    "ignored by more tools."
+    "ignored by tools processing this data."
   ],
   "attributes": {
     "//": "---------------------------- Attributes ---------------------------",
     "abbr": {
-      "instance": "text"
+      "type": "Text"
     },
     "accept": {
       "separator": "comma",
-      "instance": "contentType"
+      "type": "ContentType"
     },
 
     "accept-charset": {
-      "tokens": ["utf-8"]
+      "enum": ["utf-8"]
     },
     "accesskey": {
       "separator": "space",
-      "instance": "codePoint"
+      "type": "CodePoint"
     },
     "action": {
-      "instance": "url"
+      "type": "URL"
     },
     "allow": {
-      "instance": "featurePolicy"
+      "type": "FeaturePolicy"
     },
     "allowfullscreen": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "allowpaymentrequest": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "alt": {
-      "instance": "text"
+      "type": "Text"
     },
     "aria-activedescendant": {
-      "instance": "id"
+      "type": "ID"
     },
     "aria-atomic": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-autocomplete": {
-      "tokens": ["inline", "list", "both", { "default": "none" }]
+      "enum": ["both", "inline", "list", { "default": "none" }]
+    },
+    "aria-braillelabel": {
+      "type": "Text"
+    },
+    "aria-brailleroledescription": {
+      "type": "Text"
     },
     "aria-busy": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-checked": {
-      "tokens": ["false", "mixed", "true"]
+      "type": "TrueFalseMixed"
     },
     "aria-colcount": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-colindex": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-colindextext": {
-      "instance": "text"
+      "type": "Text"
     },
     "aria-colspan": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-controls": {
       "separator": "space",
-      "instance": "id"
+      "type": "ID"
     },
     "aria-current": {
-      "tokens": [
+      "enum": [
         "date",
         { "default": "false" },
         "location",
@@ -115,16 +122,19 @@
     },
     "aria-describedby": {
       "separator": "space",
-      "instance": "id"
+      "type": "ID"
+    },
+    "aria-description": {
+      "type": "Text"
     },
     "aria-details": {
-      "instance": "id"
+      "type": "ID"
     },
     "aria-disabled": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-dropeffect": {
-      "tokens": [
+      "enum": [
         "copy",
         "execute",
         "link",
@@ -134,20 +144,20 @@
       ]
     },
     "aria-errormessage": {
-      "instance": "id"
+      "type": "ID"
     },
     "aria-expanded": {
-      "tokens": ["false", "true", "undefined"]
+      "type": "TrueFalseUndefined"
     },
     "aria-flowto": {
       "separator": "space",
-      "instance": "id"
+      "type": "ID"
     },
     "aria-grabbed": {
-      "tokens": ["false", "true", "undefined"]
+      "type": "TrueFalseUndefined"
     },
     "aria-haspopup": {
-      "tokens": [
+      "enum": [
         "dialog",
         { "default": "false" },
         "grid",
@@ -158,101 +168,98 @@
       ]
     },
     "aria-hidden": {
-      "tokens": ["false", "true", "undefined"]
+      "type": "TrueFalseUndefined"
     },
     "aria-invalid": {
-      "tokens": [{ "default": "false" }, "grammar", "spelling", "true"]
+      "enum": [{ "default": "false" }, "grammar", "spelling", "true"]
     },
     "aria-keyshortcuts": {
-      "instance": "text"
+      "type": "Text"
     },
     "aria-label": {
-      "instance": "text"
+      "type": "Text"
     },
     "aria-labelledby": {
       "separator": "space",
-      "instance": "id"
+      "type": "ID"
     },
     "aria-level": {
-      "instance": "integer"
+      "type": "Integer"
     },
-    "aria-live": { "tokens": ["assertive", { "default": "off" }, "polite"] },
+    "aria-live": { "enum": ["assertive", { "default": "off" }, "polite"] },
     "aria-modal": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-multiline": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-multiselectable": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-orientation": {
-      "tokens": ["horizontal", { "default": "undefined" }, "vertical"]
+      "enum": ["horizontal", { "default": "undefined" }, "vertical"]
     },
     "aria-owns": {
       "separator": "space",
-      "instance": "id"
+      "type": "ID"
     },
     "aria-placeholder": {
-      "instance": "text"
+      "type": "Text"
     },
     "aria-posinset": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-pressed": {
-      "tokens": ["false", "mixed", "true"]
+      "type": "TrueFalseMixed"
     },
     "aria-readonly": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-relevant": {
       "separator": "space",
-      "tokens": ["additions", "all", "removals", "text"]
+      "enum": ["additions", "all", "removals", "text"]
     },
     "aria-required": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "aria-roledescription": {
-      "instance": "text"
-    },
-    "aria-brailleroledescription": {
-      "instance": "text"
+      "type": "Text"
     },
     "aria-rowcount": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-rowindex": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-rowindextext": {
-      "instance": "text"
+      "type": "Text"
     },
     "aria-rowspan": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-selected": {
-      "tokens": ["false", "true", "undefined"]
+      "type": "TrueFalseUndefined"
     },
     "aria-setsize": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "aria-sort": {
-      "tokens": ["ascending", "descending", { "default": "none" }, "other"]
+      "enum": ["ascending", "descending", { "default": "none" }, "other"]
     },
     "aria-valuemax": {
-      "instance": "number"
+      "type": "Number"
     },
     "aria-valuemin": {
-      "instance": "number"
+      "type": "Number"
     },
     "aria-valuenow": {
-      "instance": "number"
+      "type": "Number"
     },
     "aria-valuetext": {
-      "instance": "text"
+      "type": "Text"
     },
     "as": {
-      "tokens": [
+      "enum": [
         "",
         "audio",
         "audioworklet",
@@ -276,19 +283,19 @@
       ]
     },
     "async": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "autocapitalize": {
-      "tokens": ["characters", "none", "off", "on", "sentences", "words"]
+      "enum": ["characters", "none", "off", "on", "sentences", "words"]
     },
     "autocomplete": {
       "cases": {
         "form": {
-          "tokens": ["off", "on"]
+          "type": "OnOff"
         },
         "*": {
           "elements": ["input", "select", "textarea"],
-          "tokens": [
+          "enum": [
             "additional-name",
             "address-level1",
             "address-level2",
@@ -348,103 +355,103 @@
       }
     },
     "autofocus": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "autoplay": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "charset": {
-      "tokens": ["utf-8"]
+      "enum": ["utf-8"]
     },
     "checked": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "cite": {
-      "instance": "url"
+      "type": "URL"
     },
     "class": {
       "separator": "space",
-      "instance": "token"
+      "type": "Token"
     },
     "color": {
-      "instance": "color"
+      "type": "Color"
     },
     "cols": {
-      "instance": "unsigned integer"
+      "type": "UnsignedInteger"
     },
     "colspan": {
-      "instance": "unsigned integer"
+      "type": "UnsignedInteger"
     },
     "content": {
-      "instance": "text"
+      "type": "Text"
     },
     "contenteditable": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "controls": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "coords": {
       "separator": "comma",
-      "instance": "number"
+      "type": "Number"
     },
     "crossorigin": {
-      "tokens": ["anonymous", "credentials"]
+      "enum": ["anonymous", "credentials"]
     },
     "data": {
-      "instance": "url"
+      "type": "URL"
     },
     "datetime": {
       "cases": {
         "time": {
-          "instance": "date/time/duration"
+          "type": "DateTimeDuration"
         },
         "*": {
           "elements": ["del", "ins"],
-          "instance": "date"
+          "type": "Date"
         }
       }
     },
     "decoding": {
-      "tokens": ["async", "auto", "sync"]
+      "enum": ["async", "auto", "sync"]
     },
     "default": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "defer": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "dir": {
       "cases": {
         "bdo": {
-          "tokens": ["ltr", "rtl"]
+          "enum": ["ltr", "rtl"]
         },
         "*": {
-          "tokens": ["auto", "ltr", "rtl"]
+          "enum": ["auto", "ltr", "rtl"]
         }
       }
     },
     "dirname": {
-      "instance": "text"
+      "type": "Text"
     },
     "disabled": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "download": {
-      "instance": "text"
+      "type": "Text"
     },
     "draggable": {
-      "tokens": ["false", "true"]
+      "type": "TrueFalse"
     },
     "enctype": {
-      "tokens": [
+      "enum": [
         "application/x-www-form-urlencoded",
         "multipart/form-data",
         "text/plain"
       ]
     },
     "enterkeyhint": {
-      "tokens": [
+      "enum": [
         "done",
         "enter",
         "go",
@@ -455,55 +462,55 @@
       ]
     },
     "for": {
-      "instance": "id"
+      "type": "ID"
     },
     "form": {
-      "instance": "id"
+      "type": "ID"
     },
     "formaction": {
-      "instance": "url"
+      "type": "URL"
     },
     "formenctype": {
-      "tokens": [
+      "enum": [
         "application/x-www-form-urlencoded",
         "multipart/form-data",
         "text/plain"
       ]
     },
     "formmethod": {
-      "tokens": [
+      "enum": [
         "dialog",
         "GET",
         "POST"
       ]
     },
     "formnovalidate": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "formtarget": {
-      "instance": "contextName"
+      "type": "ContextName"
     },
     "headers": {
       "separator": "space",
-      "instance": "id"
+      "type": "ID"
     },
     "height": {
-      "instance": "unsigned integer"
+      "type": "UnsignedInteger"
     },
     "hidden": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "high": {
-      "instance": "number"
+      "type": "Number"
     },
     "href": {
-      "instance": "url"
+      "type": "URL"
     },
     "hreflang": {
-      "instance": "languageTag"
+      "type": "LanguageTag"
     },
     "http-equiv": {
-      "tokens": [
+      "enum": [
         "content-security-policy",
         "content-type",
         "default-style",
@@ -512,17 +519,17 @@
       ]
     },
     "id": {
-      "instance": "text"
+      "type": "Text"
     },
     "imagesizes": {
-      "instance": "sourceSizeList"
+      "type": "SourceSizeList"
     },
     "imagesrcset": {
       "separator": "comma",
-      "instance": "imageCandidate"
+      "type": "ImageCandidate"
     },
     "inputmode": {
-      "tokens": [
+      "enum": [
         "decimal",
         "email",
         "none",
@@ -534,33 +541,33 @@
       ]
     },
     "integrity": {
-      "instance": "text"
+      "type": "Text"
     },
     "is": {
-      "instance": "elementName"
+      "type": "ElementName"
     },
     "ismap": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "itemid": {
-      "instance": "url"
+      "type": "URL"
     },
     "itemprop": {
-      "instance": "text"
+      "type": "Text"
     },
     "itemref": {
       "separator": "space",
-      "instance": "id"
+      "type": "ID"
     },
     "itemscope": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "itemtype": {
       "separator": "space",
-      "instance": "url"
+      "type": "URL"
     },
     "kind": {
-      "tokens": [
+      "enum": [
         "captions",
         "chapters",
         "descriptions",
@@ -569,45 +576,45 @@
       ]
     },
     "label": {
-      "instance": "text"
+      "type": "Text"
     },
     "lang": {
-      "instance": "languageTag"
+      "type": "LanguageTag"
     },
     "list": {
-      "instance": "id"
+      "type": "ID"
     },
     "loop": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "low": {
-      "instance": "number"
+      "type": "Number"
     },
     "manifest": {
-      "instance": "url"
+      "type": "URL"
     },
     "max": {
       "cases": {
         "input": {
-          "instance": "text"
+          "type": "Text"
         },
         "*": {
           "elements": [
             "meter",
             "progress"
           ],
-          "instance": "number"
+          "type": "Number"
         }
       }
     },
     "maxlength": {
-      "instance": "unsigned integer"
+      "type": "UnsignedInteger"
     },
     "media": {
-      "instance": "mediaQueryList"
+      "type": "MediaQueryList"
     },
     "method": {
-      "tokens": [
+      "enum": [
         "dialog",
         "GET",
         "POST"
@@ -616,37 +623,37 @@
     "min": {
       "cases": {
         "input": {
-          "instance": "text"
+          "type": "Text"
         },
         "*": {
           "elements": [
             "meter",
             "progress"
           ],
-          "instance": "number"
+          "type": "Number"
         }
       }
     },
     "minlength": {
-      "instance": "unsigned integer"
+      "type": "UnsignedInteger"
     },
     "multiple": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "muted": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "name": {
       "cases": {
         "iframe": {
-          "instance": "contextName"
+          "type": "ContextName"
         },
         "object": {
-          "instance": "contextName"
+          "type": "ContextName"
         },
         "*": {
           "elements": [
-            "custom-element",
+            "<custom-element>",
             "button",
             "fieldset",
             "form",
@@ -659,56 +666,56 @@
             "slot",
             "textarea"
           ],
-          "instance": "text"
+          "type": "Text"
         }
       }
     },
     "nomodule": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "nonce": {
-      "instance": "text"
+      "type": "Text"
     },
     "novalidate": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "open": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "optimum": {
-      "instance": "number"
+      "type": "Number"
     },
     "pattern": {
-      "instance": "regularExpression"
+      "type": "RegularExpression"
     },
     "ping": {
       "separator": "space",
-      "instance": "url"
+      "type": "URL"
     },
     "placeholder": {
-      "instance": "text"
+      "type": "Text"
     },
     "playsinline": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "poster": {
-      "instance": "url"
+      "type": "URL"
     },
     "preload": {
-      "tokens": [
+      "enum": [
         "auto",
         "metadata",
         "none"
       ]
     },
     "property": {
-      "instance": "token"
+      "type": "Token"
     },
     "readonly": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "referrerpolicy": {
-      "tokens": [
+      "enum": [
         "",
         "no-referrer",
         "no-referrer-when-downgrade",
@@ -722,16 +729,16 @@
     },
     "rel": {
       "separator": "space",
-      "instance": "token"
+      "type": "Token"
     },
     "required": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "reversed": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "role": {
-      "tokens": [
+      "enum": [
         "alert",
         "alertdialog",
         "application",
@@ -745,9 +752,13 @@
         "caption",
         "cell",
         "checkbox",
+        "code",
         "columnheader",
         "combobox",
+        "command",
+        "comment",
         "complementary",
+        "composite",
         "contentinfo",
         "definition",
         "deletion",
@@ -764,8 +775,10 @@
         "group",
         "heading",
         "img",
+        "input",
         "insertion",
         "label",
+        "landmark",
         "legend",
         "link",
         "list",
@@ -773,6 +786,7 @@
         "listitem",
         "log",
         "main",
+        "mark",
         "marquee",
         "math",
         "menu",
@@ -790,20 +804,26 @@
         "progressbar",
         "radio",
         "radiogroup",
+        "range",
         "region",
+        "roletype",
         "row",
         "rowgroup",
         "rowheader",
         "scrollbar",
         "search",
         "searchbox",
-        "separator",
+        "section",
+        "sectionhead",
+        "select",
         "separator",
         "slider",
         "spinbutton",
         "status",
         "strong",
+        "structure",
         "subscript",
+        "suggestion",
         "superscript",
         "switch",
         "tab",
@@ -818,18 +838,20 @@
         "tooltip",
         "tree",
         "treegrid",
-        "treeitem"
+        "treeitem",
+        "widget",
+        "window"
       ]
     },
     "rows": {
-      "instance": "positive integer"
+      "type": "PositiveInteger"
     },
     "rowspan": {
-      "instance": "unsigned integer"
+      "type": "UnsignedInteger"
     },
     "sandbox": {
       "separator": "space",
-      "tokens": [
+      "enum": [
         "allow-forms",
         "allow-modals",
         "allow-orientation-lock",
@@ -843,7 +865,7 @@
       ]
     },
     "scope": {
-      "tokens": [
+      "enum": [
         "col",
         "colgroup",
         "row",
@@ -851,10 +873,10 @@
       ]
     },
     "selected": {
-      "instance": "boolean"
+      "type": "Boolean"
     },
     "shape": {
-      "tokens": [
+      "enum": [
         "circle",
         "default",
         "poly",
@@ -862,78 +884,72 @@
       ]
     },
     "size": {
-      "instance": "positive integer"
+      "type": "PositiveInteger"
     },
     "sizes": {
-      "instance": "sourceSizeList"
+      "type": "SourceSizeList"
     },
     "slot": {
-      "instance": "text"
+      "type": "Text"
     },
     "span": {
-      "instance": "positive integer"
+      "type": "PositiveInteger"
     },
     "spellcheck": {
-      "tokens": [
-        "false",
-        "true"
-      ]
+      "type": "TrueFalse"
     },
     "src": {
-      "instance": "url"
+      "type": "URL"
     },
     "srcdoc": {
-      "instance": "html"
+      "type": "HTML"
     },
     "srclang": {
-      "instance": "languageTag"
+      "type": "LanguageTag"
     },
     "srcset": {
       "separator": "comma",
-      "instance": "imageCandidate"
+      "type": "ImageCandidate"
     },
     "start": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "step": {
-      "instance": "unsigned number",
-      "tokens": ["any"]
+      "type": "UnsignedNumber",
+      "enum": ["any"]
     },
     "style": {
-      "instance": "css"
+      "type": "CSS"
     },
     "tabindex": {
-      "instance": "integer"
+      "type": "Integer"
     },
     "target": {
-      "instance": "contextName"
+      "type": "ContextName"
     },
     "title": {
-      "instance": "text"
+      "type": "Text"
     },
     "translate": {
-      "tokens": [
-        "no",
-        "yes"
-      ]
+      "type": "YesNo"
     },
     "type": {
       "cases": {
         "button": {
-          "tokens": [
+          "enum": [
             "button",
             "reset",
             "submit"
           ]
         },
         "module": {
-          "instance": "url",
-          "tokens": [
+          "type": "URL",
+          "enum": [
             "module"
           ]
         },
         "ol": {
-          "tokens": [
+          "enum": [
             "a",
             "A",
             "i",
@@ -949,23 +965,23 @@
             "object",
             "source"
           ],
-          "instance": "contentType"
+          "type": "ContentType"
         }
       }
     },
     "usemap": {
-      "instance": "hashName"
+      "type": "HashName"
     },
     "value": {
       "cases": {
         "li": {
-          "instance": "integer"
+          "type": "Integer"
         },
         "meter": {
-          "instance": "number"
+          "type": "Number"
         },
         "progress": {
-          "instance": "number"
+          "type": "Number"
         },
         "*": {
           "elements": [
@@ -975,15 +991,15 @@
             "option",
             "param"
           ],
-          "instance": "text"
+          "type": "Text"
         }
       }
     },
     "width": {
-      "instance": "unsigned integer"
+      "type": "UnsignedInteger"
     },
     "wrap": {
-      "tokens": [
+      "enum": [
         "hard",
         "soft"
       ]
@@ -1030,8 +1046,8 @@
       "wbr"
     ],
     "flow": [
-      "custom-element",
-      "text",
+      "<custom-element>",
+      ">text<",
       "a",
       "abbr",
       "address",
@@ -1120,7 +1136,7 @@
       "wbr"
     ],
     "formAssociated": [
-      "custom-element",
+      "<custom-element>",
       "button",
       "fieldset",
       "input",
@@ -1147,7 +1163,7 @@
       "video"
     ],
     "labelable": [
-      "custom-element",
+      "<custom-element>",
       "button",
       "input",
       "meter",
@@ -1157,7 +1173,7 @@
       "textarea"
     ],
     "listed": [
-      "custom-element",
+      "<custom-element>",
       "button",
       "fieldset",
       "input",
@@ -1177,8 +1193,8 @@
       "title"
     ],
     "palpable": [
-      "custom-element",
-      "text",
+      "<custom-element>",
+      ">text<",
       "a",
       "abbr",
       "address",
@@ -1253,8 +1269,8 @@
       "video"
     ],
     "phrasing": [
-      "custom-element",
-      "text",
+      "<custom-element>",
+      ">text<",
       "a",
       "abbr",
       "area",
@@ -1314,7 +1330,7 @@
     ],
     "rawText": ["script", "style", "textarea", "title"],
     "resettable": [
-      "custom-element",
+      "<custom-element>",
       "input",
       "output",
       "select",
@@ -1332,7 +1348,7 @@
       "td"
     ],
     "submittable": [
-      "custom-element",
+      "<custom-element>",
       "button",
       "input",
       "object",
@@ -1340,7 +1356,7 @@
       "textarea"
     ],
     "transparent": [
-      "custom-element",
+      "<custom-element>",
       "a",
       "audio",
       "canvas",
@@ -1411,17 +1427,17 @@
         "target",
         "type"
       ],
-      "children": {
+      "content": {
         "category": "transparent"
       }
     },
     "abbr": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "address": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
@@ -1432,19 +1448,19 @@
         "download",
         "href",
         "ping",
-        "reffererpolicy",
+        "referrerpolicy",
         "rel",
         "shape",
         "target"
       ]
     },
     "article": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "aside": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
@@ -1458,13 +1474,13 @@
         "preload",
         "src"
       ],
-      "children": {
+      "content": {
         "category": "transparent",
         "elements": ["source", "track"]
       }
     },
     "b": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -1472,23 +1488,23 @@
       "attributes": ["href", "target"]
     },
     "bdi": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "bdo": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "blockquote": {
       "attributes": ["cite"],
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "body": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
@@ -1506,28 +1522,28 @@
         "type",
         "value"
       ],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "canvas": {
       "attributes": ["height", "width"],
-      "children": {
+      "content": {
         "category": "transparent"
       }
     },
     "caption": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "cite": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "code": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -1536,68 +1552,68 @@
     },
     "colgroup": {
       "attributes": ["span"],
-      "children": {
+      "content": {
         "elements": ["col", "template"]
       }
     },
     "data": {
       "attributes": ["value"],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "datalist": {
-      "children": {
+      "content": {
         "category": "phrasing",
         "elements": ["option", "script", "template"]
       }
     },
     "dd": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "del": {
       "attributes": ["cite", "datetime"],
-      "children": {
+      "content": {
         "category": "transparent"
       }
     },
     "details": {
       "attributes": ["open"],
-      "children": {
+      "content": {
         "category": "flow",
         "elements": ["summary"]
       }
     },
     "dfn": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "dialog": {
       "attributes": ["open"],
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "div": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "dl": {
-      "children": {
+      "content": {
         "elements": ["dd", "div", "dt", "script", "template"]
       }
     },
     "dt": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "em": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -1606,24 +1622,24 @@
     },
     "fieldset": {
       "attributes": ["disabled", "form", "name"],
-      "children": {
+      "content": {
         "category": "flow",
         "elements": ["legend"]
       }
     },
     "figcaption": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "figure": {
-      "children": {
+      "content": {
         "category": "flow",
         "elements": ["figcaption"]
       }
     },
     "footer": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
@@ -1638,64 +1654,64 @@
         "novalidate",
         "target"
       ],
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "h1": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "h2": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "h3": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "h4": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "h5": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "h6": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "head": {
-      "children": {
+      "content": {
         "category": "metadata"
       }
     },
     "header": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "hgroup": {
-      "children": {
+      "content": {
         "elements": ["h1", "h2", "h3", "h4", "h5", "h6", "script", "template"]
       }
     },
     "hr": {},
     "html": {
       "attributes": ["manifest"],
-      "children": {
+      "content": {
         "elements": ["head", "body"]
       }
     },
     "i": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -1763,29 +1779,29 @@
     },
     "ins": {
       "attributes": ["cite", "datetime"],
-      "children": {
+      "content": {
         "category": "transparent"
       }
     },
     "kbd": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "label": {
       "attributes": ["for"],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "legend": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "li": {
       "attributes": ["value"],
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
@@ -1806,30 +1822,30 @@
       ]
     },
     "main": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "map": {
       "attributes": ["name"],
-      "children": {
+      "content": {
         "category": "transparent",
         "elements": ["area"]
       }
     },
     "mark": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "math": {
-      "attributes": ["*"],
-      "children": {
+      "attributes": "*",
+      "content": {
         "category": "MathML"
       }
     },
     "menu": {
-      "children": {
+      "content": {
         "elements": ["li", "script", "template"]
       }
     },
@@ -1838,17 +1854,17 @@
     },
     "meter": {
       "attributes": ["high", "low", "max", "min", "optimum", "value"],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "nav": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "noscript": {
-      "children": {
+      "content": {
         "category": "*"
       }
     },
@@ -1862,37 +1878,37 @@
         "usemap",
         "width"
       ],
-      "children": {
+      "content": {
         "category": "transparent",
         "elements": ["param"]
       }
     },
     "ol": {
       "attributes": ["reversed", "start", "type"],
-      "children": {
+      "content": {
         "elements": ["li", "script", "template"]
       }
     },
     "optgroup": {
       "attributes": ["disabled", "label"],
-      "children": {
+      "content": {
         "elements": ["option", "script", "template"]
       }
     },
     "option": {
       "attributes": ["disabled", "label", "selected", "value"],
-      "children": {
-        "elements": ["..."]
+      "content": {
+        "category": ">text<"
       }
     },
     "output": {
       "attributes": ["for", "form", "name"],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "p": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -1900,50 +1916,50 @@
       "attributes": ["name", "value"]
     },
     "picture": {
-      "children": {
+      "content": {
         "elements": ["img", "script", "source", "template"]
       }
     },
     "pre": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "progress": {
       "attributes": ["max", "value"],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "q": {
       "attributes": ["cite"],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "rp": {
-      "children": {
-        "elements": ["..."]
+      "content": {
+        "category": ">text<"
       }
     },
     "rt": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "ruby": {
-      "children": {
+      "content": {
         "category": "phrasing",
         "elements": ["rp", "rt"]
       }
     },
     "s": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "samp": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -1957,12 +1973,12 @@
         "src",
         "type"
       ],
-      "children": {
-        "elements": ["..."]
+      "content": {
+        "category": ">text<"
       }
     },
     "section": {
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
@@ -1976,18 +1992,18 @@
         "required",
         "size"
       ],
-      "children": {
+      "content": {
         "elements": ["optgroup", "option", "script", "template"]
       }
     },
     "slot": {
       "attributes": ["name"],
-      "children": {
+      "content": {
         "category": "transparent"
       }
     },
     "small": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -1995,44 +2011,44 @@
       "attributes": ["media", "src", "srcset", "sizes", "type"]
     },
     "span": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "strong": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "style": {
       "attributes": ["media"],
-      "children": {
-        "elements": ["..."]
+      "content": {
+        "category": ">text<"
       }
     },
     "sub": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "summary": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "sup": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "svg": {
-      "attributes": ["*"],
-      "children": {
+      "attributes": "*",
+      "content": {
         "category": "SVG"
       }
     },
     "table": {
-      "children": {
+      "content": {
         "elements": [
           "caption",
           "colgroup",
@@ -2046,13 +2062,13 @@
       }
     },
     "tbody": {
-      "children": {
+      "content": {
         "elements": ["script", "template", "tr"]
       }
     },
     "td": {
       "attributes": ["colspan", "headers", "rowspan"],
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
@@ -2072,39 +2088,39 @@
         "rows",
         "wrap"
       ],
-      "children": {
-        "elements": ["..."]
+      "content": {
+        "category": ">text<"
       }
     },
     "tfoot": {
-      "children": {
+      "content": {
         "elements": ["script", "template", "tr"]
       }
     },
     "th": {
       "attributes": ["abbr", "colspan", "rowspan", "headers", "scope"],
-      "children": {
+      "content": {
         "category": "flow"
       }
     },
     "thead": {
-      "children": {
+      "content": {
         "elements": ["script", "template", "tr"]
       }
     },
     "time": {
       "attributes": ["datetime"],
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "title": {
-      "children": {
-        "elements": ["..."]
+      "content": {
+        "category": ">text<"
       }
     },
     "tr": {
-      "children": {
+      "content": {
         "elements": ["script", "td", "template", "th"]
       }
     },
@@ -2112,17 +2128,17 @@
       "attributes": ["default", "kind", "label", "src", "srclang"]
     },
     "u": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
     "ul": {
-      "children": {
+      "content": {
         "elements": ["li", "script", "template"]
       }
     },
     "var": {
-      "children": {
+      "content": {
         "category": "phrasing"
       }
     },
@@ -2140,16 +2156,16 @@
         "src",
         "width"
       ],
-      "children": {
+      "content": {
         "category": "transparent",
         "elements": ["source", "track"]
       }
     },
     "wbr": {},
-    "custom-element": {
+    "<custom-element>": {
       "//": "The minimal constraints on custom elements follow:",
-      "attributes": ["*"],
-      "children": {
+      "attributes": "*",
+      "content": {
         "category": "transparent"
       }
     }

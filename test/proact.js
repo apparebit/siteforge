@@ -118,22 +118,27 @@ harness.test('@grr/proact', t => {
   // ---------------------------------------------------------------------------
 
   t.test('html', t => {
-    t.same(
-      html`
-        <div class="highlight"></div>
-      `,
-      { type: 'div', class: 'highlight', children: [] }
-    );
-
-    t.same(
-      html`
-        <div class="highlight"><span>The answer is 42!</span></div>
-      `,
+    t.same(html` <div class="highlight"></div> `, [
+      ' ',
       {
         type: 'div',
         class: 'highlight',
-        children: [{ type: 'span', children: ['The answer is 42!'] }],
-      }
+        children: [],
+      },
+      ' ',
+    ]);
+
+    t.same(
+      html` <div class="highlight"><span>The answer is 42!</span></div> `,
+      [
+        ' ',
+        {
+          type: 'div',
+          class: 'highlight',
+          children: [{ type: 'span', children: ['The answer is 42!'] }],
+        },
+        ' ',
+      ]
     );
 
     t.end();

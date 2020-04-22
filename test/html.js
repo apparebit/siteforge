@@ -1,122 +1,122 @@
 /* © 2019-2020 Robert Grimm */
 
 import harness from './harness.js';
-import { join } from 'path';
-import { default as Model, prepareModelData } from '@grr/html';
-import { toDirectory } from '@grr/fs';
+//import { join } from 'path';
+import Model from '@grr/html';
+//import { toDirectory } from '@grr/fs';
 
-const __directory = toDirectory(import.meta.url);
-const __package = join(__directory, '../package.json');
+//const __directory = toDirectory(import.meta.url);
+//const __package = join(__directory, '../package.json');
 
-const fakeModel = () => ({
-  attributes: {
-    atta: {
-      instance: 'url',
-    },
-    attb: {
-      tokens: ['B'],
-    },
-  },
-  categories: {
-    autocapitalizeInheriting: ['three'],
-    embedded: ['one'],
-    empty: ['one'],
-    flow: ['one', 'two'],
-    formAssociated: ['three'],
-    heading: ['one'],
-    interactive: ['one'],
-    labelable: ['three'],
-    listed: ['three'],
-    metadata: ['one'],
-    palpable: ['one', 'two'],
-    phrasing: ['one', 'two'],
-    rawText: ['one'],
-    resettable: ['three'],
-    scriptSupporting: ['one'],
-    sectioning: ['one'],
-    sectioningRoot: ['one'],
-    submittable: ['three'],
-    transparent: ['one'],
-    void: ['one'],
-  },
-  elements: {
-    '*': {
-      attributes: ['atta'],
-    },
-    one: {
-      attributes: ['attb'],
-      children: {
-        elements: ['two'],
-      },
-    },
-    two: {
-      children: {
-        category: 'phrasing',
-      },
-    },
-  },
-  events: {
-    '*': ['bang', 'boom', 'pft'],
-    window: ['klirr'],
-  },
-});
+// const fakeModel = () => ({
+//   attributes: {
+//     atta: {
+//       type: 'URL',
+//     },
+//     attb: {
+//       enum: ['B'],
+//     },
+//   },
+//   categories: {
+//     autocapitalizeInheriting: ['three'],
+//     embedded: ['one'],
+//     empty: ['one'],
+//     flow: ['one', 'two'],
+//     formAssociated: ['three'],
+//     heading: ['one'],
+//     interactive: ['one'],
+//     labelable: ['three'],
+//     listed: ['three'],
+//     metadata: ['one'],
+//     palpable: ['one', 'two'],
+//     phrasing: ['one', 'two'],
+//     rawText: ['one'],
+//     resettable: ['three'],
+//     scriptSupporting: ['one'],
+//     sectioning: ['one'],
+//     sectioningRoot: ['one'],
+//     submittable: ['three'],
+//     transparent: ['one'],
+//     void: ['one'],
+//   },
+//   elements: {
+//     '*': {
+//       attributes: ['atta'],
+//     },
+//     one: {
+//       attributes: ['attb'],
+//       content: {
+//         elements: ['two'],
+//       },
+//     },
+//     two: {
+//       content: {
+//         category: 'phrasing',
+//       },
+//     },
+//   },
+//   events: {
+//     '*': ['bang', 'boom', 'pft'],
+//     window: ['klirr'],
+//   },
+// });
 
 harness.test('@grr/html', async t => {
   // Loading Model Data
   // ------------------
 
-  try {
-    await Model.load(import.meta.url);
-    t.fail('should throw');
-  } catch (x) {
-    t.match(x.message, /Could not load model data from ".*?"/u);
-  }
+  // try {
+  //   await Model.load(import.meta.url);
+  //   t.fail('should throw');
+  // } catch (x) {
+  //   t.match(x.message, /Could not load model data from ".*?"/u);
+  // }
 
-  try {
-    await Model.load(__package);
-    t.fail('should throw');
-  } catch (x) {
-    t.match(
-      x.message,
-      /Property "categories" is missing from model data in ".*?"/u
-    );
-  }
+  // try {
+  //   await Model.load(__package);
+  //   t.fail('should throw');
+  // } catch (x) {
+  //   t.match(
+  //     x.message,
+  //     /Property "categories" is missing from model data in ".*?"/u
+  //   );
+  // }
 
-  t.throws(
-    () => prepareModelData({ categories: 665 }),
-    /Property "categories" is invalid for model data/u
-  );
+  // t.throws(
+  //   () => prepareModelData({ categories: 665 }),
+  //   /Property "categories" is invalid for model data/u
+  // );
 
-  let model = fakeModel();
-  t.equal(
-    prepareModelData(model).elements.get('one').children.elements[0],
-    'two'
-  );
+  // let model = fakeModel();
+  // t.equal(
+  //   prepareModelData(model).elements.get('one').content.elements[0],
+  //   'two'
+  // );
 
-  delete model.categories.labelable;
-  t.throws(
-    () => prepareModelData(model),
-    /Category "labelable" is missing from model data/u
-  );
+  // delete model.categories.labelable;
+  // t.throws(
+  //   () => prepareModelData(model),
+  //   /Category "labelable" is missing from model data/u
+  // );
 
-  t.throws(
-    () =>
-      prepareModelData({
-        categories: {},
-      }),
-    /Categories "autocapitalizeInheriting", .*? and "void" are missing from model data/u
-  );
+  // t.throws(
+  //   () =>
+  //     prepareModelData({
+  //       categories: {},
+  //     }),
+  //   /Categories "autocapitalizeInheriting", .*? and "void" are missing from model data/u
+  // );
 
-  model = fakeModel();
-  delete model.elements['*'];
-  t.throws(
-    () => prepareModelData(model),
-    /Global attributes are missing from model data in ".*?"/u
-  );
+  // model = fakeModel();
+  // delete model.elements['*'];
+  // t.throws(
+  //   () => prepareModelData(model),
+  //   /Global attributes are missing from model data in ".*?"/u
+  // );
 
   // eslint-disable-next-line require-atomic-updates
-  model = await Model.load();
-  t.equal(await Model.load(), model);
+  const model = await Model.default();
+  t.equal(await Model.default(), model);
 
   // Simple Predicates on Attributes and Events
   // ------------------------------------------
@@ -219,58 +219,58 @@ harness.test('@grr/html', async t => {
   // Looking up a child's model data
 
   t.throws(
-    () => model.elementForName('img').child('a'),
-    /Element <img> should not have children/u
+    () => model.elementForName('img').element('a'),
+    /Element <img> has no content/u
   );
 
-  t.equal(model.elementForName('p').child('em').name, 'em');
+  t.equal(model.elementForName('p').element('em').name, 'em');
 
   t.throws(
-    () => a.child('em', 'img'),
-    /Closest enclosing non-transparent element <img> should not have children/u
+    () => a.element('em', 'img'),
+    /Closest non-transparent enclosing element <img> has no content/u
   );
 
-  t.equal(a.child('em', 'ins', 'p').name, 'em');
+  t.equal(a.element('em', 'ins', 'p').name, 'em');
 
   t.throws(
-    () => model.elementForName('h1').child('section'),
-    /Element <section> is not a valid child for <h1>/u
+    () => model.elementForName('h1').element('section'),
+    /Element <section> is not valid content for <h1>/u
   );
 
   t.throws(
-    () => model.elementForName('ol').child('style'),
-    /Element <style> is not a valid child for <ol>/u
+    () => model.elementForName('ol').element('style'),
+    /Element <style> is not valid content for <ol>/u
   );
 
   // Looking up attributes
 
-  t.equal(a.attribute('data-data').instance, '*');
-  t.equal(a.attribute('onclick').instance, 'eventHandler');
+  t.equal(a.attribute('data-data').type, '*');
+  t.equal(a.attribute('onclick').type, 'EventHandler');
 
   t.equal(
-    model.elementForName('body').attribute('onoffline').instance,
-    'eventHandler'
+    model.elementForName('body').attribute('onoffline').type,
+    'EventHandler'
   );
 
   t.throws(
     () => a.attribute('onoffline'),
-    /Event handler "onoffline" is not a valid attribute on <a>/u
+    /Event handler "onoffline" is not valid on <a>/u
   );
 
   t.throws(
     () => model.elementForName('body').attribute('onclick'),
-    /Event handler "onclick" is not a valid attribute on <body>/u
+    /Event handler "onclick" is not valid on <body>/u
   );
 
-  t.equal(a.attribute('aria-hidden').effectiveInstance, 'true/false/undefined');
+  t.equal(a.attribute('aria-hidden').type, 'TrueFalseUndefined');
   t.equal(a.attribute('class').separator, 'space');
   const href = a.attribute('href');
-  t.equal(href.instance, 'url');
+  t.equal(href.type, 'URL');
   t.equal(a.attribute('href'), href);
 
   t.throws(
     () => a.attribute('autoplay'),
-    /Attribute "autoplay" is not a valid attribute on <a>/u
+    /Attribute "autoplay" is not valid on <a>/u
   );
 
   t.throws(
@@ -278,61 +278,57 @@ harness.test('@grr/html', async t => {
     /Attribute "aria-invented" is undefined/u
   );
 
-  t.strictSame(model.elementForName('form').attribute('autocomplete').tokens, [
-    'off',
-    'on',
-  ]);
+  const Attribute = a.attribute('class').constructor;
+  t.strictSame(
+    model.elementForName('form').attribute('autocomplete'),
+    new Attribute('autocomplete', { type: 'OnOff' })
+  );
 
   const autocomplete = model.elementForName('input').attribute('autocomplete');
-  t.notOk(autocomplete.tokens.includes('off'));
-  t.notOk(autocomplete.tokens.includes('on'));
+  t.notOk(autocomplete.enum.includes('off'));
+  t.notOk(autocomplete.enum.includes('on'));
 
   // Attributes
   // ----------
 
   t.notOk(href.isMultivalued());
-  t.ok(href.isInstance());
-  t.notOk(href.isEnum());
+  t.ok(href.hasType());
   t.notOk(href.hasEnum('off'));
 
   t.notOk(autocomplete.isMultivalued());
-  t.notOk(autocomplete.isInstance());
-  t.ok(autocomplete.isEnum());
+  t.notOk(autocomplete.hasType());
   t.ok(autocomplete.hasEnum('cc-additional-name'));
   t.ok(autocomplete.hasEnum('honorific-prefix'));
   t.ok(autocomplete.hasEnum('sex'));
   t.notOk(autocomplete.hasEnum('off'));
   t.notOk(autocomplete.hasEnum('on'));
 
-  // Effective instance
+  // Types that Used to be Enum
 
   [
-    ['aria-atomic', 'true/false'],
-    ['aria-busy', 'true/false'],
-    ['aria-checked', 'true/false/mixed'],
-    ['aria-disabled', 'true/false'],
-    ['aria-expanded', 'true/false/undefined'],
-    ['aria-grabbed', 'true/false/undefined'],
-    ['aria-hidden', 'true/false/undefined'],
-    ['aria-modal', 'true/false'],
-    ['aria-multiline', 'true/false'],
-    ['aria-multiselectable', 'true/false'],
-    ['aria-pressed', 'true/false/mixed'],
-    ['aria-readonly', 'true/false'],
-    ['aria-required', 'true/false'],
-    ['aria-selected', 'true/false/undefined'],
-    ['contenteditable', 'true/false'],
-    ['draggable', 'true/false'],
-    ['spellcheck', 'true/false'],
-    ['translate', 'yes/no'],
+    ['aria-atomic', 'TrueFalse'],
+    ['aria-busy', 'TrueFalse'],
+    ['aria-checked', 'TrueFalseMixed'],
+    ['aria-disabled', 'TrueFalse'],
+    ['aria-expanded', 'TrueFalseUndefined'],
+    ['aria-grabbed', 'TrueFalseUndefined'],
+    ['aria-hidden', 'TrueFalseUndefined'],
+    ['aria-modal', 'TrueFalse'],
+    ['aria-multiline', 'TrueFalse'],
+    ['aria-multiselectable', 'TrueFalse'],
+    ['aria-pressed', 'TrueFalseMixed'],
+    ['aria-readonly', 'TrueFalse'],
+    ['aria-required', 'TrueFalse'],
+    ['aria-selected', 'TrueFalseUndefined'],
+    ['contenteditable', 'TrueFalse'],
+    ['draggable', 'TrueFalse'],
+    ['spellcheck', 'TrueFalse'],
+    ['translate', 'YesNo'],
   ].forEach(([name, instance]) =>
-    t.equal(model.attributes.get(name).effectiveInstance, instance)
+    t.equal(model.attributes.get(name).type, instance)
   );
 
-  t.equal(
-    model.attributes.get('autocomplete').cases.form.effectiveInstance,
-    'on/off'
-  );
+  t.equal(model.attributes.get('autocomplete').cases.form.type, 'OnOff');
 
   t.end();
 });

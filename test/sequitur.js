@@ -31,7 +31,7 @@ harness.test('@grr/sequitur', t => {
     t.equal(Sq.IteratorPrototype, IteratorPrototype);
 
     const AsyncIteratorPrototype = getPrototypeOf(
-      getPrototypeOf(async function*() {}.prototype)
+      getPrototypeOf(async function* () {}.prototype)
     );
     t.equal(Sq.AsyncIteratorPrototype, AsyncIteratorPrototype);
 
@@ -40,25 +40,25 @@ harness.test('@grr/sequitur', t => {
     t.ok(Sq.isIterable('123'));
     t.ok(Sq.isIterable([1, 2, 3]));
     t.notOk(Sq.isIterable(13));
-    t.notOk(Sq.isIterable(function*() {}));
+    t.notOk(Sq.isIterable(function* () {}));
 
     t.notOk(Sq.isNonStringIterable(Sq.from(asyncGen)));
     t.notOk(Sq.isNonStringIterable('123'));
     t.ok(Sq.isNonStringIterable([1, 2, 3]));
     t.notOk(Sq.isNonStringIterable(13));
-    t.notOk(Sq.isNonStringIterable(function*() {}));
+    t.notOk(Sq.isNonStringIterable(function* () {}));
 
     t.ok(Sq.isAsyncIterable(Sq.from(asyncGen)));
     t.notOk(Sq.isAsyncIterable('123'));
     t.notOk(Sq.isAsyncIterable([1, 2, 3]));
     t.notOk(Sq.isAsyncIterable(13));
-    t.notOk(Sq.isAsyncIterable(function*() {}));
+    t.notOk(Sq.isAsyncIterable(function* () {}));
 
     t.ok(Sq.isAsyncFunction(asyncGen));
     t.notOk(Sq.isAsyncFunction('123'));
     t.notOk(Sq.isAsyncFunction([1, 2, 3]));
     t.notOk(Sq.isAsyncFunction(13));
-    t.notOk(Sq.isAsyncFunction(function*() {}));
+    t.notOk(Sq.isAsyncFunction(function* () {}));
     t.ok(Sq.isAsyncFunction(function youBetYourAsync() {}));
 
     const poser = () => {};
@@ -174,19 +174,9 @@ harness.test('@grr/sequitur', t => {
       /Count -1 for take\(\) is not a positive integer/u
     );
 
-    t.strictSame(
-      Sq.count(1)
-        .take(3)
-        .collect(),
-      [1, 2, 3]
-    );
+    t.strictSame(Sq.count(1).take(3).collect(), [1, 2, 3]);
 
-    t.strictSame(
-      Sq.count(1n, 1n)
-        .take(3)
-        .collect(),
-      [1n, 2n, 3n]
-    );
+    t.strictSame(Sq.count(1n, 1n).take(3).collect(), [1n, 2n, 3n]);
 
     const list = [];
     Sq.count(-1, -1)
@@ -278,17 +268,17 @@ harness.test('@grr/sequitur', t => {
       [1, 2, 3]
     );
 
-    t.strictSame(
-      Sq.of(1, 2, 3)
-        .concat([4], [5, 6])
-        .collect(),
-      [1, 2, 3, 4, 5, 6]
-    );
+    t.strictSame(Sq.of(1, 2, 3).concat([4], [5, 6]).collect(), [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+    ]);
 
     t.strictSame(
-      await Sq.of(1, 2, 3)
-        .concat(Sq.of(4, 5, 6).toAsync())
-        .collect(),
+      await Sq.of(1, 2, 3).concat(Sq.of(4, 5, 6).toAsync()).collect(),
       [1, 2, 3, 4, 5, 6]
     );
 
@@ -322,7 +312,7 @@ harness.test('@grr/sequitur', t => {
     await Sq.of(1, 2)
       .zip(['a', 'b'])
       // eslint-disable-next-line require-await
-      .each(async function(el) {
+      .each(async function (el) {
         list.push(el);
       });
 
@@ -332,9 +322,7 @@ harness.test('@grr/sequitur', t => {
     ]);
 
     t.strictSame(
-      await Sq.of(1, 2)
-        .zip(Sq.of('a', 'b').toAsync())
-        .collect(new Set()),
+      await Sq.of(1, 2).zip(Sq.of('a', 'b').toAsync()).collect(new Set()),
       new Set([
         [1, 'a'],
         [2, 'b'],
@@ -358,7 +346,7 @@ harness.test('@grr/sequitur', t => {
     t.strictSame(
       await Sq.of(1, 2, 3)
         .with(BATON)
-        .run(function*(input, context) {
+        .run(function* (input, context) {
           t.equal(context, BATON);
 
           for (const element of input) {
@@ -374,7 +362,7 @@ harness.test('@grr/sequitur', t => {
       await Sq.of(1, 2, 3)
         .with(BATON)
         .toAsync()
-        .run(async function*(input, context) {
+        .run(async function* (input, context) {
           t.equal(context, BATON);
 
           for await (const element of input) {

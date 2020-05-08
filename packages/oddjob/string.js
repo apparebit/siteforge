@@ -97,3 +97,47 @@ export function slugify(text) {
     .replace(IS_DASHING_SPACING, '-')
     .replace(IS_NOT_SLUG_SAFE, '');
 }
+
+const KEY_EXPR =
+  `\\.(\\*)` + // .*
+  `|` +
+  `\\.((?:[^.[*]|\\\\\\.|\\\\\\[)+)` + // .<key>
+  `|` +
+  `\\[(\\*)\\]` + // [*]
+  `|` +
+  `\\[(\\d+)\\]` + // [<numeric-key>]
+  `|` +
+  `\\[(['"])((?:[^'"]|\\\\'|\\\\")+)\\5\\]`; // ['<key>'] or ["<key>"]
+
+const DOLLAR = '$'.charCodeAt(0);
+const KEY = new RegExp(KEY_EXPR, 'gu');
+const KEY_PATH = new RegExp(`^\\$(?:${KEY_EXPR})*$`, 'u');
+export const WILDCARD = Symbol.for('@grr/oddjob/wildcard');
+
+/** Convert the key path to its constituent keys. */
+export function toKeyPathKeys(path) {
+  // Ensure that key path is well formed.
+  if (path.charCodeAt(0) !== DOLLAR) {
+    throw new Error(`key path "${path}" does not start with "$"`);
+  } else if (!KEY_PATH.test(path)) {
+    throw new Error(`key path "${path}" contains invalid expressions`);
+  }
+
+  const result = [];
+  for (const match of path.slice(1).matchAll(KEY)) {
+    if (match[1] !== undefined) {
+      result.push(WILDCARD);
+    } else if (match[2] !== undefined) {
+      result.push(match[2]);
+    } else if (match[3] !== undefined) {
+      result.push(WILDCARD);
+    } else if (match[4] !== undefined) {
+      result.push(Number(match[4]));
+    } else if (match[5] !== undefined) {
+      result.push(match[6]);
+    }
+  }
+
+  // Et voila.
+  return result;
+}

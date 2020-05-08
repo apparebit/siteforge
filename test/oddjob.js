@@ -1,6 +1,12 @@
 /* © 2020 Robert Grimm */
 
-import { asciify, escapeRegex, slugify } from '@grr/oddjob/string';
+import {
+  asciify,
+  escapeRegex,
+  slugify,
+  toKeyPathKeys,
+  WILDCARD,
+} from '@grr/oddjob/string';
 import {
   candyColorStyles,
   COLOR,
@@ -196,6 +202,42 @@ harness.test('@grr/oddjob', t => {
 
     // -------------------------------------------------------------- slugify()
     t.is(slugify('Çäłÿ at - 7 ㎯?'), 'caely-at-7-rads2');
+
+    // -------------------------------------------------------- toKeyPathKeys()
+
+    t.same(toKeyPathKeys('$'), []);
+    t.same(
+      toKeyPathKeys(`$.k1['k2']["k3"][*][1][2][3].*.k1[1].k2[2].k3[3].*`),
+      [
+        'k1',
+        'k2',
+        'k3',
+        WILDCARD,
+        1,
+        2,
+        3,
+        WILDCARD,
+        'k1',
+        1,
+        'k2',
+        2,
+        'k3',
+        3,
+        WILDCARD,
+      ]
+    );
+    t.throws(
+      () => toKeyPathKeys(`key`),
+      /key path "key" does not start with "\$"/u
+    );
+    t.throws(
+      () => toKeyPathKeys(`.key`),
+      /key path ".key" does not start with "\$"/u
+    );
+    t.throws(
+      () => toKeyPathKeys(`$..key`),
+      /key path "\$..key" contains invalid expression/u
+    );
 
     t.end();
   });

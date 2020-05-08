@@ -1,9 +1,10 @@
 /* © 2019–2020 Robert Grimm */
 
-import makeCandy from '@grr/oddjob/candy';
-import { traceErrorPosition } from '@grr/oddjob/error';
+import { EOL } from 'os';
 import * as format from '@grr/oddjob/format';
+import makeCandy from '@grr/oddjob/candy';
 import pickle from '@grr/oddjob/pickle';
+import { traceErrorPosition } from '@grr/oddjob/error';
 import { types } from 'util';
 
 const BOLDED = /<b>(.*?)<\/b>/gu;
@@ -11,6 +12,8 @@ const configurable = true;
 const { defineProperties, defineProperty, entries, keys: keysOf } = Object;
 const { isArray } = Array;
 const { isNativeError } = types;
+const MINUS = '-'.charCodeAt(0);
+const PLUS = '+'.charCodeAt(0);
 const writable = true;
 
 // -----------------------------------------------------------------------------
@@ -21,7 +24,7 @@ noop.active = false;
 const levels = {
   error: { label: '[ERROR]', threshold: -2, style: 'red' },
   warning: { label: '[WARN] ', threshold: -1, style: 'orange' },
-  success: { label: '[W00T] ', threshold: 0, style: 'bold' },
+  success: { label: '[INFO] ', threshold: 0, style: 'bold' },
   notice: { label: '[NOTE] ', threshold: 0, style: 'bold' },
   info: { label: '[INFO] ', threshold: 1, style: 'plain' },
   debug: { label: '[DEBUG]', threshold: 2, style: 'faint' },
@@ -54,25 +57,6 @@ const createJSONLogger = (println, level, { service }) => {
 
   return log;
 };
-
-const createJSONSignOff = () => {
-  return function signOff({ files, pass, fail, duration }) {
-    const { errors, warnings } = this;
-    const details = { duration, errors, warnings };
-
-    if (typeof files === 'number') {
-      details.files = files;
-    } else if (typeof fail === 'number' && typeof pass === 'number') {
-      details.pass = pass;
-      details.fail = fail;
-    }
-
-    const method = errors ? 'error' : warnings ? 'warning' : 'success';
-    this[method](`Done!`, details);
-  };
-};
-
-// -----------------------------------------------------------------------------
 
 const createTextLogger = (
   println,
@@ -127,6 +111,112 @@ const createTextLogger = (
   });
 
   return log;
+};
+
+// -----------------------------------------------------------------------------
+
+const createJSONReporter = () => {
+  return function report(result) {
+    if (!result.ok) this.error('Test failed!', result);
+  };
+};
+
+const { stdout, stderr } = process;
+const writeStdOut = stdout.write.bind(stdout);
+const writeStdErr = stderr.write.bind(stderr);
+
+let dotted = false;
+let newlineAfterDots;
+
+const patchStdio = write => {
+  newlineAfterDots = () => {
+    if (dotted) {
+      dotted = false;
+      write(EOL);
+    }
+  };
+
+  stdout.write = (chunk, encoding, callback) => {
+    newlineAfterDots();
+    writeStdOut(chunk, encoding, callback);
+  };
+
+  stderr.write = (chunk, encoding, callback) => {
+    newlineAfterDots();
+    writeStdErr(chunk, encoding, callback);
+  };
+};
+
+const createTextReporter = (println, { styleSuccess, styleFailure, write }) => {
+  return function report({ ok, fullname, name, diag: { diff, stack } = {} }) {
+    if (!newlineAfterDots) patchStdio(write);
+
+    if (ok) {
+      dotted = true;
+      write('.');
+      return;
+    }
+
+    newlineAfterDots();
+    this.errors++;
+
+    let msg = '';
+    if (fullname) {
+      msg += `${fullname}: ${name}${EOL}`;
+    } else {
+      msg += `${name}${EOL}`;
+    }
+
+    if (stack) {
+      msg +=
+        `    at ` +
+        stack
+          .trim()
+          .split(/\r?\n/gu)
+          .join(EOL + '    at ') +
+        EOL;
+    }
+
+    if (diff) {
+      msg += EOL;
+      const lines = diff.trim().split(/\r?\n/gu);
+      for (const [index, line] of lines.entries()) {
+        if (index >= 2) {
+          const code = line.charCodeAt(0);
+          if (code === MINUS) {
+            msg += styleFailure(line) + EOL;
+            continue;
+          } else if (code === PLUS) {
+            msg += styleSuccess(line) + EOL;
+            continue;
+          }
+        }
+
+        msg += line + EOL;
+      }
+    }
+
+    println(msg);
+  };
+};
+
+// -----------------------------------------------------------------------------
+
+const createJSONSignOff = () => {
+  return function signOff({ files, pass, fail, duration }) {
+    const { errors, warnings } = this;
+    const details = { duration, errors, warnings };
+
+    if (typeof files === 'number') {
+      details.files = files;
+    } else if (typeof fail === 'number' && typeof pass === 'number') {
+      details.pass = pass;
+      details.fail = fail;
+    }
+
+    const method = errors ? 'error' : warnings ? 'warning' : 'success';
+    this[method](`Done!`, details);
+  };
 };
 
 const createTextSignOff = (
@@ -217,11 +307,13 @@ export default function Rollcall(options = {}) {
     candy = makeCandy({ stream: console._stderr }),
     json = false,
     println = console.error,
+    write = writeStdErr,
     service,
     volume = 0,
   } = options;
 
   const createLogger = json ? createJSONLogger : createTextLogger;
+  const createReporter = json ? createJSONReporter : createTextReporter;
   const createSignOff = json ? createJSONSignOff : createTextSignOff;
 
   for (const level of keysOf(levels)) {
@@ -246,8 +338,6 @@ export default function Rollcall(options = {}) {
     defineProperty(this, `${level}s`, { configurable, writable, value: 0 });
   }
 
-  const styleFailure = candy.redBg;
-  const styleSuccess = candy.greenBg;
   const labels = ['success', 'warning', 'error'].reduce(
     (labels, level) => ((labels[level] = levels[level].label), labels),
     {}
@@ -262,14 +352,22 @@ export default function Rollcall(options = {}) {
       configurable,
       value: println,
     },
+    report: {
+      configurable,
+      value: createReporter(println, {
+        styleFailure: candy.red,
+        styleSuccess: candy.green,
+        write,
+      }),
+    },
     signOff: {
       configurable,
       value: createSignOff(println, {
         banner,
         labels,
         service,
-        styleFailure,
-        styleSuccess,
+        styleFailure: candy.redBg,
+        styleSuccess: candy.greenBg,
       }),
     },
     toCodeMessageData: {

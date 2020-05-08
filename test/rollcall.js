@@ -1,8 +1,8 @@
 /* © 2020 Robert Grimm */
 
+import { candyColorStyles, COLOR } from '@grr/oddjob/candy';
 import harness from './harness.js';
 import Rollcall from '@grr/rollcall';
-import { candyColorStyles, COLOR } from '@grr/oddjob/candy';
 
 const { has } = Reflect;
 const { parse: parseJSON } = JSON;
@@ -59,7 +59,7 @@ harness.test('@grr/rollcall', t => {
   record = logged.shift();
   t.is(
     record,
-    `[W00T]  ` +
+    `[INFO]  ` +
       `site:forge processed 42 files in 665 ms with no errors and no warnings!`
   );
 

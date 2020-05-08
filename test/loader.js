@@ -95,9 +95,14 @@ function main() {
     t.is(status, 'no loader');
 
     const { execPath: node } = process;
-    t.spawn(node, [`--experimental-loader=${filePath}`, LOADER_TEST], {
-      env: assign({ GRR_LOADER_LAUNCH_TEST: true }, process.env),
-    });
+    // Warnings by the subprocess only clutter test output. Suppress them.
+    t.spawn(
+      node,
+      [`--no-warnings`, `--experimental-loader=${filePath}`, LOADER_TEST],
+      {
+        env: assign({ GRR_LOADER_LAUNCH_TEST: true }, process.env),
+      }
+    );
 
     t.end();
   });

@@ -1,7 +1,7 @@
 /* © 2020 Robert Grimm */
 
 import Call from '@grr/loader/call';
-import { filePath, fileURL } from '@grr/loader';
+import { fileURL } from '@grr/loader';
 import launch from '@grr/loader/launch';
 import { fileURLToPath } from 'url';
 import harness from './harness.js';
@@ -96,13 +96,9 @@ function main() {
 
     const { execPath: node } = process;
     // Warnings by the subprocess only clutter test output. Suppress them.
-    t.spawn(
-      node,
-      [`--no-warnings`, `--experimental-loader=${filePath}`, LOADER_TEST],
-      {
-        env: assign({ GRR_LOADER_LAUNCH_TEST: true }, process.env),
-      }
-    );
+    t.spawn(node, [`--no-warnings`, LOADER_TEST], {
+      env: assign({ GRR_LOADER_LAUNCH_TEST: '1' }, process.env),
+    });
 
     t.end();
   });
@@ -122,8 +118,13 @@ function withLoader() {
   });
 }
 
-if (!process.env.GRR_LOADER_LAUNCH_TEST) {
+if (process.env.GRR_LOADER_LAUNCH_TEST === undefined) {
+  // 1st run: Spawn module as child process.
   main();
+} else if (process.env.GRR_LOADER_LAUNCH === undefined) {
+  // 2nd run (still without loader): Spawn module as child process with loader.
+  launch();
 } else {
+  // 3rd run. We have a loader, baby!
   launch({ fn: withLoader });
 }

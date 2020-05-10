@@ -120,6 +120,12 @@ harness.test('@grr/walk', async t => {
     '/run/README.md',
     '/run/package.json',
     '/run/run.js',
+    '/schemata/LICENSE',
+    '/schemata/README.md',
+    '/schemata/builtin.js',
+    '/schemata/context.js',
+    '/schemata/package.json',
+    '/schemata/schemata.js',
     '/sequitur/LICENSE',
     '/sequitur/README.md',
     '/sequitur/examples.js',
@@ -145,7 +151,7 @@ harness.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     __proto__: null,
     readdir: 3,
-    entries: 23,
+    entries: 24,
     lstat: 11,
     realpath: 0,
     file: 8,
@@ -172,11 +178,11 @@ harness.test('@grr/walk', async t => {
   t.strictSame(actualFiles.sort(), expectedFiles);
   t.strictSame(metrics, {
     __proto__: null,
-    readdir: 16,
-    entries: 92,
-    lstat: 92,
+    readdir: 17,
+    entries: 100,
+    lstat: 100,
     realpath: 0,
-    file: 76,
+    file: 83,
   });
 
   // ---------------------------------------------------------------------------

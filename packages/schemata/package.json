@@ -1,0 +1,20 @@
+{
+  "name": "@grr/schemata",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Making data validation simple and lightweight again",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "exports": {
+    ".": "./schemata.js",
+    "./builtin": "./builtin.js",
+    "./context": "./context.js"
+  },
+  "dependencies": {
+    "@grr/oddjob": "0.1.0"
+  },
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

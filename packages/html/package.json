@@ -19,6 +19,7 @@
   "type": "module",
   "exports": {
     ".": "./model.js",
+    "./schema": "./schema.js",
     "./validate": "./validate.js"
   },
   "dependencies": {

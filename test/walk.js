@@ -75,6 +75,7 @@ harness.test('@grr/walk', async t => {
     '/html/model.js',
     '/html/model.json',
     '/html/package.json',
+    '/html/schema.js',
     '/html/validate.js',
     '/inventory/LICENSE',
     '/inventory/README.md',

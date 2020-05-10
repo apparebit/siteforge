@@ -75,10 +75,12 @@ const [SGR16, SGR256] = (function () {
     bold: freeze(['1', '22']),
     faint: freeze(['90', '39']),
     green: freeze(['32;1', '39;22']),
+    greenReg: freeze(['32', '39']),
     greenBg: freeze(['102;1', '49;22']),
     magenta: freeze(['35;1', '39;22']),
     orange: freeze(['33;1', '39;22']),
     red: freeze(['31;1', '39;22']),
+    redReg: freeze(['31', '39']),
     redBg: freeze(['97;41;1', '39;49;22']),
     plain: null,
   });

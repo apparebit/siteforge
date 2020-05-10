@@ -341,8 +341,8 @@ export default function Rollcall(options = {}) {
     report: {
       configurable,
       value: createReporter(println, {
-        styleFailure: candy.red,
-        styleSuccess: candy.green,
+        styleFailure: candy.redReg,
+        styleSuccess: candy.greenReg,
         write,
       }),
     },

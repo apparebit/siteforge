@@ -24,7 +24,7 @@ noop.active = false;
 const levels = {
   error: { label: '[ERROR]', threshold: -2, style: 'red' },
   warning: { label: '[WARN] ', threshold: -1, style: 'orange' },
-  success: { label: '[INFO] ', threshold: 0, style: 'bold' },
+  success: { label: '[NOTE] ', threshold: 0, style: 'bold' },
   notice: { label: '[NOTE] ', threshold: 0, style: 'bold' },
   info: { label: '[INFO] ', threshold: 1, style: 'plain' },
   debug: { label: '[DEBUG]', threshold: 2, style: 'faint' },
@@ -42,6 +42,7 @@ const createJSONLogger = (println, level, { service }) => {
     this[count]++;
 
     let line = `{"timestamp":"${new Date().toISOString()}"` + status;
+    /* c8 ignore next */
     if (code) line += `,"code":"${code}"`;
     if (message) line += `,"message":${pickle(message)}`;
     if (data) line += `,"data":${pickle(data)}`;
@@ -63,8 +64,9 @@ const createTextLogger = (
   level,
   { label, service, stylePrimary, styleDetail }
 ) => {
-  label = label || `[${level.toUpperCase()}]`;
-  const status = `${label} ${service ? `${service}: ` : ``}`;
+  const status =
+    (service ? `[${service}] ` : ``) +
+    (label ? `${label} ` : `[${level.toUpperCase()}] `);
   const count = `${level}s`;
 
   const log = function log(...args) {
@@ -227,8 +229,27 @@ const createTextSignOff = (
     // Construct Sign Off Message
     const { errors, warnings } = this;
 
-    let message;
-    const withErrorsAndWarnings = () => {
+    let message = service ? `[${service}] ` : ``;
+    if (typeof pass === 'number' && typeof fail === 'number') {
+      message += fail ? labels.error : labels.success;
+      if (fail) {
+        message += ` ${fail} out of ${pass + fail} tests failed`;
+      } else {
+        message += ` All ${pass} tests passed`;
+      }
+      message += ` in ${format.duration(duration)}!`;
+    } else {
+      message += errors
+        ? labels.error
+        : warnings
+        ? labels.warning
+        : labels.success;
+      if (typeof files === 'number') {
+        message += ` Processed ${format.count(files, 'file')} in `;
+      } else {
+        message += ` Ran for `;
+      }
+      message += format.duration(duration);
       if (errors) {
         message += ` with ${format.count(errors, 'error')}`;
         if (warnings) message += ` and ${format.count(warnings, 'warning')}`;
@@ -238,41 +259,6 @@ const createTextSignOff = (
         message += ` with no errors and no warnings`;
       }
       message += '!';
-    };
-
-    if (typeof files === 'number') {
-      // ------------------------------------------------------------------
-      // <s> processed <f> files in <d> s with <e> errors and <w> warnings!
-      // ------------------------------------------------------------------
-      message =
-        (errors ? labels.error : warnings ? labels.warning : labels.success) +
-        (service ? ` ${service} processed ` : ` Processed `) +
-        format.count(files, 'file') +
-        ' in ' +
-        format.duration(duration);
-      withErrorsAndWarnings();
-    } else if (typeof fail === 'number' && typeof pass === 'number') {
-      if (fail) {
-        // ---------------------------------------
-        // <f> out of <f+p> tests failed in <d> s!
-        // ---------------------------------------
-        message =
-          labels.error +
-          (service ? ` ${service}: ` : ``) +
-          ` ${fail} out of ${pass + fail} tests failed` +
-          ` in ${format.duration(duration)}!`;
-      } else {
-        // ------------------------------
-        // All <p> tests passed in <d> s!
-        // ------------------------------
-        message = `${labels.success} ${
-          service ? `${service}: ` : ``
-        }All ${pass} tests passed in ${format.duration(duration)}!`;
-      }
-    } else {
-      // Done with <e> errors and <w> warnings!
-      message = `Script "${process.argv[1]}" ran`;
-      withErrorsAndWarnings();
     }
 
     // Style and print message.

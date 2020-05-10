@@ -21,7 +21,14 @@ const endTest = metrics.timer('main').start();
 
 const parser = new Parser({});
 const rollcall = new Rollcall({});
-parser.on('result', r => rollcall.report(r));
+parser.on('result', result => rollcall.report(result));
+
+const onComment = comment => rollcall.info(comment);
+const onChild = child => {
+  child.on('comment', onComment);
+  child.on('child', onChild);
+};
+onChild(parser);
 
 const done = () => {
   const { pass, fail } = harness.counts;
@@ -30,6 +37,7 @@ const done = () => {
     fail,
     duration: endTest().get(),
   });
+  if (fail === 0) process.exitCode = 0;
 };
 
 process.on('exit', done);

@@ -5,6 +5,7 @@ import {
   escapeRegex,
   slugify,
   toKeyPathKeys,
+  toKeyPathPath,
   WILDCARD,
 } from '@grr/oddjob/string';
 import {
@@ -238,6 +239,9 @@ harness.test('@grr/oddjob', t => {
       () => toKeyPathKeys(`$..key`),
       /key path "\$..key" contains invalid expression/u
     );
+
+    t.is(toKeyPathPath([]), '$');
+    t.is(toKeyPathPath(['key', 665, '@id']), '$.key[665]["@id"]');
 
     t.end();
   });

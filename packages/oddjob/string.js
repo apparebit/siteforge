@@ -1,6 +1,7 @@
 /* © 2020 Robert Grimm */
 
 const { create } = Object;
+const { stringify } = JSON;
 
 // =============================================================================
 
@@ -140,4 +141,23 @@ export function toKeyPathKeys(path) {
 
   // Et voila.
   return result;
+}
+
+const SimpleName = /^[a-z_][a-z0-9_]*$/iu;
+
+export function toKeyPathPath(keys) {
+  return (
+    `$` +
+    keys
+      .map(key => {
+        if (typeof key === 'number') {
+          return `[${key}]`;
+        } else if (SimpleName.test(key)) {
+          return `.${key}`;
+        } else {
+          return `[${stringify(key)}]`;
+        }
+      })
+      .join('')
+  );
 }

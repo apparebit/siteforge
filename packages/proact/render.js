@@ -55,24 +55,24 @@ export const escapeText = text => {
 // =============================================================================
 
 const renderAttribute = (name, value, spec) => {
-  const type = spec.instance || spec.effectiveInstance;
+  const { type } = spec;
   if (value == null) return '';
 
   switch (type) {
-    case 'boolean':
+    case 'Boolean':
       return value ? ` ${name}` : '';
-    case 'on/off':
+    case 'OnOff':
       return ` ${name}=${value ? 'on' : 'off'}`;
-    case 'true/false':
+    case 'TrueFalse':
       return ` ${name}=${value ? 'true' : 'false'}`;
-    case 'true/false/mixed':
+    case 'TrueFalseMixed':
       if (/^mixed$/iu.test(value)) return ` ${name}=mixed`;
       return ` ${name}=${value ? 'true' : 'false'}`;
-    case 'true/false/undefined':
+    case 'TrueFalseUndefined':
       // Since undefined is the default, there is no need to render it.
       if (/^undefined$/iu.test(value)) return '';
       return ` ${name}=${value ? 'true' : 'false'}`;
-    case 'yes/no':
+    case 'YesNo':
       return ` ${name}=${value ? 'yes' : 'no'}`;
     default:
       if (Sq.isNonStringIterable(value)) {

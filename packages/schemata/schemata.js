@@ -5,7 +5,13 @@ import Builtin from './builtin.js';
 import Context from './context.js';
 import { isSet } from '@grr/oddjob/types';
 
-const { entries: entriesOf, keys: keysOf, values: valuesOf } = Builtin.Object;
+const {
+  assign,
+  entries: entriesOf,
+  keys: keysOf,
+  values: valuesOf,
+} = Builtin.Object;
+//const { has } = Builtin.Reflect;
 const { isArray } = Builtin.Array;
 const { isSafeInteger } = Builtin.Number;
 
@@ -31,6 +37,8 @@ export const String = Check(`should be a string`, v => typeof v === 'string');
 
 // -----------------------------------------------------------------------------
 
+export const Nullish = v => v == null;
+
 export const Enum = (...constants) => {
   if (constants.length === 1 && isSet(constants[0])) {
     const set = constants[0];
@@ -48,7 +56,7 @@ export const Enum = (...constants) => {
 
 // -----------------------------------------------------------------------------
 
-export const Any = schemata => {
+export const Any = (...schemata) => {
   Context.assertFunctionArray(schemata);
 
   return Context.ify((value, context) =>
@@ -64,7 +72,7 @@ export const Any = schemata => {
   );
 };
 
-export const All = schemata => {
+export const All = (...schemata) => {
   Context.assertFunctionArray(schemata);
 
   return Context.ify((value, context) => {
@@ -79,10 +87,10 @@ export const All = schemata => {
 
 // -----------------------------------------------------------------------------
 
-export const Nullish = v => v == null;
 export const Option = schema => Any(Nullish, schema);
 
 export const From = (path, schema) => {
+  if (!isArray(path)) path = [path];
   Context.assertKeyPath(path);
   Context.assertFunction(schema);
 
@@ -100,11 +108,9 @@ export const Array = (
 
   return Context.ify((value, context) => {
     if (!isArray(value)) {
-      context.defect(`should be an array`);
-      return false;
+      return context.defect(`should be an array`);
     } else if (nonempty && value.length === 0) {
-      context.defect(`should be a non-empty array`);
-      return false;
+      return context.defect(`should be a non-empty array`);
     }
 
     let wrapper = schema;
@@ -115,8 +121,7 @@ export const Array = (
 
         const equatable = toEquatable(value, seen, context);
         if (seen.has(equatable)) {
-          context.defect(`appears repeatedly in same array`);
-          return false;
+          return context.defect(`appears repeatedly in same array`);
         } else {
           seen.add(equatable);
           return true;
@@ -137,35 +142,45 @@ export const Array = (
 
 // -----------------------------------------------------------------------------
 
-export const WithAtLeastOne = { lax: true, min: 1 };
-
-export const Properties = (
-  schemata,
-  { filter = () => true, lax = true, min = 0 } = {}
-) => {
-  const isUniformMap = typeof schemata === 'function';
-  if (!isUniformMap) {
-    Context.assertObjectLike(schemata);
-    for (const key of keysOf(schemata)) {
-      const value = schemata[key];
-      const type = typeof value;
-
-      // Either a schema function...
-      if (type === 'function') continue;
-
-      // ...or an object with a key and a schema function.
-      assert(value != null && type === 'object');
-      Context.assertString(value.from);
-      Context.assertFunction(value.schema);
-    }
-  }
+export const Dictionary = (schema, { filter = () => true } = {}) => {
+  Context.assertFunction(schema);
 
   return Context.ify((value, context) => {
     if (!Context.isObjectLike(value)) {
-      context.defect(`is not object-like and hence does not have properties`);
-      return false;
+      return context.defect(
+        `is not object-like and hence does not have properties`
+      );
     }
 
+    return context.withProperties(
+      Context.toIterable(function* schemata() {
+        for (const key of keysOf(value)) {
+          if (!filter(key)) continue;
+          yield [key, schema];
+        }
+      })
+    );
+  });
+};
+
+export const WithAtLeastOne = { lax: true, min: 1 };
+
+export const Properties = (schemata, { lax = false, min = 0 } = {}) => {
+  Context.assertObjectLike(schemata);
+  for (const key of keysOf(schemata)) {
+    const value = schemata[key];
+    const type = typeof value;
+
+    // Either a schema function...
+    if (type === 'function') continue;
+
+    // ...or an object with a key and a schema function.
+    assert(value != null && type === 'object');
+    Context.assertString(value.from);
+    Context.assertFunction(value.schema);
+  }
+
+  return Context.ify((value, context) => {
     let matches = 0;
     const countingSchema = schema => (value, context) => {
       const ok = schema(value, context);
@@ -174,39 +189,24 @@ export const Properties = (
     };
 
     const ok = context.withProperties(
-      Context.toIterable(function* keysAndCheckers() {
-        for (const key of keysOf(isUniformMap ? value : schemata)) {
-          if (!filter(key) || (lax && value[key] == null)) {
-            continue;
+      Context.toIterable(function* effectiveSchemata() {
+        for (const key of keysOf(schemata)) {
+          let from = key;
+          let schema = schemata[key];
+          if (typeof schema !== 'function') {
+            from = schema.from;
+            schema = schema.schema;
           }
 
-          let from, schema;
-          if (isUniformMap) {
-            schema = schemata;
-          } else {
-            schema = schemata[key];
-            if (typeof schema !== 'function') {
-              from = schema.from;
-              schema = schema.schema;
-            }
-          }
-
-          if (min > 0) {
-            schema = countingSchema(schema);
-          }
-
-          if (from) {
-            yield [from, key, schema];
-          } else {
-            yield [key, schema];
-          }
+          if (lax && value[from] == null) continue;
+          if (min > 0) schema = countingSchema(schema);
+          yield [from, key, schema];
         }
       })
     );
 
-    if (matches < min) {
-      context.defect(`does not have ${min} or more matching properties`);
-      return false;
+    if (ok && matches < min) {
+      return context.defect(`does not have ${min} or more matching properties`);
     } else {
       return ok;
     }
@@ -220,15 +220,15 @@ export const IntoSet = schema => {
 
   return Context.ify((value, context) => {
     const ok = schema(value, context);
-    if (!ok) return false;
-
     const { result } = context;
-    if (result && typeof result.values === 'function') {
+    if (!ok) {
+      context.result = new Builtin.Set();
+    } else if (result && typeof result.values === 'function') {
       context.result = new Builtin.Set(result.values());
     } else {
       context.result = new Builtin.Set(valuesOf(Object(result)));
     }
-    return true;
+    return ok;
   });
 };
 
@@ -237,14 +237,68 @@ export const IntoMap = schema => {
 
   return Context.ify((value, context) => {
     const ok = schema(value, context);
-    if (!ok) return false;
-
     const { result } = context;
-    if (result && typeof result.entries === 'function') {
+    if (!ok) {
+      context.result = new Builtin.Map();
+    } else if (result && typeof result.entries === 'function') {
       context.result = new Builtin.Map(result.entries());
     } else {
       context.result = new Builtin.Map(entriesOf(Object(result)));
     }
-    return true;
+    return ok;
   });
 };
+
+export const IntoRecord = (...schemata) => {
+  for (const schema of schemata) {
+    const type = typeof schema;
+    if (type !== 'function') {
+      assert(type === 'object');
+      for (const key of keysOf(schema)) {
+        Context.assertFunction(schema[key]);
+      }
+    }
+  }
+
+  return Context.ify((value, context) => {
+    const result = {};
+    let flag = true;
+
+    for (const schema of schemata) {
+      if (typeof schema === 'function') {
+        context.result = value;
+        const ok = schema(value, context);
+        if (ok) assign(result, context.result);
+        flag = flag && ok;
+      } else {
+        const record = {};
+        let isRecordValid = true;
+
+        for (const key of keysOf(schema)) {
+          context.result = value;
+          const ok = schema[key](value, context);
+          if (ok) record[key] = context.result;
+          isRecordValid = isRecordValid && ok;
+        }
+
+        if (isRecordValid) assign(result, record);
+        flag = flag && isRecordValid;
+      }
+    }
+
+    context.result = result;
+    return flag;
+  });
+};
+
+// -----------------------------------------------------------------------------
+
+// export const toHasKey = collection => {
+//   if (isSet(collection) || isMap(collection)) {
+//     return k => collection.has(k);
+//   } else if (isArray(collection)) {
+//     return k => collection.includes(k);
+//   } else {
+//     return k => has(collection, k);
+//   }
+// };

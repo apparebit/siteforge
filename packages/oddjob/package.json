@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    "./builtin": "./builtin.js",
     "./candy": "./candy.js",
     "./error": "./error.js",
     "./format": "./format.js",

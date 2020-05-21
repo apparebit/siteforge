@@ -1,7 +1,7 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import Builtin from './builtin.js';
+import Builtin from '@grr/oddjob/builtin';
 import Context from './context.js';
 import { isSet } from '@grr/oddjob/types';
 

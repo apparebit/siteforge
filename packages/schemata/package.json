@@ -8,7 +8,6 @@
   "license": "MIT",
   "exports": {
     ".": "./schemata.js",
-    "./builtin": "./builtin.js",
     "./context": "./context.js"
   },
   "dependencies": {

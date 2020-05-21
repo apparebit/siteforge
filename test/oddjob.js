@@ -1,5 +1,6 @@
 /* © 2020 Robert Grimm */
 
+import Builtin from '@grr/oddjob/builtin';
 import {
   asciify,
   escapeRegex,
@@ -32,6 +33,28 @@ const { isNativeError } = types;
 const { BASIC, FULL, INDEXED, NONE } = COLOR;
 
 harness.test('@grr/oddjob', t => {
+  // ===========================================================================
+  t.test('builtin', t => {
+    t.is(Builtin.Array, Array);
+    t.is(Builtin.BigInt, BigInt);
+    t.is(Builtin.Boolean, Boolean);
+    t.is(Builtin.Date, Date);
+    t.is(Builtin.Error, Error);
+    t.is(Builtin.Function, Function);
+    t.is(Builtin.JSON, JSON);
+    t.is(Builtin.Map, Map);
+    t.is(Builtin.Number, Number);
+    t.is(Builtin.Object, Object);
+    t.is(Builtin.Promise, Promise);
+    t.is(Builtin.Proxy, Proxy);
+    t.is(Builtin.Reflect, Reflect);
+    t.is(Builtin.RegExp, RegExp);
+    t.is(Builtin.Set, Set);
+    t.is(Builtin.String, String);
+    t.is(Builtin.Symbol, Symbol);
+    t.end();
+  });
+
   // ===========================================================================
   t.test('candy', t => {
     // ---------------------------------------------------------- countColors()

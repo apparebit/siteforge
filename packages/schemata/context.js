@@ -105,16 +105,6 @@ export default class Context {
     this.#result = value;
   }
 
-  /**
-   * Invoke the given schema on the current value and context but, instead of
-   * returning a boolean indicating validation success or failure, return the
-   * context's result.
-   */
-  resulting(schema) {
-    schema(this.#value, this);
-    return this.#result;
-  }
-
   // ---------------------------------------------------------------------------
 
   /** Determine whether any defects have been found so far. */
@@ -133,6 +123,7 @@ export default class Context {
       (this.#path.length === 0 ? `Value ` : `Property ${this.path} `) +
         description
     );
+    return false;
   }
 
   /** Convert the defects into a single error object that can be thrown. */
@@ -221,8 +212,7 @@ export default class Context {
         value = value[key];
       }
 
-      context.#value = value;
-      return schema(value, context);
+      return schema((context.#result = context.#value = value), context);
     });
   }
 
@@ -259,7 +249,7 @@ export default class Context {
       }
 
       const path = context.#path;
-      path.push(null); // The empty slot for property keys.
+      path.push(null); // Add null slot for property keys.
       const last = path.length - 1;
 
       const result = init();
@@ -310,7 +300,9 @@ export default class Context {
             // The validation truly succeeded.
             return context.#result;
           }
-          context.defect(`was rejected by "${fn.name}"`);
+          context.defect(
+            `was rejected by ${fn.name ? `"${fn.name}"` : 'anonymous schema'}`
+          );
         }
         // The validation failed.
         throw context.toError();

@@ -21,6 +21,37 @@ const entity = status =>
     ? 'symlink'
     : 'unknown';
 
+const makeTrace = println => (operation, ...args) => {
+  const fragments = ['# @grr/walk: ', operation, '('];
+  const format = value => {
+    if (value != null && typeof value.isDirectory === 'function') {
+      fragments.push(`{${entity(value)}}`);
+    } else {
+      fragments.push(String(value));
+    }
+  };
+
+  let result;
+  if (operation === 'lstat') {
+    result = args.pop();
+  }
+
+  for (const [index, arg] of args.entries()) {
+    format(arg);
+    if (index < args.length - 1) {
+      fragments.push(', ');
+    }
+  }
+  fragments.push(')');
+
+  if (result) {
+    fragments.push(' -> ');
+    format(result);
+  }
+
+  println(fragments.join(''));
+};
+
 export default function walk(
   root,
   {
@@ -67,38 +98,7 @@ export default function walk(
   });
 
   // TRACE key operations of walk when debugging is enabled.
-  const trace = (operation, ...args) => {
-    if (!debug) return;
-
-    const fragments = ['# @grr/walk: ', operation, '('];
-    const format = value => {
-      if (value != null && typeof value.isDirectory === 'function') {
-        fragments.push(`{${entity(value)}}`);
-      } else {
-        fragments.push(String(value));
-      }
-    };
-
-    let result;
-    if (operation === 'lstat') {
-      result = args.pop();
-    }
-
-    for (const [index, arg] of args.entries()) {
-      format(arg);
-      if (index < args.length - 1) {
-        fragments.push(', ');
-      }
-    }
-    fragments.push(')');
-
-    if (result) {
-      fragments.push(' -> ');
-      format(result);
-    }
-
-    println(fragments.join(''));
-  };
+  const trace = debug ? makeTrace(println) : () => {};
 
   // PROMISE of TERMINATION: The developer experience for distinct `end` and
   // `exit` events is far less compelling than a promise for termination. It
@@ -164,8 +164,8 @@ export default function walk(
   };
 
   const emit = (event, ...args) => {
-    trace('emit', event, ...args);
-    assert.ok(registry.has(event));
+    if (debug) trace('emit', event, ...args);
+    assert(registry.has(event));
     const handlers = registry.get(event).slice();
     for (const handler of handlers) {
       handler(event, ...args);
@@ -183,7 +183,7 @@ export default function walk(
       willVisit(path);
       metrics.lstat++;
       status = await lstat(path, { bigint: true });
-      trace('lstat', path, virtualPath, status);
+      if (debug) trace('lstat', path, virtualPath, status);
       if (aborted) return;
       if (!status.isSymbolicLink()) break;
 

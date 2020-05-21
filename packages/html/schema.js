@@ -3,16 +3,16 @@ import {
   Any,
   Array,
   Check,
+  Dictionary,
   Enum,
   From,
   IntoMap,
+  IntoRecord,
   IntoSet,
   Properties,
   String,
   WithAtLeastOne,
 } from '@grr/schemata';
-
-import Context from '@grr/schemata/context';
 
 const ATTRIBUTE_TYPE = new Set([
   'Boolean',
@@ -85,7 +85,7 @@ const Attribute = All(
 );
 
 const AttributeCases = Properties({
-  cases: Properties(
+  cases: Dictionary(
     Check(
       `should describe HTML attribute via "type" or "enum" properties`,
       Attribute
@@ -99,7 +99,7 @@ const WithoutCommentAndWildcard = {
 
 const Attributes = Properties({
   attributes: IntoMap(
-    Properties(
+    Dictionary(
       Check(
         `should describe HTML attribute via "cases", "type", or "enum" properties`,
         Any(AttributeCases, Attribute)
@@ -118,7 +118,7 @@ const GlobalAttributes = From(
 
 const Categories = Properties({
   categories: IntoMap(
-    Properties(
+    Dictionary(
       IntoSet(
         Check(
           'should list HTML element names belonging to category',
@@ -159,7 +159,7 @@ const Element = Check(
 );
 
 const Elements = Properties({
-  elements: IntoMap(Properties(Element, WithoutCommentAndWildcard)),
+  elements: IntoMap(Dictionary(Element, WithoutCommentAndWildcard)),
 });
 
 const EventNames = IntoSet(
@@ -174,15 +174,12 @@ const Events = From(
   })
 );
 
-const Model = Context.ify((value, context) => {
-  context.result = {
-    ...context.resulting(Attributes),
-    globalAttributes: context.resulting(GlobalAttributes),
-    ...context.resulting(Categories),
-    ...context.resulting(Elements),
-    ...context.resulting(Events),
-  };
-  return context.hasDefects();
-});
+const Model = IntoRecord(
+  Attributes,
+  { globalAttributes: GlobalAttributes },
+  Categories,
+  Elements,
+  Events
+);
 
 export default Model;

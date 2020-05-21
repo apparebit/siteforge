@@ -1839,10 +1839,7 @@
       }
     },
     "math": {
-      "attributes": "*",
-      "content": {
-        "category": "MathML"
-      }
+      "attributes": "*"
     },
     "menu": {
       "content": {
@@ -2042,10 +2039,7 @@
       }
     },
     "svg": {
-      "attributes": "*",
-      "content": {
-        "category": "SVG"
-      }
+      "attributes": "*"
     },
     "table": {
       "content": {

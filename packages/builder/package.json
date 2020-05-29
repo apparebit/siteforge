@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./builder.js",
+    "./context": "./context.js",
     "./transform": "./transform.js"
   },
   "description": "an assortment of content-specific builder functions for static website generation",

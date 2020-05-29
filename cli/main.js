@@ -3,16 +3,13 @@
 // © 2020 Robert Grimm
 
 import configure from './config.js';
+import createContext from '@grr/builder/context';
 import { readFile, rmdir, toDirectory } from '@grr/fs';
 import { EOL } from 'os';
-import Executor from '@grr/async';
-import Inventory from '@grr/inventory';
 import { join, resolve } from 'path';
-import { KIND } from '@grr/inventory/path';
+import { Kind } from '@grr/inventory/kind';
 import launch from '@grr/loader/launch';
-import Metrics from '@grr/metrics';
-import { prebuilderFor, builderFor } from '@grr/builder';
-import Rollcall from '@grr/rollcall';
+import { buildAll } from '@grr/builder';
 import run from '@grr/run';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
@@ -29,67 +26,22 @@ const IGNORED_VALIDATIONS = [
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];
-const { PHASE } = Inventory;
 
 // -----------------------------------------------------------------------------
 // Inventory of File System
 
 async function takeInventory(config) {
-  const inventory = new Inventory({
-    isStaticAsset: config.options.staticAssets,
-  });
+  const { executor, inventory, logger } = config;
 
   await walk(config.options.contentDir, {
     ignoreNoEnt: true,
     isExcluded: config.options.doNotBuild,
     onFile: (_, source, path) => {
       const { kind } = inventory.add(path, { source });
-      config.logger.info(`Adding ${kind} "${path}" to inventory`);
+      logger.info(`Adding ${kind} "${path}" to inventory`);
     },
-    run: (...args) => config.executor.submit(...args),
+    run: (...args) => executor.submit(...args),
   }).done;
-
-  return inventory;
-}
-
-// -----------------------------------------------------------------------------
-// Build
-
-const doBuild = (label, builder, file, config) => {
-  if (builder) {
-    const verb = label[0].toUpperCase() + label.slice(1);
-    config.logger.info(`${verb}ing ${file.kind} "${file.path}"`);
-    config.executor.run(builder, undefined, file, config).catch(reason => {
-      config.logger.error(`Failed to ${label} "${file.path}"`, reason);
-    });
-  } else {
-    config.logger.error(`No ${label}er for ${file.kind} "${file.path}"`);
-  }
-};
-
-async function build(config) {
-  for (const phase of [PHASE.DATA, PHASE.ASSET]) {
-    for (const file of config.inventory.byPhase(phase)) {
-      doBuild('build', builderFor(file.kind), file, config);
-    }
-
-    // We effectively implement a poor man's version of structured concurrency:
-    // All tasks spawned in an iteration of the outer loop are joined again by
-    // the following await.
-    await config.executor.onIdle();
-  }
-
-  // (1) Determine page metadata for global indexing.
-  for (const file of config.inventory.byPhase(PHASE.PAGE)) {
-    doBuild('pre-build', prebuilderFor(file.kind), file, config);
-  }
-  await config.executor.onIdle();
-
-  // (2) Actually generate pages.
-  for (const file of config.inventory.byPhase(PHASE.PAGE)) {
-    doBuild('build', builderFor(file.kind), file, config);
-  }
-  await config.executor.onIdle();
 }
 
 // -----------------------------------------------------------------------------
@@ -100,7 +52,7 @@ function validate(config) {
   // Anything beyond selecting all files of a given type is impossible. That
   // means traversing the file system before traversing the file system. Yay!
   const paths = [];
-  for (const { target } of config.inventory.byKind(KIND.MARKUP)) {
+  for (const { target } of config.inventory.byKind(Kind.MARKUP)) {
     if (!config.options.doNotValidate(target)) paths.push(target);
   }
 
@@ -143,10 +95,14 @@ function deploy(config) {
 
   if (config.options.dryRun) rsyncOptions.push('--dry-run');
 
-  let build = config.options.buildDir;
-  if (!build.endsWith('/')) build = `${build}/`;
+  let { buildDir } = config.options;
+  if (!buildDir.endsWith('/')) buildDir += '/';
 
-  return run('rsync', [...rsyncOptions, build, config.options.deploymentDir]);
+  return run('rsync', [
+    ...rsyncOptions,
+    buildDir,
+    config.options.deploymentDir,
+  ]);
 }
 
 // =============================================================================
@@ -160,25 +116,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Determine Configuration and Create Logger.
 
-  const metrics = new Metrics();
-  const endMain = metrics.timer('main').start();
-  let config;
-
-  try {
-    config = await configure();
-
-    config.executor = new Executor();
-    config.logger = new Rollcall({
-      json: config.options.json,
-      service: 'site:forge',
-      volume: config.options.volume,
-    });
-    config.metrics = metrics;
-  } catch (x) {
-    config = { options: { help: true }, logger: new Rollcall() };
-    config.logger.error(x.message);
-    config.logger.println();
-  }
+  const config = await createContext(configure);
 
   // ---------------------------------------------------------------------------
   // Handle Display of Version and Help
@@ -216,7 +154,7 @@ async function main() {
   ) {
     task(config, `Create inventory of "${config.options.contentDir}"`);
     try {
-      config.inventory = await takeInventory(config);
+      await takeInventory(config);
     } catch (x) {
       config.logger.error(`Unable to read file system hierarchy:`, x);
       process.exitCode = 74; // EX_IOERR
@@ -241,7 +179,7 @@ async function main() {
 
   if (config.options.build) {
     task(config, `Generate build in "${config.options.buildDir}"`);
-    await build(config);
+    await buildAll(config);
   }
 
   // ---------------------------------------------------------------------------
@@ -288,7 +226,7 @@ async function main() {
 
   config.logger.signOff({
     files: (config.inventory && config.inventory.size) || 0,
-    duration: endMain().get(),
+    duration: config.stopMainTimer().get(),
   });
 }
 

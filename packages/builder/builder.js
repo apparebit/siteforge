@@ -2,7 +2,6 @@
 
 import {
   assemblePage,
-  build,
   copyAsset,
   extractCopyrightNotice,
   extractFrontMatter,
@@ -11,16 +10,17 @@ import {
   minifyStyle,
   prefixCopyrightNotice,
   readSource,
+  toBuilder,
   writeTarget,
 } from './transform.js';
 
-import { KIND } from '@grr/inventory/path';
+import { Kind } from '@grr/inventory/kind';
 
 // -----------------------------------------------------------------------------
 
-const copyResource = build(copyAsset);
+const copyResource = toBuilder(copyAsset);
 
-const buildClientScript = build(
+const buildClientScript = toBuilder(
   readSource,
   extractCopyrightNotice,
   minifyScript,
@@ -28,7 +28,7 @@ const buildClientScript = build(
   writeTarget
 );
 
-const buildStyle = build(
+const buildStyle = toBuilder(
   readSource,
   extractCopyrightNotice,
   minifyStyle,
@@ -36,24 +36,60 @@ const buildStyle = build(
   writeTarget
 );
 
-const preparePage = build(readSource, extractFrontMatter, indexByKeywords);
+const preparePage = toBuilder(readSource, extractFrontMatter, indexByKeywords);
 
-const finishPage = build(assemblePage, writeTarget);
-
-export function prebuilderFor(kind) {
-  return {
-    [KIND.MARKUP]: preparePage,
-  }[kind];
-}
+const finishPage = toBuilder(assemblePage, writeTarget);
 
 export function builderFor(kind) {
   return {
-    [KIND.CONFIG]: copyResource,
-    [KIND.FONT]: copyResource,
-    [KIND.GRAPHIC]: copyResource,
-    [KIND.IMAGE]: copyResource,
-    [KIND.MARKUP]: finishPage,
-    [KIND.SCRIPT]: buildClientScript,
-    [KIND.STYLE]: buildStyle,
+    [Kind.Config]: copyResource,
+    [Kind.Font]: copyResource,
+    [Kind.Graphic]: copyResource,
+    [Kind.Image]: copyResource,
+    [Kind.Markup]: preparePage,
+    [Kind.Script]: buildClientScript,
+    [Kind.Style]: buildStyle,
   }[kind];
+}
+
+export function finisherFor(kind) {
+  return {
+    [Kind.Markup]: finishPage,
+  }[kind];
+}
+
+// -----------------------------------------------------------------------------
+
+const doBuild = (label, builder, file, context) => {
+  const { executor, logger } = context;
+
+  if (builder) {
+    const verb = label[0].toUpperCase() + label.slice(1);
+    logger.info(`${verb}ing ${file.kind} "${file.path}"`);
+    executor.run(builder, undefined, file, context).catch(reason => {
+      logger.error(`Failed to ${label} "${file.path}"`, reason);
+    });
+  } else {
+    logger.error(`No ${label}er for ${file.kind} "${file.path}"`);
+  }
+};
+
+/**
+ * The context object includes an `executor`, the `inventory`, a `logger`, the
+ * `metrics`, and the `options`.
+ */
+export async function buildAll(context) {
+  const { executor, inventory } = context;
+
+  for (const [phase, label, selector] of [
+    [1, 'build', builderFor],
+    [2, 'finish', finisherFor],
+  ]) {
+    for (const file of inventory.byPhase(phase)) {
+      doBuild(label, selector(file.kind), file, context);
+    }
+
+    // The poor man's version of structured concurrency or fork/join
+    await executor.onIdle();
+  }
 }

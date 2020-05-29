@@ -44,7 +44,7 @@ const NOTICE = new RegExp(
 // -----------------------------------------------------------------------------
 
 /** Create a fully featured file processing pipeline ("batteries included"). */
-export function build(...steps) {
+export function toBuilder(...steps) {
   const run = pipe(...steps);
   const build = async (file, context) => {
     const end = context.metrics.timer('build.time').start(file.path);
@@ -147,7 +147,7 @@ export function extractCopyrightNotice(file, context) {
       copyright: (copy1 || copy2).trim(),
       content: content.slice(prefix.length),
     };
-  } else if (context && context.options && context.options.copyright) {
+  } else if (context?.options?.copyright) {
     // Otherwise, if configured, use that copyright notice.
     return {
       copyright: context.options.copyright,

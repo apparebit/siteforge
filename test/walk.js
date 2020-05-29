@@ -60,6 +60,7 @@ harness.test('@grr/walk', async t => {
     '/builder/LICENSE',
     '/builder/README.md',
     '/builder/builder.js',
+    '/builder/context.js',
     '/builder/package.json',
     '/builder/transform.js',
     '/fs/LICENSE',
@@ -80,8 +81,8 @@ harness.test('@grr/walk', async t => {
     '/inventory/LICENSE',
     '/inventory/README.md',
     '/inventory/inventory.js',
+    '/inventory/kind.js',
     '/inventory/package.json',
-    '/inventory/path.js',
     '/loader/LICENSE',
     '/loader/README.md',
     '/loader/call.js',
@@ -180,10 +181,10 @@ harness.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     __proto__: null,
     readdir: 17,
-    entries: 100,
-    lstat: 100,
+    entries: 101,
+    lstat: 101,
     realpath: 0,
-    file: 83,
+    file: 84,
   });
 
   // ---------------------------------------------------------------------------

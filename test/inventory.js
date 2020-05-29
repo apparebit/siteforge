@@ -1,39 +1,51 @@
 /* © 2019-2020 Robert Grimm */
 
 import Inventory from '@grr/inventory';
-import { cool, toKind, KIND } from '@grr/inventory/path';
+import { classify, Kind } from '@grr/inventory/kind';
 import harness from './harness.js';
 
 const { entries, keys: keysOf } = Object;
 
 const FAUX = {
-  '/.htaccess': KIND.CONFIG,
-  '/about/apparebit.html': KIND.MARKUP,
-  '/index.html': KIND.MARKUP,
-  '/about/robert-grimm.js': KIND.CONTENT_SCRIPT,
-  '/about/robert-grimm.jpg': KIND.IMAGE,
-  '/data/2020.data.js': KIND.DATA,
-  '/features/utopia/sundown.jpg': KIND.IMAGE,
-  '/asset/function.js': KIND.SCRIPT,
-  '/asset/logo.svg': KIND.GRAPHIC,
-  '/robots.txt': KIND.CONFIG,
+  '/.htaccess': Kind.Config,
+  '/about/apparebit.html': Kind.Markup,
+  '/index.html': Kind.Markup,
+  '/about/robert-grimm.js': Kind.ComputedMarkup,
+  '/about/robert-grimm.jpg': Kind.Image,
+  '/data/2020.data.js': Kind.ComputedData,
+  '/features/utopia/sundown.jpg': Kind.Image,
+  '/asset/function.js': Kind.Script,
+  '/asset/logo.svg': Kind.Graphic,
+  '/robots.txt': Kind.Config,
 };
 
 harness.test('@grr/inventory', t => {
-  t.test('cool(), toKind()', t => {
-    t.is(cool('/features/ubu-trump/index.html'), '/features/ubu-trump');
-    t.is(cool('/features/ubu-trump/about.html'), '/features/ubu-trump/about');
-    t.is(
-      cool('/features/ubu-trump/the-dark-tower.jpg'),
-      '/features/ubu-trump/the-dark-tower.jpg'
-    );
-    t.is(cool('/features/ubu-trump/'), '/features/ubu-trump');
+  t.test('classify()', t => {
+    t.same(classify('/features/ubu-trump/index.html'), {
+      coolPath: '/features/ubu-trump',
+      kind: 'Markup',
+    });
+    t.same(classify('/features/ubu-trump/about.html'), {
+      coolPath: '/features/ubu-trump/about',
+      kind: 'Markup',
+    });
+    t.same(classify('/features/ubu-trump/the-dark-tower.jpg'), {
+      coolPath: '/features/ubu-trump/the-dark-tower.jpg',
+      kind: 'Image',
+    });
+    t.same(classify('/features/ubu-trump/'), {
+      coolPath: '/features/ubu-trump',
+      kind: 'Unknown',
+    });
 
     for (const [path, kind] of entries(FAUX)) {
-      t.is(toKind(path), kind);
+      t.is(classify(path).kind, kind);
     }
 
-    t.is(toKind('/a/b/f.booboo'), KIND.UNKNOWN);
+    t.same(classify('/a/b/f.booboo'), {
+      coolPath: '/a/b/f.booboo',
+      kind: Kind.Unknown,
+    });
 
     t.end();
   });
@@ -74,7 +86,7 @@ harness.test('@grr/inventory', t => {
 
     ent = inventory.byPath('/index.html');
     t.is(ent.path, '/index.html');
-    t.is(ent.kind, KIND.MARKUP);
+    t.is(ent.kind, Kind.Markup);
 
     let ent2 = inventory.root.lookup('index.html');
     t.is(ent2, ent);
@@ -124,29 +136,25 @@ harness.test('@grr/inventory', t => {
   });
 
   t.test('byKind(), byPhase()', t => {
-    checkPaths(t, inventory.byKind(KIND.GRAPHIC, KIND.IMAGE), [
+    checkPaths(t, inventory.byKind(Kind.Graphic, Kind.Image), [
       '/asset/logo.svg',
       '/about/robert-grimm.jpg',
       '/features/utopia/sundown.jpg',
     ]);
 
-    t.same(Inventory.PHASE, {
-      DATA: 1,
-      ASSET: 2,
-      PAGE: 3,
-    });
-
-    checkPaths(t, inventory.byPhase(1), ['/data/2020.data.js']);
-    checkPaths(t, inventory.byPhase(2), [
+    checkPaths(t, inventory.byPhase(1), [
       '/.htaccess',
       '/robots.txt',
+      '/about/apparebit.html',
+      '/index.html',
+      '/about/robert-grimm.js',
       '/about/robert-grimm.jpg',
       '/features/utopia/sundown.jpg',
+      '/data/2020.data.js',
       '/asset/function.js',
       '/asset/logo.svg',
     ]);
-    checkPaths(t, inventory.byPhase(3), [
-      '/about/robert-grimm.js',
+    checkPaths(t, inventory.byPhase(2), [
       '/about/apparebit.html',
       '/index.html',
     ]);
@@ -155,7 +163,6 @@ harness.test('@grr/inventory', t => {
     t.same([...empty.byKind('.booboo')], []);
     t.same([...empty.byPhase(1)], []);
     t.same([...empty.byPhase(2)], []);
-    t.same([...empty.byPhase(3)], []);
 
     t.end();
   });
@@ -174,7 +181,7 @@ harness.test('@grr/inventory', t => {
 
     // Error Conditions While Retrieving Files
     t.throws(() => inventory.byPath('about'), /path must be absolute/u);
-    t.throws(() => [...inventory.byPhase(0)], /phase must be 1, 2, or 3/u);
+    t.throws(() => [...inventory.byPhase(0)], /phase must be 1 or 2/u);
 
     // Error Conditions During Directory Look Up
     t.throws(

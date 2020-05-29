@@ -1,7 +1,6 @@
 /* © 2019-2020 Robert Grimm */
 
 import {
-  build,
   copyAsset,
   extractFrontMatter,
   minifyScript,
@@ -9,11 +8,12 @@ import {
   extractCopyrightNotice,
   prefixCopyrightNotice,
   readSource,
+  toBuilder,
   writeTarget,
 } from '@grr/builder/transform';
 import harness from './harness.js';
 import { join } from 'path';
-import { KIND } from '@grr/inventory/path';
+import { Kind } from '@grr/inventory/kind';
 import { readFile, rmdir, toDirectory } from '@grr/fs';
 
 const __directory = toDirectory(import.meta.url);
@@ -45,11 +45,11 @@ harness.test('@grr/builder', async t => {
 
   // Read, Write
   try {
-    let file = { path: '/la-flor.html', kind: KIND.TEXT };
+    let file = { path: '/la-flor.html', kind: Kind.Text };
 
     file = assign(
       file,
-      await build(
+      await toBuilder(
         readSource,
         file => {
           t.equal(
@@ -70,7 +70,7 @@ harness.test('@grr/builder', async t => {
       'target',
     ]);
     t.equal(file.path, '/la-flor.html');
-    t.equal(file.kind, KIND.TEXT);
+    t.equal(file.kind, Kind.Text);
     t.equal(file.content, undefined);
     t.equal(file.source, join(contentDir, '/la-flor.html'));
     t.equal(file.target, join(buildDir, '/la-flor.html'));

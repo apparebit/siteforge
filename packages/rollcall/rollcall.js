@@ -65,7 +65,7 @@ const createTextLogger = (
   { label, service, stylePrimary, styleDetail }
 ) => {
   const status =
-    (service ? `[${service}] ` : ``) +
+    (service ? `${service} ` : ``) +
     (label ? `${label} ` : `[${level.toUpperCase()}] `);
   const count = `${level}s`;
 
@@ -229,7 +229,7 @@ const createTextSignOff = (
     // Construct Sign Off Message
     const { errors, warnings } = this;
 
-    let message = service ? `[${service}] ` : ``;
+    let message = service ? `${service} ` : ``;
     if (typeof pass === 'number' && typeof fail === 'number') {
       message += fail ? labels.error : labels.success;
       if (fail) {

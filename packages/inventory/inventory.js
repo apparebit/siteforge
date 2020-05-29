@@ -1,11 +1,16 @@
 /* © 2020 Robert Grimm */
 
-import { isDefaultAssetPath, toKind, KIND } from './path.js';
+import {
+  classify,
+  hasPhase,
+  isDefaultAssetPath,
+  toCanonicalExtension,
+} from './kind.js';
 import { posix } from 'path';
 import { escapeRegex, slugify } from '@grr/oddjob/string';
 import { strict as assert } from 'assert';
 
-const { assign, create, defineProperties, freeze } = Object;
+const { assign, create, defineProperties } = Object;
 const { dirname, isAbsolute, join, parse, relative } = posix;
 const configurable = true;
 const EMPTY_ARRAY = [];
@@ -14,25 +19,22 @@ const { iterator } = Symbol;
 const LA_FLOR = Symbol('secret');
 const { stringify: stringifyJson } = JSON;
 
-const PHASE = freeze({
-  DATA: 1,
-  ASSET: 2,
-  PAGE: 3,
-});
-
 // =============================================================================
 
 class File {
-  constructor(path, kind, data) {
+  constructor({ path, coolPath, kind, ...data }) {
     assign(this, data);
     defineProperties(this, {
       path: { configurable, enumerable, value: path },
+      coolPath: { configurable, enumerable, value: coolPath },
       kind: { configurable, enumerable, value: kind },
     });
   }
 
   toString() {
-    return `File(${this.kind} ${this.path})`;
+    let kind = this.kind.toLowerCase();
+    if (kind.startsWith('computed')) kind = `computed ${kind.slice(8)}`;
+    return `File(${kind} ${this.path})`;
   }
 }
 
@@ -121,7 +123,7 @@ class Directory {
     return cursor;
   }
 
-  _add(secret, name, kind, data) {
+  _add(secret, name, { coolPath, kind, ...data } = {}) {
     assert.equal(secret, LA_FLOR, `Don't call me, I'll call you!`);
     assert.ok(name && typeof name === 'string');
 
@@ -130,7 +132,7 @@ class Directory {
     }
 
     const path = join(this.#path, name);
-    const file = new File(path, kind, data);
+    const file = new File({ path, coolPath, kind, ...data });
     this.#entries.set(name, file);
     return file;
   }
@@ -159,11 +161,6 @@ class Directory {
 // =============================================================================
 
 export default class Inventory {
-  /** Enumerate phases `DATA`, `ASSET`, and `PAGE` in proper order. */
-  static get PHASE() {
-    return PHASE;
-  }
-
   #size = 0;
   #root = new Directory();
   #byKind = new Map();
@@ -184,10 +181,19 @@ export default class Inventory {
    * directories are automatically generated as necessary.
    */
   add(path, data = create(null)) {
+    // We'd like to create a file object...
     assert.ok(isAbsolute(path), 'path must be absolute');
+    let { dir, base, name, ext } = parse(path);
 
-    // Create new file object within directory hierarchy.
-    let { dir, base } = parse(path);
+    // ...with canonical extension.
+    const extsup = toCanonicalExtension(ext);
+    if (extsup !== ext) {
+      ext = extsup;
+      base = name + ext;
+      path = join(dir, base);
+    }
+
+    // ...with the appropriate parent directory object
     let parent = this.#root;
     if (dir !== '/') {
       parent = parent.lookup(relative('/', dir), {
@@ -195,8 +201,14 @@ export default class Inventory {
         validateLastSegment: true,
       });
     }
-    const kind = toKind(path, this.#isStaticAsset);
-    const file = parent._add(LA_FLOR, base, kind, data);
+
+    // ...with the right cool path and kind
+    const { coolPath, kind } = classify(
+      join(dir, name + ext),
+      this.#isStaticAsset
+    );
+
+    const file = parent._add(LA_FLOR, base, { coolPath, kind, ...data });
     this.#size++;
 
     // Add file to kind index.
@@ -259,29 +271,8 @@ export default class Inventory {
 
   /** Look up files by tool phase. */
   *byPhase(phase) {
-    switch (phase) {
-      case PHASE.DATA:
-        yield* this.#byKind.get(KIND.DATA) || EMPTY_ARRAY;
-        break;
-      case PHASE.ASSET:
-        for (const [kind, index] of this.#byKind) {
-          if (
-            kind === KIND.CONTENT_SCRIPT ||
-            kind === KIND.DATA ||
-            kind === KIND.MARKUP
-          ) {
-            continue;
-          }
-          // index is array b/c it originates from #byKind.
-          yield* index;
-        }
-        break;
-      case PHASE.PAGE:
-        yield* this.#byKind.get(KIND.CONTENT_SCRIPT) || EMPTY_ARRAY;
-        yield* this.#byKind.get(KIND.MARKUP) || EMPTY_ARRAY;
-        break;
-      default:
-        assert.fail('phase must be 1, 2, or 3');
+    for (const [kind, index] of this.#byKind) {
+      if (hasPhase(kind, phase)) yield* index;
     }
   }
 

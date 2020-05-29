@@ -7,7 +7,7 @@
   },
   "exports": {
     ".": "./inventory.js",
-    "./path": "./path.js"
+    "./kind": "./kind.js"
   },
   "description": "in-memory inventory of website content and builders",
   "repository": "https://github.com/apparebit/siteforge",

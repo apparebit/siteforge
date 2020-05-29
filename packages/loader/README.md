@@ -29,10 +29,10 @@ Consequently, loader and application cannot communicate through shared state
 within a shared module, e.g., to update the loader's configuration. While loader
 and application can communicate through the global object for now, work is
 already under way to migrate the loader to its own thread. That requires its own
-global object due to JavaScript's single-threaded execution semantics. The next
-With shared modules and shared memory out of the picture, we need to turn to
-message passing. Conveniently, the Worker API already includes such a facility
-via `postMessage()`.
+global object due to JavaScript's single-threaded execution semantics. With
+shared modules and shared memory out of the picture, we need to turn to message
+passing. Conveniently, the Worker API already includes such a facility via
+`postMessage()`.
 
 
 ## XPC: Cross-Realm Procedure Calls
@@ -79,4 +79,4 @@ as connective tissue: It is returned from `resolve()` and passed into
 
 ---
 
-__@grr/metrics__ is © 2020 Robert Grimm and licensed under [MIT](LICENSE) terms.
+__@grr/loader__ is © 2020 Robert Grimm and licensed under [MIT](LICENSE) terms.

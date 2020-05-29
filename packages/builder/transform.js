@@ -16,7 +16,8 @@ import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
 
-const { assign, create, setPrototypeOf } = Object;
+const { assign, create, defineProperty, setPrototypeOf } = Object;
+const configurable = true;
 const { has } = Reflect;
 
 // -----------------------------------------------------------------------------
@@ -44,7 +45,12 @@ const NOTICE = new RegExp(
 // -----------------------------------------------------------------------------
 
 /** Create a fully featured file processing pipeline ("batteries included"). */
-export function toBuilder(...steps) {
+export function toBuilder(label, ...steps) {
+  if (typeof label !== 'string') {
+    steps.unshift(label);
+    label = 'build';
+  }
+
   const run = pipe(...steps);
   const build = async (file, context) => {
     const end = context.metrics.timer('build.time').start(file.path);
@@ -55,6 +61,7 @@ export function toBuilder(...steps) {
     end();
     return file;
   };
+  defineProperty(build, 'verb', { configurable, value: label });
   return build;
 }
 

@@ -18,7 +18,7 @@ import { Kind } from '@grr/inventory/kind';
 
 // -----------------------------------------------------------------------------
 
-const copyResource = toBuilder(copyAsset);
+const copyResource = toBuilder('copy', copyAsset);
 
 const buildClientScript = toBuilder(
   readSource,
@@ -36,7 +36,12 @@ const buildStyle = toBuilder(
   writeTarget
 );
 
-const preparePage = toBuilder(readSource, extractFrontMatter, indexByKeywords);
+const preparePage = toBuilder(
+  'prepare',
+  readSource,
+  extractFrontMatter,
+  indexByKeywords
+);
 
 const finishPage = toBuilder(assemblePage, writeTarget);
 
@@ -52,7 +57,7 @@ export function builderFor(kind) {
   }[kind];
 }
 
-export function finisherFor(kind) {
+export function contentBuilderFor(kind) {
   return {
     [Kind.Markup]: finishPage,
   }[kind];
@@ -60,17 +65,18 @@ export function finisherFor(kind) {
 
 // -----------------------------------------------------------------------------
 
-const doBuild = (label, builder, file, context) => {
+const doBuild = (builder, file, context) => {
   const { executor, logger } = context;
 
   if (builder) {
+    const label = builder.verb;
     const verb = label[0].toUpperCase() + label.slice(1);
-    logger.info(`${verb}ing ${file.kind} "${file.path}"`);
+    logger.info(` • ${verb} ${file.kind} "${file.path}"`);
     executor.run(builder, undefined, file, context).catch(reason => {
       logger.error(`Failed to ${label} "${file.path}"`, reason);
     });
   } else {
-    logger.error(`No ${label}er for ${file.kind} "${file.path}"`);
+    logger.error(`No builder for ${file.kind} "${file.path}"`);
   }
 };
 
@@ -79,17 +85,19 @@ const doBuild = (label, builder, file, context) => {
  * `metrics`, and the `options`.
  */
 export async function buildAll(context) {
-  const { executor, inventory } = context;
+  const { executor, inventory, logger } = context;
 
-  for (const [phase, label, selector] of [
-    [1, 'build', builderFor],
-    [2, 'finish', finisherFor],
+  for (const [phase, selector] of [
+    [1, builderFor],
+    [2, contentBuilderFor],
   ]) {
+    logger.info(`Scheduling async tasks (fork)`);
     for (const file of inventory.byPhase(phase)) {
-      doBuild(label, selector(file.kind), file, context);
+      doBuild(selector(file.kind), file, context);
     }
 
     // The poor man's version of structured concurrency or fork/join
+    logger.info(`Awaiting outstanding async tasks (join)`);
     await executor.onIdle();
   }
 }

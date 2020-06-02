@@ -1,8 +1,9 @@
 /* © 2020 Robert Grimm */
 
+import Builtin from './builtin.js';
 import { types } from 'util';
 
-const BuiltinError = Error;
+const BuiltinError = Builtin.Error;
 const configurable = true;
 const { defineProperty } = Object;
 const { isNativeError } = types;

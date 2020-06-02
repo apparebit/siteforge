@@ -2,7 +2,7 @@
 
 import { fileURLToPath } from 'url';
 import { promises } from 'fs';
-import validate from './validate.js';
+import Schema from './schema.js';
 
 const { assign } = Object;
 const { has } = Reflect;
@@ -151,12 +151,7 @@ export default class Model {
   }
 
   constructor(spec) {
-    try {
-      assign(this, validate(spec));
-    } catch (x) {
-      console.error('### validate(spec):');
-      console.error(x.message);
-    }
+    assign(this, Schema(spec));
   }
 
   // Attributes

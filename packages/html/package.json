@@ -19,8 +19,7 @@
   "type": "module",
   "exports": {
     ".": "./model.js",
-    "./schema": "./schema.js",
-    "./validate": "./validate.js"
+    "./schema": "./schema.js"
   },
   "dependencies": {
     "@grr/schemata": "0.1.0",

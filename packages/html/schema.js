@@ -2,14 +2,15 @@ import {
   All,
   Any,
   Array,
-  Check,
   Dictionary,
   Enum,
   From,
+  IfNonNull,
   IntoMap,
   IntoRecord,
   IntoSet,
   Properties,
+  Report,
   String,
   WithAtLeastOne,
 } from '@grr/schemata';
@@ -81,12 +82,12 @@ const Attribute = All(
     },
     WithAtLeastOne
   ),
-  Properties({ separator: Enum('comma', 'space') })
+  Properties({ separator: Enum('comma', 'space') }, IfNonNull)
 );
 
 const AttributeCases = Properties({
   cases: Dictionary(
-    Check(
+    Report(
       `should describe HTML attribute via "type" or "enum" properties`,
       Attribute
     )
@@ -94,13 +95,13 @@ const AttributeCases = Properties({
 });
 
 const WithoutCommentAndWildcard = {
-  filter: ([key]) => key !== '//' && key !== '*',
+  filter: key => key !== '//' && key !== '*',
 };
 
 const Attributes = Properties({
   attributes: IntoMap(
     Dictionary(
-      Check(
+      Report(
         `should describe HTML attribute via "cases", "type", or "enum" properties`,
         Any(AttributeCases, Attribute)
       ),
@@ -110,9 +111,9 @@ const Attributes = Properties({
 });
 
 const GlobalAttributes = From(
-  ['elements', '*'],
+  ['elements', '*', 'attributes'],
   IntoSet(
-    Check('should be an array listing the global attributes', Array(String))
+    Report('should be an array listing the global attributes', Array(String))
   )
 );
 
@@ -120,7 +121,7 @@ const Categories = Properties({
   categories: IntoMap(
     Dictionary(
       IntoSet(
-        Check(
+        Report(
           'should list HTML element names belonging to category',
           Array(String)
         )
@@ -133,7 +134,7 @@ const Categories = Properties({
 const ElementContent = Properties(
   {
     category: Enum(CONTENT_CATEGORY),
-    elements: Check(
+    elements: Report(
       `should list HTML elements valid as content`,
       Array(String)
     ),
@@ -141,20 +142,20 @@ const ElementContent = Properties(
   WithAtLeastOne
 );
 
-const Element = Check(
+const Element = Report(
   `should describe HTML element via "attributes" and "content" properties`,
   Properties(
     {
-      attributes: Check(
-        `should list HTML element's attribute names`,
-        Array(String)
+      attributes: Report(
+        `should be wildcard or list HTML element's attribute names`,
+        Any(Enum('*'), Array(String))
       ),
-      content: Check(
+      content: Report(
         `should describe HTML element's content via "category" and "elements"`,
         ElementContent
       ),
     },
-    WithAtLeastOne
+    IfNonNull
   )
 );
 
@@ -163,7 +164,7 @@ const Elements = Properties({
 });
 
 const EventNames = IntoSet(
-  Check('should be array listing all event names', Array(String))
+  Report('should be array listing all event names', Array(String))
 );
 
 const Events = From(
@@ -174,7 +175,7 @@ const Events = From(
   })
 );
 
-const Model = IntoRecord(
+const Schema = IntoRecord(
   Attributes,
   { globalAttributes: GlobalAttributes },
   Categories,
@@ -182,4 +183,4 @@ const Model = IntoRecord(
   Events
 );
 
-export default Model;
+export default Schema;

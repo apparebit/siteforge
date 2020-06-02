@@ -13,6 +13,7 @@
   ],
   "devDependencies": {
     "@grr/async": "0.1.0",
+    "@grr/builder": "0.1.0",
     "@grr/fs": "0.1.0",
     "@grr/glob": "0.1.0",
     "@grr/html": "0.1.0",
@@ -23,6 +24,8 @@
     "@grr/options": "0.1.0",
     "@grr/proact": "0.1.0",
     "@grr/rollcall": "0.1.0",
+    "@grr/run": "0.1.0",
+    "@grr/schemata": "0.1.0",
     "@grr/sequitur": "0.1.0",
     "@grr/siteforge": "0.1.0",
     "@grr/walk": "0.1.0",

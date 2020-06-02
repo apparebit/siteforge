@@ -3,37 +3,96 @@
 import { strict as assert } from 'assert';
 import Builtin from '@grr/oddjob/builtin';
 import Context from './context.js';
+import { inspect } from 'util';
 import { isSet } from '@grr/oddjob/types';
 
 const {
   assign,
   entries: entriesOf,
+  freeze,
   keys: keysOf,
   values: valuesOf,
 } = Builtin.Object;
-//const { has } = Builtin.Reflect;
 const { isArray } = Builtin.Array;
 const { isSafeInteger } = Builtin.Number;
 
 // -----------------------------------------------------------------------------
 
-export const Check = (description, schema) =>
-  Context.ify((value, context) => {
-    const ok = schema(value, context);
-    if (!ok) context.defect(description);
-    return ok;
-  });
+const inspectOptions = { depth: 3, colors: true };
 
-export const Number = Check(
+/**
+ * Create a trace function for debugging. The resulting function logs the
+ * incoming value, the success or failure of the schema, and the resulting value
+ * with the given log function. Also see `Trace()`, which logs to `stdout`.
+ */
+export const MakeTrace = log => {
+  Context.assertFunction(log);
+  let indent = '';
+
+  return schema => {
+    Context.assertFunction(schema);
+
+    return (value, context) => {
+      const path = context?.path ? ` ${context.path}` : ``;
+      let object = inspect(value, inspectOptions).replace(
+        /\n/gu,
+        `\n${indent}`
+      );
+      log(`${indent}enter${path}: ${object}`);
+      indent += '  ';
+
+      let status, result;
+      try {
+        const ok = schema(value, context);
+        status = ok ? 'pass' : 'fail';
+        result = context.result;
+        return ok;
+      } catch (x) {
+        status = 'throw';
+        result = x;
+        throw x;
+      } finally {
+        indent = indent.slice(2);
+        object = inspect(result, inspectOptions).replace(/\n/gu, `\n${indent}`);
+        log(`${indent}exit ${path} ${status}: ${object}`);
+      }
+    };
+  };
+};
+
+// FIXME: Integrate Trace with @grr/rollcall
+
+/**
+ * Log incoming value, success or failure of schema, and resulting value.
+ * This function is the result of `MakeTrace(console.log)`.
+ */
+export const Trace = MakeTrace(console.log);
+
+// -----------------------------------------------------------------------------
+
+/** Report given description on schema failure. Nested defects are erased. */
+export const Report = (description, schema) =>
+  Context.ify((value, context) =>
+    context.withCheckpoint((value, context) => {
+      const ok = schema(value, context);
+      if (!ok) {
+        context.clearDefectsSinceCheckpoint();
+        context.defect(description);
+      }
+      return ok;
+    })
+  );
+
+export const Number = Report(
   `should be a floating point number`,
   v => typeof v === 'number'
 );
-export const Integer = Check(`should be an integer`, v => isSafeInteger(v));
-export const BigInt = Check(
+export const Integer = Report(`should be an integer`, v => isSafeInteger(v));
+export const BigInt = Report(
   `should be a big integer`,
   v => typeof v === 'bigint'
 );
-export const String = Check(`should be a string`, v => typeof v === 'string');
+export const String = Report(`should be a string`, v => typeof v === 'string');
 
 // -----------------------------------------------------------------------------
 
@@ -76,17 +135,25 @@ export const All = (...schemata) => {
   Context.assertFunctionArray(schemata);
 
   return Context.ify((value, context) => {
+    const result = {};
+
     for (const schema of schemata) {
-      if (!schema(value, context)) {
+      context.result = value;
+      if (schema(value, context)) {
+        assign(result, context.result);
+      } else {
         return false;
       }
     }
+
+    context.result = result;
     return true;
   });
 };
 
 // -----------------------------------------------------------------------------
 
+/** Make a schema function optional. Also see `Properties` and `IfNonNull`. */
 export const Option = schema => Any(Nullish, schema);
 
 /** Apply schema function to value retrieved by resolving keys. */
@@ -130,7 +197,7 @@ export const Array = (
       };
     }
 
-    return context.withProperties(
+    context.withProperties(
       Context.toIterable(function* schemata() {
         for (let index = 0; index < value.length; index++) {
           yield [index, wrapper];
@@ -138,6 +205,10 @@ export const Array = (
       }),
       { init: () => [] }
     );
+
+    // An array counts as matched even if some elements contain errors. This is
+    // safe because Context.ify() also checks the context's defects.
+    return true;
   });
 };
 
@@ -145,15 +216,14 @@ export const Array = (
 
 export const Dictionary = (schema, { filter = () => true } = {}) => {
   Context.assertFunction(schema);
+  Context.assertFunction(filter);
 
   return Context.ify((value, context) => {
     if (!Context.isObjectLike(value)) {
-      return context.defect(
-        `is not object-like and hence does not have properties`
-      );
+      return context.defect(`is not a dictionary object`);
     }
 
-    return context.withProperties(
+    context.withProperties(
       Context.toIterable(function* schemata() {
         for (const key of keysOf(value)) {
           if (!filter(key)) continue;
@@ -161,10 +231,15 @@ export const Dictionary = (schema, { filter = () => true } = {}) => {
         }
       })
     );
+
+    // A dictionary counts as matched even if some elements contain errors. This
+    // is safe because Context.ify() also checks the context's defects.
+    return true;
   });
 };
 
-export const WithAtLeastOne = { lax: true, min: 1 };
+export const IfNonNull = freeze({ lax: true });
+export const WithAtLeastOne = freeze({ lax: true, min: 1 });
 
 export const Properties = (schemata, { lax = false, min = 0 } = {}) => {
   Context.assertObjectLike(schemata);
@@ -291,15 +366,3 @@ export const IntoRecord = (...schemata) => {
     return flag;
   });
 };
-
-// -----------------------------------------------------------------------------
-
-// export const toHasKey = collection => {
-//   if (isSet(collection) || isMap(collection)) {
-//     return k => collection.has(k);
-//   } else if (isArray(collection)) {
-//     return k => collection.includes(k);
-//   } else {
-//     return k => has(collection, k);
-//   }
-// };

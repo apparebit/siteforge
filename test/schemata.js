@@ -189,8 +189,8 @@ harness.test('@grr/schemata', t => {
     t.ok(DoubleDigit(11));
     t.ok(DoubleDigit(99));
 
-    const Always = Schemata.Check(Symbol(`tripwire`), () => true);
-    const Never = Schemata.Check('is entirely unacceptable', () => false);
+    const Always = Schemata.Report(Symbol(`tripwire`), () => true);
+    const Never = Schemata.Report('is entirely unacceptable', () => false);
 
     const fails = thunk =>
       t.throws(thunk, /Validation found (one defect|\d+ defects)/u);
@@ -199,7 +199,7 @@ harness.test('@grr/schemata', t => {
     fails(() => Never(665));
     t.is(Schemata.Any(Never, Always)(665), 665);
     fails(() => Schemata.Any(Never, Never)(665));
-    t.is(Schemata.All(Always, Always)(665), 665);
+    t.same(Schemata.All(Always, Always)({ key: 'value' }), { key: 'value' });
     fails(() => Schemata.All(Always, Never)(665));
     t.is(Schemata.Option(Never)(), undefined);
     t.is(Schemata.Option(Always)(665), 665);

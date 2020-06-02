@@ -21,7 +21,7 @@ export default class Context {
     return value;
   }
 
-  static assertKeyPath(value) {
+  static assertKeyArray(value) {
     assert(isArray(value));
     for (const element of value) {
       Context.assertKey(element);
@@ -191,8 +191,8 @@ export default class Context {
    * Check a single, possibly deeply nested property. The given validation
    * callback is executed within a checkpoint.
    */
-  withKeyPath(keyPath, schema, { requireContainer = true } = {}) {
-    Context.assertKeyPath(keyPath);
+  withKeyArray(keyPath, schema, { requireContainer = true } = {}) {
+    Context.assertKeyArray(keyPath);
     Context.assertFunction(schema);
 
     return this.withCheckpoint((value, context) => {
@@ -201,7 +201,7 @@ export default class Context {
       for (const key of keyPath) {
         if (!Context.isObjectLike(value)) {
           if (requireContainer) {
-            this.defect(`is primitive and does not have properties`);
+            this.defect(`is not an object indexable by keys`);
             return false;
           } else {
             return true;
@@ -241,7 +241,7 @@ export default class Context {
     return this.withCheckpoint((value, context) => {
       if (!Context.isObjectLike(value)) {
         if (requireContainer) {
-          this.defect(`is primitive and does not have properties`);
+          this.defect(`is not an object indexable by distinct properties`);
           return false;
         } else {
           return true;

@@ -89,12 +89,13 @@ export const All = (...schemata) => {
 
 export const Option = schema => Any(Nullish, schema);
 
-export const From = (path, schema) => {
-  if (!isArray(path)) path = [path];
-  Context.assertKeyPath(path);
+/** Apply schema function to value retrieved by resolving keys. */
+export const From = (keys, schema) => {
+  if (!isArray(keys)) keys = [keys];
+  Context.assertKeyArray(keys);
   Context.assertFunction(schema);
 
-  return Context.ify((_, context) => context.withKeyPath(path, schema));
+  return Context.ify((_, context) => context.withKeyArray(keys, schema));
 };
 
 // -----------------------------------------------------------------------------

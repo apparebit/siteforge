@@ -17,12 +17,12 @@ harness.test('@grr/schemata', t => {
     t.throws(() => Context.assertKey(665n));
     t.throws(() => Context.assertKey(/boo/u));
 
-    t.same(Context.assertKeyPath([]), []);
-    t.same(Context.assertKeyPath(['k1', 'k2', 3]), ['k1', 'k2', 3]);
-    t.throws(() => Context.assertKeyPath({}));
-    t.throws(() => Context.assertKeyPath());
-    t.throws(() => Context.assertKeyPath(null));
-    t.throws(() => Context.assertKeyPath({ length: 3 }));
+    t.same(Context.assertKeyArray([]), []);
+    t.same(Context.assertKeyArray(['k1', 'k2', 3]), ['k1', 'k2', 3]);
+    t.throws(() => Context.assertKeyArray({}));
+    t.throws(() => Context.assertKeyArray());
+    t.throws(() => Context.assertKeyArray(null));
+    t.throws(() => Context.assertKeyArray({ length: 3 }));
 
     t.is(Context.assertEnumConstant(true), true);
     t.is(Context.assertEnumConstant(665), 665);
@@ -93,7 +93,7 @@ harness.test('@grr/schemata', t => {
         t.notOk(c.hasDefectsSinceCheckpoint());
       });
 
-      // withKeyPath() and withProperties()
+      // withKeyArray() and withProperties()
 
       return context.withProperties([['quantity', Quantity]]);
     });
@@ -112,7 +112,7 @@ harness.test('@grr/schemata', t => {
       })(665);
 
     withFailure((value, context) => context.withProperties([['key', Nothing]]));
-    withFailure((value, context) => context.withKeyPath(['key'], Nothing));
+    withFailure((value, context) => context.withKeyArray(['key'], Nothing));
 
     const withSuccess = fn =>
       Context.ify((value, context) => {
@@ -126,12 +126,12 @@ harness.test('@grr/schemata', t => {
       context.withProperties([['key', Nothing]], NonStrict)
     );
     withSuccess((value, context) =>
-      context.withKeyPath(['key'], Nothing, NonStrict)
+      context.withKeyArray(['key'], Nothing, NonStrict)
     );
 
     t.is(
       Context.ify((value, context) =>
-        context.withKeyPath(['a', 'b'], (value, context) => {
+        context.withKeyArray(['a', 'b'], (value, context) => {
           const ok = value === 42;
           if (ok) context.result = 665;
           return ok;

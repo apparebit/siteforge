@@ -133,7 +133,10 @@ const Categories = Properties({
 
 const ElementContent = Properties(
   {
-    category: Enum(CONTENT_CATEGORY),
+    category: Report(
+      `should be a valid content category`,
+      Enum(CONTENT_CATEGORY)
+    ),
     elements: Report(
       `should list HTML elements valid as content`,
       Array(String)

@@ -21,7 +21,21 @@ const { max } = Math;
 const { parse: parseJSON } = JSON;
 const writable = true;
 
-// -----------------------------------------------------------------------------
+// =============================================================================
+// Runtime Mode: Is It Production?
+
+const isProduction = runServeTask => {
+  if (runServeTask) {
+    if (process.env.NODE_ENV === 'production') {
+      process.env.NODE_ENV = undefined;
+    }
+    return false;
+  }
+
+  return process.env.NODE_ENV === 'production';
+};
+
+// =============================================================================
 // Manifest Loading
 
 const WrappedError = (message, cause) => {
@@ -49,15 +63,16 @@ const loadForgeManifest = async () => {
   }
 };
 
-// -----------------------------------------------------------------------------
-// Option Types and Defaults
+// =============================================================================
+// Option Types as well as Tasks
 
-const tasks = ['htaccess', 'build', 'validate', 'deploy'];
+const tasks = ['htaccess', 'build', 'serve', 'validate', 'deploy'];
 const validateTask = (name, report) => {
   if (tasks.includes(name)) return name;
   return report(`is not a valid task name`);
 };
 
+// When adding option and type, consider adding default value towards EOF.
 const optionTypes = aliased(
   assign(defaults(), {
     buildDir: FilePath,
@@ -72,30 +87,21 @@ const optionTypes = aliased(
     json: Boolean,
     pageProvider: FilePath,
     staticAssets: FileGlob,
+    tlsCert: FilePath,
+    tlsKey: FilePath,
     versionAssets: Boolean,
     _: validateTask,
   })
 );
 
-const optionDefaults = {
-  buildDir: resolve('./build'),
-  componentDir: resolve('./components'),
-  contentDir: resolve('./content'),
-  doNotBuild: () => false,
-  doNotValidate: () => false,
-  pageProvider: 'layout/page.js',
-  realm: process.env.NODE_ENV || 'development',
-  staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
-};
-
 const enableTasks = options => {
   if (options._) options._.forEach(task => task && (options[task] = true));
 };
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Determine Configuration
 
-const configure = async () => {
+export const configure = async () => {
   // Load manifests for website and tool.
   const forgeManifest = await loadForgeManifest();
   const forge = create(null);
@@ -107,6 +113,7 @@ const configure = async () => {
   site.name = siteManifest.name || 'website';
   site.version = siteManifest.version || new Date().toISOString();
 
+  // ---------------------------------------------------------------------------
   // CLI: Parse arguments.
   const argv = process.argv.slice(2);
   const cli = optionsFromArguments(argv, optionTypes);
@@ -121,6 +128,7 @@ const configure = async () => {
     }
   }
 
+  // ---------------------------------------------------------------------------
   // Manifest: Parse options.
   const pkg = optionsFromObject(
     siteManifest['site:forge'] || siteManifest.siteforge || create(null),
@@ -141,15 +149,67 @@ const configure = async () => {
     volume = max(pkg.volume, debug ? 3 : pkg.volume);
   }
 
+  // ---------------------------------------------------------------------------
   // Merge Options.
+  const production = isProduction(cli.serve || pkg.serve);
+
+  const optionDefaults = {
+    buildDir: resolve(production ? './build/prod' : './build/dev'),
+    componentDir: resolve('./components'),
+    contentDir: resolve('./content'),
+    doNotBuild: () => false,
+    doNotValidate: () => false,
+    pageProvider: 'layout/page.js',
+    staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
+    tlsCert: resolve('./config/localhost.cert'),
+    tlsKey: resolve('./config/localhost.key'),
+  };
+
   const options = { ...optionDefaults, ...pkg, ...cli, volume };
 
+  // ---------------------------------------------------------------------------
   // Et voila!
   return {
     site,
     forge,
+    production,
     options,
   };
 };
 
-export default configure;
+// =============================================================================
+// Validate Configuration
+
+export const validate = config => {
+  const { logger, options, production } = config;
+
+  if (options.serve && (production || options.validate || options.deploy)) {
+    if (production) {
+      logger.error(
+        `The serve task cannot run in production mode; please clear NODE_ENV`
+      );
+    }
+    if (options.validate || options.deploy) {
+      logger.error(`The serve task is incompatible with validate and deploy`);
+    }
+
+    process.exitCode = 78; // EX_CONFIG
+    options.help = true;
+  }
+
+  if (options.deploy && (!production || !options.deploymentDir)) {
+    if (!production) {
+      logger.error(
+        `The deploy task only runs in production mode; please set NODE_ENV`
+      );
+    }
+    if (!options.deploymentDir) {
+      logger.error(`The deploy task requires valid "deployment-dir" option`);
+    }
+
+    process.exitCode = 78; // EX_CONFIG
+    options.help = true;
+  }
+
+  return config;
+};

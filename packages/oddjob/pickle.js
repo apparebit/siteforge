@@ -1,13 +1,11 @@
 /* © 2020 Robert Grimm */
 
-import { traceErrorPosition } from './error.js';
+import { isError, traceErrorPosition } from './error.js';
 import { strict as assert } from 'assert';
-import { types } from 'util';
 import { isSet, isMap } from './types.js';
 
 const { getOwnPropertyNames, keys: keysOf } = Object;
 const { isArray } = Array;
-const { isNativeError } = types;
 const { keyFor } = Symbol;
 const { stringify } = JSON;
 
@@ -55,11 +53,11 @@ export default function pickle(value, { sorted = false } = {}) {
   const fragments = [];
   const putInJar = (key, value) => {
     // Let objects override how they are serialized.
-    if (value && typeof value.toJSON === 'function') {
+    if (typeof value?.toJSON === 'function') {
       value = value.toJSON();
     }
     // Unbox primitive values that somehow got boxed.
-    if (value && typeof value.valueOf === 'function') {
+    if (typeof value?.valueOf === 'function') {
       value = value.valueOf();
     }
 
@@ -128,7 +126,7 @@ export default function pickle(value, { sorted = false } = {}) {
       } else {
         names = undefined;
       }
-    } else if (isNativeError(value) || value instanceof Error) {
+    } else if (isError(value)) {
       names = getOwnPropertyNames(value);
       ['name', 'code'].forEach(name => {
         if (!names.includes(name)) names.unshift(name);

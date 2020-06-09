@@ -42,7 +42,7 @@ export function traceErrorPosition(error) {
     .split(/\r?\n/gu)
     .slice(messageLineCount)
     .map(line => {
-      line = line.trimStart();
+      line = line.trim();
       if (line.startsWith('at ')) line = line.slice(3);
       return line;
     });

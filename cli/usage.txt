@@ -61,8 +61,8 @@ volume is 0, which logs `info`, `warning`, `error`, but not `debug`, `trace`.
 
   --build-dir <path>        Write build to directory ("./build/dev" and
                             "./build/prod" depending on mode)
-  --tls-cert <path>         Read TLS certificate ("./config/localhost.cert")
-  --tls-key <path>          Read TLS key from file ("./config/localhost.key")
+  -C, --tls-cert <path>     Read TLS certificate ("./config/localhost.cert")
+  -K, --tls-key <path>      Read TLS key from file ("./config/localhost.key")
   --deployment-dir <rhost>  Copy build to rsync host and directory
 
 

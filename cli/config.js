@@ -76,6 +76,7 @@ const validateTask = (name, report) => {
 const optionTypes = aliased(
   assign(defaults(), {
     buildDir: FilePath,
+    C: 'tlsCert',
     cleanRun: Boolean,
     componentDir: FilePath,
     contentDir: FilePath,
@@ -85,6 +86,7 @@ const optionTypes = aliased(
     doNotValidate: FileGlob,
     dryRun: Boolean,
     json: Boolean,
+    K: 'tlsKey',
     pageProvider: FilePath,
     staticAssets: FileGlob,
     tlsCert: FilePath,

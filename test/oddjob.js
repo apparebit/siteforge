@@ -30,6 +30,7 @@ import { types } from 'util';
 
 const { isArray } = Array;
 const { isNativeError } = types;
+const { MAX_SAFE_INTEGER } = Number;
 const { BASIC, FULL, INDEXED, NONE } = COLOR;
 
 harness.test('@grr/oddjob', t => {
@@ -272,16 +273,38 @@ harness.test('@grr/oddjob', t => {
   // ===========================================================================
   t.test('pickle', t => {
     t.is(pickle(true), `true`);
+    t.is(pickle(new Object(true)), `true`);
     t.is(pickle(42), `42`);
+    t.is(pickle(new Object(42)), `42`);
     t.is(pickle(Infinity), `null`);
     t.is(pickle('ooh la la'), `"ooh la la"`);
+    t.is(pickle(new Object('ooh la la')), `"ooh la la"`);
     t.is(pickle(665n), `665`);
+    t.is(pickle(new Object(665n)), `665`);
+    t.is(
+      pickle(BigInt(MAX_SAFE_INTEGER) + 2n),
+      `{"@type":"bigint","value":"9007199254740993"}`
+    );
+    t.is(
+      pickle(new Object(BigInt(MAX_SAFE_INTEGER) + 2n)),
+      `{"@type":"bigint","value":"9007199254740993"}`
+    );
     t.is(pickle(null), `null`);
     t.is(pickle(), undefined);
     t.is(pickle([undefined]), `[null]`);
-    t.is(pickle(Symbol.iterator), `"@@iterator"`);
-    t.is(pickle(COLOR.NONE), `"@@grr/oddjob/candy/colors/2"`);
-    t.is(pickle(Symbol('boo')), `null`);
+    t.is(pickle(Symbol.iterator), undefined);
+    t.is(pickle([Symbol.iterator]), `[null]`);
+    t.is(pickle(/.*/u), `"/.*/u"`);
+
+    t.is(
+      pickle(new Date(`2020-06-19T00:00:00Z`)),
+      `"2020-06-19T00:00:00.000Z"`
+    );
+
+    t.is(
+      pickle(new URL(`https://apparebit.com/about`)),
+      `"https://apparebit.com/about"`
+    );
 
     t.is(
       pickle({
@@ -292,29 +315,21 @@ harness.test('@grr/oddjob', t => {
       `13`
     );
 
-    t.is(
-      pickle({
-        valueOf() {
-          return 'yo!';
-        },
-      }),
-      `"yo!"`
-    );
-
     let v = { w: {} };
     v.w.v = v.w;
-    t.is(pickle(v), `{"w":{"v":{"@ref":"@[\\"w\\"]"}}}`);
+    t.throws(() => pickle(v));
+    t.is(pickle(v, { decycled: true }), `{"w":{"v":{"@ref":"$[\\"w\\"]"}}}`);
 
     t.is(pickle([1, 2, 3]), `[1,2,3]`);
     t.is(pickle(new Set([1, 2, 3])), `[1,2,3]`);
 
     t.is(
       pickle(TracelessError('boo')),
-      `{"name":"TracelessError","stack":[],"message":"boo"}`
+      `{"@type":"error","name":"TracelessError","message":"boo","stack":[]}`
     );
 
     const fn = number => number === 42;
-    t.is(pickle(fn), `{"@fn":"number => number === 42"}`);
+    t.is(pickle(fn), `{"@type":"function","value":"number => number === 42"}`);
 
     t.is(
       pickle(
@@ -323,7 +338,7 @@ harness.test('@grr/oddjob', t => {
           [{}, 1],
         ])
       ),
-      `{}`
+      `[["key1",2],[{},1]]`
     );
 
     t.is(
@@ -333,7 +348,7 @@ harness.test('@grr/oddjob', t => {
           ['key2', 1],
         ])
       ),
-      `{"key1":2,"key2":1}`
+      `[["key1",2],["key2",1]]`
     );
 
     t.is(

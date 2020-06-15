@@ -1,174 +1,84 @@
 /* © 2020 Robert Grimm */
 
-import { isError, traceErrorPosition } from './error.js';
-import { strict as assert } from 'assert';
-import { isSet, isMap } from './types.js';
+import { isError, traceErrorPosition } from '@grr/oddjob/error';
+import { isBoxed, isMap, isSet, isURL } from '@grr/oddjob/types';
+import { types } from 'util';
 
+const { from: toArray, isArray } = Array;
 const { getOwnPropertyNames, keys: keysOf } = Object;
-const { isArray } = Array;
-const { keyFor } = Symbol;
+const { has } = Reflect;
+const { isDate, isRegExp } = types;
+const { MAX_SAFE_INTEGER, MIN_SAFE_INTEGER } = Number;
 const { stringify } = JSON;
 
-const wellKnownSymbols = (function () {
-  const result = new Map();
-  for (const key of getOwnPropertyNames(Symbol)) {
-    const value = Symbol[key];
-    if (typeof value === 'symbol') {
-      result.set(value, `"@@${key}"`);
-    }
-  }
-  return result;
-})();
-
-// Only serialize well-known symbols and publicly registered ones.
-const pickleSymbol = (symbol, fragments) => {
-  let description = wellKnownSymbols.get(symbol);
-  if (!description) {
-    description = keyFor(symbol);
-    if (description) description = stringify(`@@${description}`);
-  }
-  return fragments.push(description || `null`);
-};
-
-export default function pickle(value, { sorted = false } = {}) {
-  // The current path and the mapping from objects to paths.
-  const path = [];
-  const pathsForObjects = new Map();
-
-  // Reference object if repeated, otherwise serialize it.
-  const refOrObject = (key, value) => {
-    const ref = pathsForObjects.get(value);
-    if (ref) return ref;
-
-    path.push(key === undefined ? `@` : `[${stringify(key)}]`);
-    pathsForObjects.set(value, path.join(''));
-    return undefined;
+export function replaceError(error, sorted) {
+  const replacement = {
+    '@type': 'error',
+    name: error.name,
+    code: error.code,
+    message: error.message,
+    stack: traceErrorPosition(error),
   };
 
-  // Done serializing object.
-  const doneWith = (key, value) => {
-    assert(path.pop(), value);
-  };
+  const extras = getOwnPropertyNames(error).filter(
+    k => k !== '__proto__' && !has(replacement, k)
+  );
+  if (sorted) extras.sort();
+  extras.reduce((o, k) => ((o[k] = error[k]), o), replacement);
 
-  const fragments = [];
-  const putInJar = (key, value) => {
-    // Let objects override how they are serialized.
-    if (typeof value?.toJSON === 'function') {
-      value = value.toJSON();
-    }
-    // Unbox primitive values that somehow got boxed.
-    if (typeof value?.valueOf === 'function') {
-      value = value.valueOf();
-    }
+  return replacement;
+}
 
-    // Take care of non-object values.
+function createReplacer({ decycled = false, sorted = false } = {}) {
+  const seen = decycled ? new Map() : null;
+
+  return function replacer(key, value) {
+    if (isBoxed(value)) value = value.valueOf();
     const type = typeof value;
-    switch (type) {
-      case 'boolean':
-        return fragments.push(String(value));
-      case 'number':
-        return fragments.push(isFinite(value) ? String(value) : 'null');
-      case 'string':
-        return fragments.push(stringify(value));
-      case 'bigint':
-        return fragments.push(String(value));
-      case 'undefined':
-        return fragments.push('null');
-      case 'symbol':
-        return pickleSymbol(value, fragments);
-      case 'function':
-        return fragments.push(`{"@fn":${stringify(value.toString())}}`);
-      default:
-        assert(type === 'object');
-        if (value === null) return fragments.push('null');
+
+    if (type === 'bigint') {
+      return MIN_SAFE_INTEGER <= value && value <= MAX_SAFE_INTEGER
+        ? Number(value)
+        : { '@type': 'bigint', value: String(value) };
+    } else if (type === 'function') {
+      return { '@type': 'function', value: value.toString() };
+    } else if (
+      value == null ||
+      type !== 'object' ||
+      isDate(value) ||
+      isURL(value)
+    ) {
+      return value;
+    } else if (isRegExp(value)) {
+      return value.toString();
     }
 
-    // Emit reference or serialize object?
-    const ref = refOrObject(key, value);
-    if (ref) return fragments.push(`{"@ref":${stringify(ref)}}`);
-
-    // --------------- Sets and Arrays ---------------
-    let elements;
-    if (isSet(value)) {
-      elements = value.values();
-    } else if (isArray(value)) {
-      elements = value;
+    if (decycled) {
+      let path = seen.get(value);
+      if (path) return { '@ref': path };
+      path = seen.get(this);
+      seen.set(value, path ? `${path}[${stringify(key)}]` : '$');
     }
 
-    if (elements) {
-      fragments.push('[');
-      let index = 0;
-      for (const element of elements) {
-        if (index > 0) fragments.push(',');
-        putInJar(index, element);
-        index += 1;
-      }
-      fragments.push(']');
-      return doneWith(key, value);
-    }
-
-    // ----- Maps with Primitive Keys as well as Errors -----
-    let names, lookup;
-    if (isMap(value)) {
-      let objectifiable = true;
-
-      names = [...value.keys()];
-      for (const name of names) {
-        const type = typeof name;
-        if (type === 'function' || type === 'object') {
-          objectifiable = false;
-          break;
-        }
-      }
-
-      if (objectifiable) {
-        lookup = n => value.get(n);
-      } else {
-        names = undefined;
-      }
+    if (isArray(value)) {
+      return value;
+    } else if (isSet(value)) {
+      return toArray(value.values());
+    } else if (isMap(value)) {
+      return toArray(value.entries());
     } else if (isError(value)) {
-      names = getOwnPropertyNames(value);
-      ['name', 'code'].forEach(name => {
-        if (!names.includes(name)) names.unshift(name);
-      });
-
-      const trace = traceErrorPosition(value);
-      lookup = n => (n === 'stack' ? trace : value[n]);
+      return replaceError(value, sorted);
+    } else if (sorted) {
+      return keysOf(value)
+        .filter(k => k !== '__proto__')
+        .sort()
+        .reduce((o, k) => ((o[k] = value[k]), o), {});
+    } else {
+      return value;
     }
-
-    if (!names) {
-      names = keysOf(value);
-      lookup = n => value[n];
-    }
-
-    if (sorted) {
-      names.sort();
-    }
-
-    fragments.push('{');
-    let first = true;
-    for (const name of names) {
-      const propertyValue = lookup(name);
-
-      if (propertyValue !== undefined) {
-        if (first) {
-          first = false;
-        } else {
-          fragments.push(',');
-        }
-
-        fragments.push(`"${name}":`);
-        putInJar(name, propertyValue);
-      }
-    }
-    fragments.push('}');
-    return doneWith(key, value);
   };
+}
 
-  if (value === undefined) {
-    return undefined;
-  }
-
-  putInJar(undefined, value);
-  return fragments.join('');
+export default function pickle(value, options) {
+  return stringify(value, createReplacer(options));
 }

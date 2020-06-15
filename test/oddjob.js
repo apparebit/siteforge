@@ -23,7 +23,7 @@ import {
   TracelessError,
   traceErrorPosition,
 } from '@grr/oddjob/error';
-import { isMap, isSet } from '@grr/oddjob/types';
+import { isBoxed, isMap, isSet, isURL } from '@grr/oddjob/types';
 import pickle from '@grr/oddjob/pickle';
 import { runInNewContext } from 'vm';
 import { types } from 'util';
@@ -364,6 +364,22 @@ harness.test('@grr/oddjob', t => {
     t.ok(!isMap(runInNewContext('new Set()')));
     t.ok(isMap(new Map()));
     t.ok(isMap(runInNewContext('new Map()')));
+
+    // ---------------------------------------------------------------- isURL()
+    t.ok(isURL(new URL('https://apparebit.com/')));
+    t.notOk(isURL('https://apparebit.com/'));
+
+    // -------------------------------------------------------------- isBoxed()
+    t.ok(isBoxed(new Object(665n)));
+    t.ok(isBoxed(new Object(true)));
+    t.ok(isBoxed(new Object(42)));
+    t.ok(isBoxed(new Object('boo')));
+    t.notOk(isBoxed());
+    t.notOk(isBoxed(null));
+    t.notOk(isBoxed(665n));
+    t.notOk(isBoxed(true));
+    t.notOk(isBoxed(42));
+    t.notOk(isBoxed('boo'));
 
     t.end();
   });

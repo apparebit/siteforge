@@ -2,6 +2,7 @@
 
 const { has: MapHas } = Map.prototype;
 const { has: SetHas } = Set.prototype;
+const { toString } = Object.prototype;
 
 export function isMap(value) {
   try {
@@ -19,4 +20,18 @@ export function isSet(value) {
   } catch {
     return false;
   }
+}
+
+export function isURL(value) {
+  return value instanceof URL || toString.call(value) === '[object URL]';
+}
+
+const Boxed = new Set(['BigInt', 'Boolean', 'Number', 'String']);
+
+export function isBoxed(value) {
+  return (
+    value != null &&
+    typeof value === 'object' &&
+    Boxed.has(toString.call(value).slice(8, -1))
+  );
 }

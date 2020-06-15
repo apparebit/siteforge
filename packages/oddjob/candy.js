@@ -12,13 +12,13 @@ const STYLISH_CI = ['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI'];
 /** Constants representing the different color modes. */
 export const COLOR = freeze({
   /** Monochrome output. */
-  NONE: Symbol.for(`grr/oddjob/candy/colors/2`),
+  NONE: 2,
   /** Output in 8 base colors each in dark and light variations. */
-  BASIC: Symbol.for(`grr/oddjob/candy/colors/16`),
+  BASIC: 16,
   /** Output in 256 indexed colors. */
-  INDEXED: Symbol.for(`grr/oddjob/candy/colors/256`),
+  INDEXED: 256,
   /** Output in all 16,777,216 colors. */
-  FULL: Symbol.for(`grr/oddjob/candy/colors/16_777_216`),
+  FULL: 16_777_216,
 });
 
 /**
@@ -74,20 +74,20 @@ const [SGR16, SGR256] = (function () {
   const sgr16 = assign(create(null), {
     bold: freeze(['1', '22']),
     faint: freeze(['90', '39']),
-    green: freeze(['32;1', '39;22']),
-    greenReg: freeze(['32', '39']),
-    greenBg: freeze(['102;1', '49;22']),
+    boldGreen: freeze(['32;1', '39;22']),
+    green: freeze(['32', '39']),
+    overGreen: freeze(['102;1', '49;22']),
     magenta: freeze(['35;1', '39;22']),
-    orange: freeze(['33;1', '39;22']),
-    red: freeze(['31;1', '39;22']),
-    redReg: freeze(['31', '39']),
-    redBg: freeze(['97;41;1', '39;49;22']),
+    boldOrange: freeze(['33;1', '39;22']),
+    boldRed: freeze(['31;1', '39;22']),
+    red: freeze(['31', '39']),
+    overRed: freeze(['97;41;1', '39;49;22']),
     plain: null,
   });
 
   const sgr256 = assign(create(sgr16), {
-    greenBg: freeze(['48;5;119;1', '49;22']),
-    orange: freeze(['38;5;208;1', '39;22']),
+    overGreen: freeze(['48;5;119;1', '49;22']),
+    boldOrange: freeze(['38;5;208;1', '39;22']),
   });
 
   return [freeze(sgr16), freeze(sgr256)];

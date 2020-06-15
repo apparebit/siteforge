@@ -107,15 +107,15 @@ harness.test('@grr/oddjob', t => {
     // ---------------------------------------------------------------- candy()
     let sweet = candy({ env: { TERM: 'dumb' }, stream: { isTTY: true } });
     t.is(sweet.colors, NONE);
-    t.is(sweet.orange(''), '');
+    t.is(sweet.boldOrange(''), '');
 
     sweet = candy({ env: { TERM: 'xterm' }, stream: { isTTY: true } });
     t.is(sweet.colors, BASIC);
-    t.is(sweet.orange(''), '\x1b[33;1m\x1b[39;22m');
+    t.is(sweet.boldOrange(''), '\x1b[33;1m\x1b[39;22m');
 
     sweet = candy({ env: { TERM: 'xterm-256' }, stream: { isTTY: true } });
     t.is(sweet.colors, INDEXED);
-    t.is(sweet.orange(''), '\x1b[38;5;208;1m\x1b[39;22m');
+    t.is(sweet.boldOrange(''), '\x1b[38;5;208;1m\x1b[39;22m');
 
     t.end();
   });

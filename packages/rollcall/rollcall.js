@@ -22,9 +22,9 @@ const noop = () => {};
 noop.active = false;
 
 const levels = {
-  error: { label: '[ERROR]', threshold: -2, style: 'red' },
-  warning: { label: '[WARN] ', threshold: -1, style: 'orange' },
-  success: { label: '[NOTE] ', threshold: 0, style: 'bold' },
+  error: { label: '[ERROR]', threshold: -2, style: 'boldRed' },
+  warning: { label: '[WARN] ', threshold: -1, style: 'boldOrange' },
+  success: { label: '[NOTE] ', threshold: 0, style: 'boldGreen' },
   notice: { label: '[NOTE] ', threshold: 0, style: 'bold' },
   info: { label: '[INFO] ', threshold: 1, style: 'plain' },
   debug: { label: '[DEBUG]', threshold: 2, style: 'faint' },
@@ -341,8 +341,8 @@ export default function Rollcall(options = {}) {
     report: {
       configurable,
       value: createReporter(println, {
-        styleFailure: candy.redReg,
-        styleSuccess: candy.greenReg,
+        styleFailure: candy.red,
+        styleSuccess: candy.green,
         write,
       }),
     },
@@ -352,8 +352,8 @@ export default function Rollcall(options = {}) {
         banner,
         labels,
         service,
-        styleFailure: candy.redBg,
-        styleSuccess: candy.greenBg,
+        styleFailure: candy.overRed,
+        styleSuccess: candy.overGreen,
       }),
     },
     toCodeMessageData: {

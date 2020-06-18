@@ -22,7 +22,6 @@ import {
 
 import harness from './harness.js';
 import Model from '@grr/html';
-import Sq from '@grr/sequitur';
 
 const answer = [
   null,
@@ -169,24 +168,26 @@ harness.test('@grr/proact', t => {
     t.notOk(isValidComment('This is not --!> a valid comment.'));
 
     const model = await Model.default();
-    const steps = [];
-    for await (const step of render(theQuestion, { model })) {
-      steps.push(step);
+    const fragments = [];
+    for await (const fragment of render(theQuestion, { model })) {
+      fragments.push(fragment);
     }
 
     t.equal(
-      steps.join(''),
+      fragments.join(''),
       '<div class=highlight><span>And the answer is 42!</span></div>'
     );
 
+    fragments.length = 0;
+    for await (const fragment of render(
+      // prettier-ignore
+      html`<div class="highlight"><span>And the answer is 42!</span></div>`
+    )) {
+      fragments.push(fragment);
+    }
+
     t.equal(
-      await Sq.from(
-        render(
-          html`
-            <div class="highlight"><span>And the answer is 42!</span></div>
-          `
-        )
-      ).join(),
+      fragments.join(''),
       '<div class=highlight><span>And the answer is 42!</span></div>'
     );
 

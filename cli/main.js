@@ -11,7 +11,7 @@ import { Kind } from '@grr/inventory/kind';
 import launch from '@grr/loader/launch';
 import { readFile, rmdir, toDirectory } from '@grr/fs';
 import run from '@grr/run';
-import serve from './serve.js';
+//import serve from '@grr/simulation';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
@@ -187,7 +187,7 @@ async function main() {
 
   if (options.develop) {
     task(config, `Serve website in "${options.buildDir}"`);
-    await serve(config);
+    //await serve(config);
   }
 
   // ---------------------------------------------------------------------------

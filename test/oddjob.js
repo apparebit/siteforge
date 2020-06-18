@@ -18,12 +18,13 @@ import {
 import { count, duration } from '@grr/oddjob/format';
 import harness from './harness.js';
 import {
+  ErrorMessage,
   isError,
   relocate,
-  TracelessError,
   traceErrorPosition,
+  traceErrorMessage,
 } from '@grr/oddjob/error';
-import { isBoxed, isMap, isSet, isURL } from '@grr/oddjob/types';
+import { isBoxed, isMap, isSet, isStringArray, isURL } from '@grr/oddjob/types';
 import pickle from '@grr/oddjob/pickle';
 import { runInNewContext } from 'vm';
 import { types } from 'util';
@@ -142,19 +143,28 @@ harness.test('@grr/oddjob', t => {
     t.ok(isNativeError(x));
     t.ok(isError(x));
 
-    // ------------------------------------------------------- TracelessError()
-    x = TracelessError();
+    // --------------------------------------------------------- ErrorMessage()
+    x = new ErrorMessage();
     t.ok(x instanceof Error);
     t.ok(isNativeError(x));
     t.ok(isError(x));
+    t.is(x.name, 'ErrorMessage');
+    t.is(x.message, '');
+    t.is(x.stack, 'Error');
+    t.is(x.toString(), 'Error');
 
-    x = TracelessError('boo', TypeError);
+    x = new ErrorMessage('boo');
     t.ok(x instanceof Error);
     t.ok(isNativeError(x));
     t.ok(isError(x));
+    t.is(x.name, 'ErrorMessage');
+    t.is(x.message, 'boo');
+    t.is(x.stack, 'Error: boo');
+    t.is(x.toString(), 'Error: boo');
 
-    // --------------------------------------------------- traceErrorPosition()
+    // ------------------------------ traceErrorMessage(), traceErrorPosition()
     x = new Error('boo');
+    t.is(traceErrorMessage(x), 'Error: boo');
     const trace = traceErrorPosition(x);
     t.ok(isArray(trace));
     t.ok(trace.length > 5);
@@ -191,17 +201,17 @@ harness.test('@grr/oddjob', t => {
     t.is(count(665, 'second'), '665 seconds');
 
     // ------------------------------------------------------------- duration()
-    t.is(duration(3), '3 ms');
+    t.is(duration(3), '3ms');
     t.is(duration(1003), '1.003 s');
     t.is(duration(61003), '1:01.003 min');
 
     // Check rounding to whole milliseconds.
-    t.is(duration(3.69), '4 ms');
+    t.is(duration(3.69), '4ms');
     t.is(duration(1003.69), '1.004 s');
     t.is(duration(61003.21), '1:01.003 min');
 
     // Check big integers, which start in nanoseconds.
-    t.is(duration(3_690_000n), '4 ms');
+    t.is(duration(3_690_000n), '4ms');
     t.is(duration(1_003_690_000n), '1.004 s');
     t.is(duration(61_003_210_000n), '1:01.003 min');
 
@@ -324,8 +334,8 @@ harness.test('@grr/oddjob', t => {
     t.is(pickle(new Set([1, 2, 3])), `[1,2,3]`);
 
     t.is(
-      pickle(TracelessError('boo')),
-      `{"@type":"error","name":"TracelessError","message":"boo","stack":[]}`
+      pickle(new ErrorMessage('boo')),
+      `{"@type":"error","name":"ErrorMessage","message":"boo","stack":[]}`
     );
 
     const fn = number => number === 42;
@@ -395,6 +405,14 @@ harness.test('@grr/oddjob', t => {
     t.notOk(isBoxed(true));
     t.notOk(isBoxed(42));
     t.notOk(isBoxed('boo'));
+
+    // -------------------------------------------------------------- isBoxed()
+    t.notOk(isStringArray());
+    t.notOk(isStringArray(null));
+    t.notOk(isStringArray(665));
+    t.notOk(isStringArray([665]));
+    t.ok(isStringArray([]));
+    t.ok(isStringArray(['boo']));
 
     t.end();
   });

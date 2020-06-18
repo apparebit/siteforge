@@ -74,20 +74,27 @@ const [SGR16, SGR256] = (function () {
   const sgr16 = assign(create(null), {
     bold: freeze(['1', '22']),
     faint: freeze(['90', '39']),
+    fainter: freeze(['37', '39']),
+
     boldGreen: freeze(['32;1', '39;22']),
     green: freeze(['32', '39']),
     overGreen: freeze(['102;1', '49;22']),
+
     magenta: freeze(['35;1', '39;22']),
+
     boldOrange: freeze(['33;1', '39;22']),
+
     boldRed: freeze(['31;1', '39;22']),
     red: freeze(['31', '39']),
     overRed: freeze(['97;41;1', '39;49;22']),
+
     plain: null,
   });
 
   const sgr256 = assign(create(sgr16), {
     overGreen: freeze(['48;5;119;1', '49;22']),
     boldOrange: freeze(['38;5;208;1', '39;22']),
+    overRed: freeze(['38;5;15;41;1', '39;49;22']),
   });
 
   return [freeze(sgr16), freeze(sgr256)];

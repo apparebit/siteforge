@@ -12,9 +12,9 @@ export function count(quantity, noun, suffix = 's') {
 
 const formats = [
   { digits: 3, separator: '', unit: 'ms' },
-  { digits: 2, separator: '.', unit: 's' },
-  { digits: 2, separator: ':', unit: 'min' },
-  { digits: 2, separator: ':', unit: 'h' },
+  { digits: 2, separator: '.', unit: ' s' },
+  { digits: 2, separator: ':', unit: ' min' },
+  { digits: 2, separator: ':', unit: ' h' },
 ];
 
 /**
@@ -67,6 +67,6 @@ export function duration(value) {
     text += part + format.separator;
   }
 
-  text += ' ' + unit;
+  text += unit;
   return text;
 }

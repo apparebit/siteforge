@@ -2,6 +2,7 @@
 
 const { has: MapHas } = Map.prototype;
 const { has: SetHas } = Set.prototype;
+const { isArray } = Array;
 const { toString } = Object.prototype;
 
 export function isMap(value) {
@@ -34,4 +35,12 @@ export function isBoxed(value) {
     typeof value === 'object' &&
     Boxed.has(toString.call(value).slice(8, -1))
   );
+}
+
+export function isStringArray(value) {
+  if (!isArray(value)) return false;
+  for (const element of value) {
+    if (typeof element !== 'string') return false;
+  }
+  return true;
 }

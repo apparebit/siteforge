@@ -1,46 +1,81 @@
 /* © 2020 Robert Grimm */
 
 import Builtin from './builtin.js';
+import { EOL } from 'os';
 import { types } from 'util';
 
 const BuiltinError = Builtin.Error;
 const configurable = true;
-const { defineProperty } = Object;
+const { defineProperty, getOwnPropertyNames } = Object;
 const { isNativeError } = types;
+const writable = true;
 
 /** Determine whether the value is an error object. */
 export function isError(value) {
   return isNativeError(value) || value instanceof BuiltinError;
 }
 
-class TracelessErrorType extends BuiltinError {
+const basicErrorProps = new Set(['code', 'message', 'name', 'stack']);
+
+/**
+ * Determine whether the value is an error object with only basic properties.
+ * All practical JavaScript implementations add a `stack` to the standard's
+ * `message` and `name` properties. Node.js further adds the `code` but also
+ * surfaces it through the `name`. Hence, this function treats an error with
+ * only these four properties as unadorned.
+ */
+export function isUnadornedError(value) {
+  if (!isError(value)) return false;
+
+  for (const name of getOwnPropertyNames(value)) {
+    if (!basicErrorProps.has(name)) return false;
+  }
+  return true;
+}
+
+/** An error that wraps a message but has empty stack. */
+export class ErrorMessage extends BuiltinError {
+  constructor(message) {
+    const { stackTraceLimit } = BuiltinError;
+    BuiltinError.stackTraceLimit = 0;
+    super(message);
+    BuiltinError.stackTraceLimit = stackTraceLimit;
+
+    // Sadly, Node.js' shim for V8's stackTraceLimit prefixes any error stack
+    // with the name of the error and a colon. That looks rather awkward when
+    // both message and stack trace are empty.
+    defineProperty(this, 'stack', {
+      configurable,
+      writable,
+      value: this.toString(),
+    });
+  }
+
   get name() {
-    return 'TracelessError';
+    return 'ErrorMessage';
+  }
+
+  toString() {
+    return this.message ? `Error: ${this.message}` : `Error`;
   }
 }
 
-defineProperty(TracelessErrorType, 'name', {
-  configurable,
-  value: 'TracelessError',
-});
+const messageLineCount = error =>
+  (error.message.match(/\r?\n/gu) || []).length + 1;
 
-/** Create a new error with the given message and no stack trace. */
-export function TracelessError(message) {
-  const { stackTraceLimit } = BuiltinError;
-  BuiltinError.stackTraceLimit = 0;
-  try {
-    return new TracelessErrorType(message);
-  } finally {
-    BuiltinError.stackTraceLimit = stackTraceLimit;
-  }
+/** Extract the given error's formatted message from the stack trace. */
+export function traceErrorMessage(error) {
+  return error.stack
+    .split(/\r?\n/gu)
+    .slice(0, messageLineCount(error))
+    .join(EOL);
 }
 
 /** Extract the given error's position trace as an array. */
 export function traceErrorPosition(error) {
-  const messageLineCount = (error.message.match(/\r?\n/gu) || []).length + 1;
   return error.stack
     .split(/\r?\n/gu)
-    .slice(messageLineCount)
+    .slice(messageLineCount(error))
     .map(line => {
       line = line.trim();
       if (line.startsWith('at ')) line = line.slice(3);

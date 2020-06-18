@@ -137,7 +137,11 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Clean Previous Build
 
-  if ((options.build || options.serve) && options.cleanRun && !options.dryRun) {
+  if (
+    (options.develop || options.build) &&
+    options.cleanRun &&
+    !options.dryRun
+  ) {
     task(config, `Clean previous build in "${options.buildDir}"`);
     await rmdir(options.buildDir, { recursive: true });
   }
@@ -145,7 +149,12 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Scan File System for In-Memory Inventory
 
-  if (options.htaccess || options.build || options.serve || options.validate) {
+  if (
+    options.htaccess ||
+    options.develop ||
+    options.build ||
+    options.validate
+  ) {
     task(config, `Create inventory of "${options.contentDir}"`);
     try {
       await takeInventory(config);
@@ -171,12 +180,12 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Build and Serve Content
 
-  if (options.build) {
+  if (options.develop || options.build) {
     task(config, `Build website in "${options.buildDir}"`);
     await buildAll(config);
   }
 
-  if (options.serve) {
+  if (options.develop) {
     task(config, `Serve website in "${options.buildDir}"`);
     await serve(config);
   }

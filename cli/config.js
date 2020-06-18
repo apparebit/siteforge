@@ -24,8 +24,8 @@ const writable = true;
 // =============================================================================
 // Runtime Mode: Is It Production?
 
-const isProduction = runServeTask => {
-  if (runServeTask) {
+const isProduction = runDevelopTask => {
+  if (runDevelopTask) {
     if (process.env.NODE_ENV === 'production') {
       process.env.NODE_ENV = undefined;
     }
@@ -66,7 +66,7 @@ const loadForgeManifest = async () => {
 // =============================================================================
 // Option Types as well as Tasks
 
-const tasks = ['htaccess', 'build', 'serve', 'validate', 'deploy'];
+const tasks = ['htaccess', 'develop', 'build', 'validate', 'deploy'];
 const validateTask = (name, report) => {
   if (tasks.includes(name)) return name;
   return report(`is not a valid task name`);
@@ -153,7 +153,7 @@ export const configure = async () => {
 
   // ---------------------------------------------------------------------------
   // Merge Options.
-  const production = isProduction(cli.serve || pkg.serve);
+  const production = isProduction(cli.develop || pkg.develop);
 
   const optionDefaults = {
     buildDir: resolve(production ? './build/prod' : './build/dev'),
@@ -185,14 +185,14 @@ export const configure = async () => {
 export const validate = config => {
   const { logger, options, production } = config;
 
-  if (options.serve && (production || options.validate || options.deploy)) {
+  if (options.develop && (production || options.validate || options.deploy)) {
     if (production) {
       logger.error(
-        `The serve task cannot run in production mode; please clear NODE_ENV`
+        `The develop task cannot run in production mode; please clear NODE_ENV`
       );
     }
     if (options.validate || options.deploy) {
-      logger.error(`The serve task is incompatible with validate and deploy`);
+      logger.error(`The develop task is incompatible with validate and deploy`);
     }
 
     process.exitCode = 78; // EX_CONFIG

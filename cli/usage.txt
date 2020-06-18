@@ -1,13 +1,14 @@
+
 > <mode>? siteforge <option>* <task>*
 
 The site:forge static website generator can perform the following <b>tasks</b>:
 
-  build            Build the entire website
-  serve            Locally serve website while updating build as necessary
+  develop          Build and serve website, updating content as it changes
+  build            Build the complete website
   validate         Validate the website with the Nu Html Checker
   deploy           Deploy the website (requires NODE_ENV to be `production`)
 
-The <b>serve task</b> forces site:forge into development mode and hence clears
+The <b>develop task</b> forces site:forge into development mode and hence clears
 `NODE_ENV`. It also is incompatible with the validate and deploy tasks. In
 contrast, the <b>deploy task</b> can only run in production mode.
 

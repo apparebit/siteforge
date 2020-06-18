@@ -8,7 +8,7 @@ import {
   writeVersionedFile,
 } from '@grr/fs';
 
-import { TracelessError } from '@grr/oddjob/error';
+import { ErrorMessage } from '@grr/oddjob/error';
 import cssnano from 'cssnano';
 import { join } from 'path';
 import minify from 'babel-minify';
@@ -186,7 +186,9 @@ export function extractFrontMatter(file) {
   const start = match[0].length;
   const end = content.indexOf(FRONT_CLOSE);
   if (end === -1) {
-    throw TracelessError(`front matter for "${file.path}" has no closing tag`);
+    throw new ErrorMessage(
+      `front matter for "${file.path}" has no closing tag`
+    );
   }
   const frontMatterEnd = end + FRONT_CLOSE.length;
 
@@ -205,7 +207,7 @@ export function extractFrontMatter(file) {
   );
 
   if (metadata == null || typeof metadata !== 'object') {
-    throw TracelessError(`front matter for "${file.path}" is not an object`);
+    throw new ErrorMessage(`front matter for "${file.path}" is not an object`);
   } else {
     delete metadata.__proto__;
   }
@@ -232,7 +234,7 @@ export function indexByKeywords(file, context) {
 //   try {
 //     module = await import(url);
 //   } catch (x) {
-//     const error = TracelessError(`unable to load data "${path}"`);
+//     const error = new ErrorMessage(`unable to load data "${path}"`);
 //     error.cause = x;
 //     throw error;
 //   }
@@ -241,7 +243,7 @@ export function indexByKeywords(file, context) {
 
 //   const data = await module.default(module, context);
 //   if (data == null || typeof data !== 'object') {
-//     throw TracelessError(`data source "${path}" is not an object`);
+//     throw new ErrorMessage(`data source "${path}" is not an object`);
 //   }
 //   return data;
 // }
@@ -259,13 +261,15 @@ async function loadComponent(spec, context) {
   try {
     component = await import(finalSpec);
   } catch (x) {
-    const error = TracelessError(`unable to load component "${spec}"`);
+    const error = new ErrorMessage(`unable to load component "${spec}"`);
     error.cause = x;
     throw error;
   }
 
   if (typeof component.default !== 'function') {
-    throw TracelessError(`component "${spec}" doesn't default export function`);
+    throw new ErrorMessage(
+      `component "${spec}" doesn't default export function`
+    );
   }
   return component;
 }

@@ -225,8 +225,8 @@ async function main() {
     );
   }
 
-  logger.signOff({
-    files: (config.inventory && config.inventory.size) || 0,
+  logger.done({
+    files: config.inventory?.size || 0,
     duration: config.stopMainTimer().get(),
   });
 }

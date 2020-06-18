@@ -27,7 +27,7 @@ export default async function createContext(configure) {
 
     context.logger = new Rollcall({
       json: context.options.json,
-      service: context.forge.name,
+      label: context.forge.name,
       volume: context.options.volume,
     });
     context.metrics = metrics;

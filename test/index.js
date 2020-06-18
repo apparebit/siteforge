@@ -21,7 +21,7 @@ const endTest = metrics.timer('main').start();
 
 const parser = new Parser({});
 const rollcall = new Rollcall({});
-parser.on('result', result => rollcall.report(result));
+parser.on('result', result => rollcall.test(result));
 
 const onComment = comment => rollcall.info(comment);
 const onChild = child => {
@@ -32,7 +32,7 @@ onChild(parser);
 
 const done = () => {
   const { pass, fail } = harness.counts;
-  rollcall.signOff({
+  rollcall.doneTesting({
     pass,
     fail,
     duration: endTest().get(),

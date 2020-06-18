@@ -28,7 +28,8 @@
     "rsync",
     "slugify",
     "stateful",
-    "transpilation"
+    "transpilation",
+    "unstyled"
   ],
   "debug.node.useV3": true,
   "debug.javascript.usePreview": true

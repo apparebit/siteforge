@@ -8,7 +8,6 @@ const EnumConstantType = new Set(['bigint', 'boolean', 'number', 'string']);
 const { isArray } = Array;
 const { isSafeInteger } = Number;
 const { iterator } = Symbol;
-const pool = [];
 
 export default class Context {
   static assertString(value) {
@@ -278,6 +277,8 @@ export default class Context {
 
   // ---------------------------------------------------------------------------
 
+  static #pool = [];
+
   /** Wrap the given function to be invoked with a context. */
   static ify(fn) {
     return (value, context) => {
@@ -286,11 +287,11 @@ export default class Context {
         return fn(value, context);
       }
 
-      if (pool.length === 0) {
-        pool.push(new Context());
+      if (Context.#pool.length === 0) {
+        Context.#pool.push(new Context());
       }
 
-      context = pool.pop();
+      context = Context.#pool.pop();
       context.#result = context.#value = value;
 
       try {
@@ -311,7 +312,7 @@ export default class Context {
         context.#result = context.#value = undefined;
         context.#defects.length = 0;
         context.#defectCount = 0;
-        pool.push(context);
+        Context.#pool.push(context);
       }
     };
   }

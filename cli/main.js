@@ -108,11 +108,6 @@ function deploy(config) {
 
 // =============================================================================
 
-let taskNo = 1;
-function task(config, description) {
-  config.logger.notice(`§${taskNo++} ${description}`);
-}
-
 async function main() {
   // ---------------------------------------------------------------------------
   // Determine Configuration and Create Logger.
@@ -128,7 +123,7 @@ async function main() {
   }
   if (options.help) {
     const help = await readFile(join(__directory, 'usage.txt'), 'utf8');
-    logger.println(logger.embolden(help));
+    logger.println(logger.embellish(help));
   }
   if (options.version || options.help) {
     return;
@@ -142,7 +137,7 @@ async function main() {
     options.cleanRun &&
     !options.dryRun
   ) {
-    task(config, `Clean previous build in "${options.buildDir}"`);
+    logger.section(1, `Clean previous build in "${options.buildDir}"`, config);
     await rmdir(options.buildDir, { recursive: true });
   }
 
@@ -155,7 +150,7 @@ async function main() {
     options.build ||
     options.validate
   ) {
-    task(config, `Create inventory of "${options.contentDir}"`);
+    logger.section(2, `Create inventory of "${options.contentDir}"`, config);
     try {
       await takeInventory(config);
     } catch (x) {
@@ -169,7 +164,7 @@ async function main() {
   // Build .htaccess
 
   if (options.htaccess && !options.dryRun) {
-    task(config, `Build ".htaccess"`);
+    logger.section(3.1, `Build ".htaccess"`, config);
     try {
       await run('bash', [BUILD_HTACCESS], { cwd: options.contentDir });
     } catch (x) {
@@ -181,12 +176,12 @@ async function main() {
   // Build and Serve Content
 
   if (options.develop || options.build) {
-    task(config, `Build website in "${options.buildDir}"`);
+    logger.section(3.2, `Build website in "${options.buildDir}"`, config);
     await buildAll(config);
   }
 
   if (options.develop) {
-    task(config, `Serve website in "${options.buildDir}"`);
+    logger.section(3.3, `Serve website in "${options.buildDir}"`, config);
     //await serve(config);
   }
 
@@ -196,7 +191,7 @@ async function main() {
   if (options.validate && logger.errors) {
     logger.warning(`Build has errors, skipping validation`);
   } else if (options.validate && !options.dryRun) {
-    task(config, `Validate markup in "${options.buildDir}"`);
+    logger.section(4, `Validate markup in "${options.buildDir}"`, config);
 
     try {
       await validateMarkup(config);
@@ -212,7 +207,7 @@ async function main() {
   if (options.deploy && logger.errors) {
     logger.warning(`Build has errors, skipping deployment`);
   } else if (options.deploy) {
-    task(config, `Deploy to "${options.deploymentDir}"`);
+    logger.section(5, `Deploy to "${options.deploymentDir}"`, config);
     await deploy(config);
   }
 

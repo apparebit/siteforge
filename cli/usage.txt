@@ -1,79 +1,78 @@
 
-> <mode>? siteforge <option>* <task>*
+  <i>site:forge — a static website generator</i>
 
-The site:forge static website generator can perform the following <b>tasks</b>:
+  <b>USAGE</b>
 
-  develop          Build and serve website, updating content as it changes
-  build            Build the complete website
-  validate         Validate the website with the Nu Html Checker
-  deploy           Deploy the website (requires NODE_ENV to be `production`)
+      <b>$</b> [<u>mode</u>] siteforge [<u>options</u>] <u>command</u> ...
 
-The <b>develop task</b> forces site:forge into development mode and hence clears
-`NODE_ENV`. It also is incompatible with the validate and deploy tasks. In
-contrast, the <b>deploy task</b> can only run in production mode.
+  <b>COMMANDS</b>
 
-The following <b>options</b> further control task execution. If a project
-follows the naming conventions documented below, the use of options should be
-mostly unnecessary.
+      develop          Build and serve website, updating content as it changes
+      build            Build the complete website
+      validate         Validate the website with the Nu Html Checker
+      deploy           Deploy the website to web server
 
-                            <b>Version and Help</b>
+      <b>develop</b> only runs in development mode (`NODE_ENV` is not `production`)
+      and is incompatible with validate and deploy. <b>deploy</b> works the other
+      way around and runs only in production.
 
-  -V, --version             Display tool version, exit before running tasks
-  -h, --help                Display tool help, exit before running tasks
+  <b>OPTIONS</b>
 
-If either help option is specified, site:forge ignores tasks and other options.
+      -V, --version             Display tool version, exit before first command
+      -h, --help                Display tool help, exit before first command
+      -v, --verbose             Increase the volume by one level
+      -q, --quiet               Decrease the volume by one level
+      --json                    Format output in newline-separated JSON instead
+                                of (colorful) plain text.
 
-                                <b>Logging</b>
+  <i>Input</i>
 
-  -v, --verbose             Increase the volume by one level
-  -q, --quiet               Decrease the volume by one level
-  --json                    Format output in newline-separated JSON instead of
-                            (colorful) plain text.
+      --content-dir <u>path</u>        Read content from directory ("./content")
 
-If the only command line argument is "-v", "-vh", or "-hv", site:forge treats
-the then ineffective "-v" option as a more informative "-V" option. The default
-volume is 0, which logs `info`, `warning`, `error`, but not `debug`, `trace`.
+      --component-dir <u>path</u>      Read components from directory ("./components")
+                                before falling back on builtin module loader
 
-                     <b>Input: Directories and Files</b>
+      --page-provider <u>path</u>      Use component for page layout ("layout/page.js")
 
-  --content-dir <path>      Read content from directory ("./content")
-  --component-dir <path>    Read components from directory ("./components")
-                            before falling back on builtin module loader
-  --page-provider <spec>    Use component for page layout ("layout/page.js")
+  <i>Exclusions</i>
 
-                              <b>Exclusions</b>
+      --do-not-build <u>glob</u>       Exclude matching files from build and serve
+      --do-not-validate <u>glob</u>    Exclude matching files from validation
+      --clean-run               Delete existing build directory before writing
+                                any files (disabled)
+      --dry-run                 Run code but do not persist results (disabled)
 
-  --do-not-build <glob>     Exclude matching files from build and serve
-  --do-not-validate <glob>  Exclude matching files from validation
+  <i>Content</i>
 
-  --clean-run               Delete previous build instead of overwriting files
-  --dry-run                 Run code but do not persist results; incompatible
-                            with develop task
+      --trailing-slash          End canonical URL with trailing slash, which
+                                simplifies relative linking but also clutters
+                                the public namespace (disabled)
+      --static-assets <u>glob</u>      Treat JavaScript files as static assets, not as
+                                views ("**/asset/**|**/assets/**|**/static/**")
+      --version-assets          Version scripts and styles by injecting content
+                                hash into filename (enabled in production)
+      --copyright <u>text</u>          Prepend copyright notice to scripts and styles
+                                (automatically extracted from comments)
 
-                               <b>Content</b>
+  <i>Output</i>
 
-  --static-assets <glob>    Treat JavaScript files as static assets, not as
-                            views ("**/asset/**|**/assets/**|**/static/**")
-  --version-assets          Version scripts and styles by injecting a hash of
-                            that content into the filename.
-  --copyright <notice>      Prepend copyright notice to scripts and styles
+      --build-dir <u>path</u>          Write to directory ("./build/dev" or
+                                "./build/prod")
+      --tls-certificate <u>path</u>    Use path with ".crt" and ".key" for TLS
+                                certificate and private key, respectively
+                                ("./config/localhost")
+      --deployment-dir <u>rhost</u>    Copy build to rsync host and directory
 
-               <b>Output: Directory, Local Server, Remote host</b>
+      If the only command line argument is "-v", "-vh", or "-hv", site:forge
+      treats the useless "-v" option as the more informative "-V" option. The
+      default volume is 0, which logs error, warning, success/notice, but not
+      debug and trace.
 
-  --build-dir <path>        Write build to directory ("./build/dev" and
-                            "./build/prod" depending on mode)
-  -C, --tls-cert <path>     Read TLS certificate ("./config/localhost.cert")
-  -K, --tls-key <path>      Read TLS key from file ("./config/localhost.key")
-  --deployment-dir <rhost>  Copy build to rsync host and directory
+  <b></b>
 
+      NO_COLOR                  If defined, log without color
+      NODE_DISABLE_COLORS       If defined, log without color
+      NODE_ENV                  Determine <b>mode</b>; to enable deployment, run
+                                as `NODE_ENV=production siteforge ...`
 
-site:forge also recognizes the following <b>environment variables</b>:
-
-  NO_COLOR                  If defined, log without color
-  NODE_DISABLE_COLORS       If defined, log without color
-  NODE_ENV                  Determine tool mode; to enable deployment, run as
-                            `NODE_ENV=production siteforge ...`
-
-
-site:forge is © 2019-2020 Robert Grimm
-
+  <i>site:forge is © 2019-2020 Robert Grimm</i>

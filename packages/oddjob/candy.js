@@ -73,6 +73,9 @@ const [SGR16, SGR256] = (function () {
   // we can't complete sgr256.
   const sgr16 = assign(create(null), {
     bold: freeze(['1', '22']),
+    italic: freeze(['3', '23']),
+    underline: freeze(['4', '24']),
+
     faint: freeze(['90', '39']),
     fainter: freeze(['37', '39']),
 

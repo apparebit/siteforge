@@ -16,6 +16,8 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
 // reasonable error reporting is only a few event handlers and a `pipeline`
 // away.
 
+process.title = 'Site:forge Testing';
+
 const metrics = new Metrics();
 const endTest = metrics.timer('main').start();
 

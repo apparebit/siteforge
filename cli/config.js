@@ -76,7 +76,6 @@ const validateTask = (name, report) => {
 const optionTypes = aliased(
   assign(defaults(), {
     buildDir: FilePath,
-    C: 'tlsCert',
     cleanRun: Boolean,
     componentDir: FilePath,
     contentDir: FilePath,
@@ -86,11 +85,10 @@ const optionTypes = aliased(
     doNotValidate: FileGlob,
     dryRun: Boolean,
     json: Boolean,
-    K: 'tlsKey',
     pageProvider: FilePath,
     staticAssets: FileGlob,
-    tlsCert: FilePath,
-    tlsKey: FilePath,
+    tlsCertificate: FilePath,
+    trailingSlash: Boolean,
     versionAssets: Boolean,
     _: validateTask,
   })
@@ -138,6 +136,9 @@ export const configure = async () => {
   );
   enableTasks(pkg);
 
+  // ---------------------------------------------------------------------------
+  // Merge Options.
+
   // Determine final volume: Give precedence to CLI & account for DEBUG.
   const debug = (process.env.DEBUG || '').split(',').some(c => {
     const component = c.trim();
@@ -151,10 +152,7 @@ export const configure = async () => {
     volume = max(pkg.volume, debug ? 3 : pkg.volume);
   }
 
-  // ---------------------------------------------------------------------------
-  // Merge Options.
   const production = isProduction(cli.develop || pkg.develop);
-
   const optionDefaults = {
     buildDir: resolve(production ? './build/prod' : './build/dev'),
     componentDir: resolve('./components'),
@@ -163,11 +161,19 @@ export const configure = async () => {
     doNotValidate: () => false,
     pageProvider: 'layout/page.js',
     staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
-    tlsCert: resolve('./config/localhost.cert'),
-    tlsKey: resolve('./config/localhost.key'),
+    tlsCertificate: resolve('./config/localhost'),
   };
 
   const options = { ...optionDefaults, ...pkg, ...cli, volume };
+
+  let hasTask = false;
+  for (const task of tasks) {
+    if (options[task]) {
+      hasTask = true;
+      break;
+    }
+  }
+  if (!hasTask) options.help = true;
 
   // ---------------------------------------------------------------------------
   // Et voila!

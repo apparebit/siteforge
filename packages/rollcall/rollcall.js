@@ -22,14 +22,14 @@ const MINUS = '-'.charCodeAt(0);
 const PLUS = '+'.charCodeAt(0);
 const STRONG = Symbol('strong');
 const WIDTH_LABEL = 10;
-const WIDTH_LEVEL = 10;
+const WIDTH_LEVEL = 8;
 
 const LEVEL = (() => {
   const data = {
     error: { threshold: -2, style: 'boldRed', strong: 'overRed' },
-    warning: { threshold: -1, style: 'boldOrange' },
-    success: { threshold: 0, style: 'boldGreen', strong: 'overGreen' },
-    notice: { threshold: 0, style: 'bold' },
+    warn: { threshold: -1, style: 'boldOrange' },
+    aok: { threshold: 0, style: 'boldGreen', strong: 'overGreen' },
+    note: { threshold: 0, style: 'bold' },
     info: { threshold: 1, style: 'plain' },
     debug: { threshold: 2, style: 'faint' },
     trace: { threshold: 3, style: 'fainter' },
@@ -125,23 +125,23 @@ const maybeEndLine = (logger, output) => {
  *
  *   * Output can be in newline-delimited JSON format or in possibly styled
  *     text.
- *   * In either case, logged messages include a timestamp and label, with
- *     the latter representing the logging component.
- *   * Supported logging levels are error (-2), warning (-1), success (0),
- *     notice (0), info (1), debug (2), and trace (2).
+ *   * In either case, logged messages include a timestamp and label, with the
+ *     latter representing the logging component.
+ *   * Supported logging levels are error (-2), warn (-1), aok (0), note (0),
+ *     info (1), debug (2), and trace (2).
  *   * The logger's volume (by default 0) controls which levels are printed and
  *     which aren't. The volume required for each level is given in parentheses
- *     above. The success and notice levels have the same priority, but differ
+ *     above. The aok and note levels have the same priority, but differ
  *     semantically.
- *   * Calls to several logging methods may be grouped into one semantic
- *     message via `maybeStartMessage()`, `startMessage()`, and `endMessage()`.
- *     If a logging method is invoked outside a pair of the message marking
- *     methods, it is treated as a message by itself.
- *   * While the logger exposes the underlying `println()` for actually
- *     emitting text, applications should avoid calling it directly. They may,
- *     however, make use of `print()` if they need to print fragments of a line
- *     at a time. The logger automatically terminates that line before printing
- *     a regular message.
+ *   * Calls to several logging methods may be grouped into one semantic message
+ *     via `maybeStartMessage()`, `startMessage()`, and `endMessage()`. If a
+ *     logging method is invoked outside a pair of the message marking methods,
+ *     it is treated as a message by itself.
+ *   * While the logger exposes the underlying `println()` for actually emitting
+ *     text, applications should avoid calling it directly. They may, however,
+ *     make use of `print()` if they need to print fragments of a line at a
+ *     time. The logger automatically terminates that line before printing a
+ *     regular message.
  *   * To help with customization, the logger emits `onMessageStart()` and
  *     `onMessageEnd()` notifications for messages and `onLineStart()` and
  *     `onLineEnd()` notifications for line fragments.
@@ -200,9 +200,9 @@ export default class Rollcall {
       this.#label = label;
       this.#stats = {
         error: 0,
-        warning: 0,
-        success: 0,
-        notice: 0,
+        warn: 0,
+        aok: 0,
+        note: 0,
         info: 0,
         debug: 0,
         trace: 0,
@@ -231,7 +231,7 @@ export default class Rollcall {
   }
 
   get warnings() {
-    return this.#stats.warning;
+    return this.#stats.warn;
   }
 
   // ---------------------------------------------------------------------------
@@ -269,16 +269,16 @@ export default class Rollcall {
     return this.log('error', ...args);
   }
 
-  warning(...args) {
-    return this.log('warning', ...args);
+  warn(...args) {
+    return this.log('warn', ...args);
   }
 
-  success(...args) {
-    return this.log('success', ...args);
+  aok(...args) {
+    return this.log('aok', ...args);
   }
 
-  notice(...args) {
-    return this.log('notice', ...args);
+  note(...args) {
+    return this.log('note', ...args);
   }
 
   info(...args) {
@@ -358,8 +358,7 @@ export default class Rollcall {
     }
 
     const timestamp = this.timestamp();
-    let prefix =
-      timestamp != null && timestamp !== '' ? candy.faint(timestamp) : '';
+    let prefix = timestamp ? candy.faint(timestamp) + ' ' : '';
     if (this.label) prefix += this.label.padStart(WIDTH_LABEL);
     firstline = prefix + ' ' + firstline;
 
@@ -378,9 +377,17 @@ export default class Rollcall {
 
   // ===========================================================================
 
+  section(number, title) {
+    if (this.#json) {
+      return this.note(`Section`, { number, title });
+    } else {
+      return this.note(`§${number} ${title}`);
+    }
+  }
+
   done({ files = undefined, duration }) {
     const { errors, warnings } = this;
-    const level = errors ? 'error' : warnings ? 'warning' : 'success';
+    const level = errors ? 'error' : warnings ? 'warn' : 'aok';
     if (errors) {
       process.exitCode = 70; // X_SOFTWARE
     }
@@ -457,7 +464,7 @@ export default class Rollcall {
   }
 
   doneTesting({ pass, fail, duration }) {
-    const level = fail ? 'error' : 'success';
+    const level = fail ? 'error' : 'aok';
     if (fail) {
       process.exitCode = 70; // X_SOFTWARE
     }
@@ -480,6 +487,26 @@ export default class Rollcall {
 
   embolden(text) {
     return text.replace(/<b>(.*?)<\/b>/gu, (_, text) => this.#candy.bold(text));
+  }
+
+  emphasize(text) {
+    return text.replace(/<i>(.*?)<\/i>/gu, (_, text) =>
+      this.#candy.italic(text)
+    );
+  }
+
+  underline(text) {
+    return text.replace(/<u>(.*?)<\/u>/gu, (_, text) =>
+      this.#candy.underline(text)
+    );
+  }
+
+  /** Replace <b>, <i>, and <u> markup with corresponding ANSI escape codes. */
+  embellish(text) {
+    return text
+      .replace(/<b>(.*?)<\/b>/gu, (_, text) => this.#candy.bold(text))
+      .replace(/<i>(.*?)<\/i>/gu, (_, text) => this.#candy.italic(text))
+      .replace(/<u>(.*?)<\/u>/gu, (_, text) => this.#candy.underline(text));
   }
 
   timestamp() {

@@ -202,17 +202,17 @@ harness.test('@grr/oddjob', t => {
 
     // ------------------------------------------------------------- duration()
     t.is(duration(3), '3ms');
-    t.is(duration(1003), '1.003 s');
+    t.is(duration(1003), '1.003s');
     t.is(duration(61003), '1:01.003 min');
 
     // Check rounding to whole milliseconds.
     t.is(duration(3.69), '4ms');
-    t.is(duration(1003.69), '1.004 s');
+    t.is(duration(1003.69), '1.004s');
     t.is(duration(61003.21), '1:01.003 min');
 
     // Check big integers, which start in nanoseconds.
     t.is(duration(3_690_000n), '4ms');
-    t.is(duration(1_003_690_000n), '1.004 s');
+    t.is(duration(1_003_690_000n), '1.004s');
     t.is(duration(61_003_210_000n), '1:01.003 min');
 
     t.end();

@@ -15,7 +15,7 @@
     "node": ">= 12.0.0"
   },
   "dependencies": {
-    "@babel/core": "7.10.2",
+    "@babel/core": "7.10.3",
     "@grr/inventory": "0.1.0",
     "@grr/oddjob": "0.1.0",
     "@grr/proact": "0.1.0",

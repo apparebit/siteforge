@@ -27,7 +27,6 @@
     "@grr/proact": "0.1.0",
     "@grr/rollcall": "0.1.0",
     "@grr/run": "0.1.0",
-    "@grr/sequitur": "0.1.0",
     "@grr/walk": "0.1.0",
     "vnu-jar": "20.3.16"
   }

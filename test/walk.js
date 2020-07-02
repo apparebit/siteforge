@@ -127,11 +127,6 @@ harness.test('@grr/walk', async t => {
     '/schemata/context.js',
     '/schemata/package.json',
     '/schemata/schemata.js',
-    '/sequitur/LICENSE',
-    '/sequitur/README.md',
-    '/sequitur/examples.js',
-    '/sequitur/package.json',
-    '/sequitur/sequitur.js',
     ...expectedFilesShortWalk.slice(4),
   ];
 

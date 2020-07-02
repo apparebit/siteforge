@@ -27,7 +27,6 @@
   },
   "dependencies": {
     "@grr/html": "0.1.0",
-    "@grr/sequitur": "0.1.0",
     "htm": "3.0.4"
   },
   "engines": {

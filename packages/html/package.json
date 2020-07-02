@@ -22,7 +22,6 @@
     "./schema": "./schema.js"
   },
   "dependencies": {
-    "@grr/schemata": "0.1.0",
-    "@grr/sequitur": "0.1.0"
+    "@grr/schemata": "0.1.0"
   }
 }

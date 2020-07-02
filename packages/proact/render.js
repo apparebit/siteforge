@@ -2,9 +2,10 @@
 
 import { isInternalProperty, Opcode, tag, traverse } from './vdom.js';
 import Model from '@grr/html';
-import Sq from '@grr/sequitur';
 
+const { entries: entriesOf } = Object;
 const { has } = Reflect;
+const { isArray } = Array;
 
 // =============================================================================
 
@@ -75,14 +76,12 @@ const renderAttribute = (name, value, spec) => {
     case 'YesNo':
       return ` ${name}=${value ? 'yes' : 'no'}`;
     default:
-      if (Sq.isNonStringIterable(value)) {
+      if (isArray(value)) {
         if (!has(spec, 'separator')) {
           throw new Error(`Attribute "${name}" has invalid list value`);
         }
-
         return ` ${name}=${escapeAttribute(
-          Sq.from(value)
-            .flatten()
+          value
             .filter(el => el != null)
             .join(spec.separator === 'comma' ? ',' : ' ')
         )}`;
@@ -136,15 +135,15 @@ export default async function* render(
     } else if (code === Opcode.EnterNode) {
       const name = tag(node);
       const spec = model.elementForName(name);
-      const attributes = Sq.entries(node)
-        .filter(([key, _]) => !isInternalProperty(key))
-        .map(([key, value]) => {
+      const attributes = [];
+      for (const [key, value] of entriesOf(node)) {
+        if (!isInternalProperty(key)) {
           const attributeSpec = spec.attribute(key, ancestors);
-          return renderAttribute(key, value, attributeSpec);
-        })
-        .join();
+          attributes.push(renderAttribute(key, value, attributeSpec));
+        }
+      }
       const isVoid = model.hasCategory(node.type, 'void');
-      yield '<' + name + attributes + (isVoid ? ' /' : '') + '>';
+      yield '<' + name + attributes.join('') + (isVoid ? ' /' : '') + '>';
 
       // Check that void elements really are void.
       if (isVoid && node.children.length > 0) {

@@ -62,7 +62,6 @@ pipeline(harness, parser);
   await import('./proact.js');
   await import('./rollcall.js');
   await import('./schemata.js');
-  await import('./sequitur.js');
   await import('./walk.js');
   await import('./run.js');
 })();

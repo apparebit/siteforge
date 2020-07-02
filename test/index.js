@@ -54,6 +54,7 @@ pipeline(harness, parser);
   await import('./fs.js');
   await import('./glob.js');
   await import('./html.js');
+  await import('./http.js');
   await import('./inventory.js');
   await import('./loader.js');
   await import('./metrics.js');

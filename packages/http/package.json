@@ -1,0 +1,20 @@
+{
+  "name": "@grr/http",
+  "description": "a toolbox for building standards-compliant and secure web services",
+  "version": "0.1.0",
+  "repository": "https://github.com/apparebit/siteforge",
+  "author": "Robert Grimm (https://apparebit.com)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./rollcall.js",
+  "dependencies": {
+    "chokidar": "3.4.0",
+    "serve-handler": "6.1.3"
+  },
+  "exports": {
+    "./media-type": "./media-type.js"
+  },
+  "engines": {
+    "node": ">= 12.0.0"
+  }
+}

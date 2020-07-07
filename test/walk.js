@@ -79,6 +79,7 @@ harness.test('@grr/walk', async t => {
     '/html/schema.js',
     '/http/LICENSE',
     '/http/README.md',
+    '/http/event-source.js',
     '/http/media-type.js',
     '/http/package.json',
     '/inventory/LICENSE',
@@ -179,10 +180,10 @@ harness.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     __proto__: null,
     readdir: 17,
-    entries: 99,
-    lstat: 99,
+    entries: 100,
+    lstat: 100,
     realpath: 0,
-    file: 82,
+    file: 83,
   });
 
   // ---------------------------------------------------------------------------

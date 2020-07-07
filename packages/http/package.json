@@ -11,6 +11,7 @@
     "chokidar": "3.4.0"
   },
   "exports": {
+    "./event-source": "./event-source.js",
     "./media-type": "./media-type.js"
   },
   "engines": {

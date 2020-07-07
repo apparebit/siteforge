@@ -57,6 +57,11 @@ const CORRECTIONS = [
   ['-', '\u2010', '\u2013', '\u2014'],
 ];
 
+// https://en.wikipedia.org/wiki/Filename:
+
+// eslint-disable-next-line no-control-regex
+// const FS_UNSAFE = /[\u0000-\u001f\u007f"*/:<>?\\|+,.;=[]!\$#@\u00ff]/gu;
+
 // Convert equivalence classes into a predicate matching original characters.
 const toPredicate = equivalences => {
   const chars = equivalences.flatMap(alt => alt.slice(1)).join('');

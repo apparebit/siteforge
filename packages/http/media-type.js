@@ -162,7 +162,7 @@ export const parseMediaType = (
   //     HTTP token code points, then return failure.
   //  5. If position is past the end of input, then return failure.
   // NB. Delay some error returns to finish parsing type/subtype pair.
-  if (end === -1) return {};
+  if (end === -1) return { next: start };
   let isDelayedError = start === end;
   const type = s.slice(start, end);
   if (!TOKEN.exec(type)) isDelayedError = true;
@@ -305,6 +305,14 @@ export const parseMediaType = (
 };
 
 // =============================================================================
+
+/**
+ * Parse the range of media types acceptable to an HTTP endpoint. It is a
+ * comma-separated list of media types, which may have wildcards for type and
+ * subtype fields and also a relative weight between 0 and 1 with three digits
+ * of precision. This function only parses the range but leaves the parsed media
+ * types ordered as found. See `parseAcceptHeader()`.
+ */
 export const parseMediaRange = (s, position = 0) => {
   const { length } = s;
   const mediaRange = [];
@@ -321,11 +329,10 @@ export const parseMediaRange = (s, position = 0) => {
       mediaRange.push(mediaType);
     }
 
-    if (next == null) {
-      return {};
-    } else if (next < length && s.charCodeAt(next) === CHAR_COMMA) {
+    if (position < next && next < length && s.charCodeAt(next) === CHAR_COMMA) {
       position = next + 1;
     } else {
+      position = next;
       break;
     }
   }
@@ -388,6 +395,13 @@ export const compareMediaTypes = (type1, type2) => {
 
 // =============================================================================
 
+/**
+ * Parse the value of an accept header. This function annotates the result of
+ * `parseMediaRange()` with each entry's position and then orders the media
+ * types according to specificity, favoring larger weights first, then explicit
+ * types and subtypes over wildcards, more over fewer parameters, and finally
+ * earlier over later positions.
+ */
 export const parseAcceptHeader = value => {
   const { mediaRange } = parseMediaRange(value);
   mediaRange.forEach((entry, index) => (entry.position = index));

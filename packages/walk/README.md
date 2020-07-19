@@ -5,11 +5,11 @@ This package makes recursive directory scans convenient. With a little help from
 `@grr/async`, they also become fast:
 
 ```js
-import Runner from '@grr/async';
+import Task from '@grr/async/task';
 import walk from '@grr/walk';
 
 // Create a new runner with the default concurrency.
-const runner = new Runner();
+const runner = new Task.Executor();
 
 // Walk the entire file system and log each file.
 // Defer scheduling to the runner.

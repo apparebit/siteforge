@@ -1,13 +1,7 @@
 /* © 2019-2020 Robert Grimm */
 
-import {
-  default as Executor,
-  delay,
-  didPoll,
-  newPromiseCapability,
-  rethrow,
-  Task,
-} from '@grr/async';
+import { delay, didPoll, raise, settleable } from '@grr/async/promise';
+import Task from '@grr/async/task';
 import harness from './harness.js';
 import { readFile } from '@grr/fs';
 
@@ -26,7 +20,7 @@ const prepareTask = (
     configurable,
     value: `Task${index}`,
   });
-  return newPromiseCapability(fn);
+  return settleable(fn);
 };
 
 function soon(fn = () => {}) {
@@ -50,8 +44,7 @@ harness.test('@grr/async', async t => {
     [
       // A timer delay goes once around the event loop.
       async function delaying() {
-        await delay(0);
-        output.push('delay');
+        output.push(await delay(0));
       },
       // A promise callback is run as a microtask.
       function promising() {
@@ -59,8 +52,7 @@ harness.test('@grr/async', async t => {
       },
       // The next event loop tick, brilliantly called setImmediate().
       async function polling() {
-        await didPoll();
-        output.push('didPoll');
+        output.push(await didPoll());
       },
       // The next microtask (yup), brilliantly called nextTick().
       function ticking() {
@@ -72,15 +64,15 @@ harness.test('@grr/async', async t => {
 
   // ---------------------------------------------------------------------------
 
-  t.test('rethrow()', t => {
+  t.test('raise()', t => {
     // It took a few iterations to get this test right: plan() announces that
     // there is one test, expectUncaughtException() announces an uncaught
-    // exception and its message, and rethrow() does the throwing some time in
+    // exception and its message, and raise() does the throwing some time in
     // the future. I couldn't get it to work reliably without plan() and with
     // more complex awaiting of promises.
     t.plan(1);
-    t.expectUncaughtException({ message: 'rethrow' });
-    rethrow(new Error('rethrow'));
+    t.expectUncaughtException({ message: 'raise' });
+    raise(new Error('raise'));
   });
 
   // ---------------------------------------------------------------------------
@@ -127,12 +119,12 @@ harness.test('@grr/async', async t => {
     const task5 = prepareTask(5);
     const task6 = prepareTask(6);
 
-    const runner = new Executor({
+    const runner = new Task.Executor({
       capacity: 2,
       context: { '@type': 'context' },
     });
 
-    t.equal(apply(toString, runner, []), '[object @grr/async/Executor]');
+    t.equal(apply(toString, runner, []), '[object @grr/async/Task.Executor]');
 
     t.throws(
       () => runner.run(665),
@@ -189,7 +181,9 @@ harness.test('@grr/async', async t => {
       });
       t.equal(
         runner.toString(),
-        `@grr/async/Executor { state: 'running', ready: 0, inflight: 2, capacity: 2, completed: 0 }`
+        `@grr/async/Task.Executor { ` +
+          `state: 'running', ready: 0, inflight: 2, capacity: 2, completed: 0` +
+          ` }`
       );
     });
 
@@ -403,7 +397,7 @@ harness.test('@grr/async', async t => {
 
     // When stopped, an idle Executor transitions directly to the stopped state.
     // Nonetheless, both onStop() and onDidStop() resolve.
-    const r2 = new Executor();
+    const r2 = new Task.Executor();
     r2.onStop().then(
       () => t.pass('should resolve'),
       x => t.fail(x.message)
@@ -418,7 +412,7 @@ harness.test('@grr/async', async t => {
 
     // An executor's run() method accepts the closure for sure but also
     // optionally the receiver and the arguments.
-    const r3 = new Executor();
+    const r3 = new Task.Executor();
 
     function append1(b, c) {
       return String(this) + String(b) + String(c);

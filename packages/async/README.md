@@ -1,19 +1,24 @@
 # @grr/async
 
-This package enables concurrent execution of more than one asynchronous task.
-Since it also enforces an upper concurrency limit, tasks may not always execute
-right away but only after some delay.
+This package helps run asynchronous tasks with some limited degree of
+concurrency. It is a critical building block for striking a balance between
+resource underutilization thanks to strictly serial execution via `await` and
+overutilization thanks to the uncontrolled free-for-all of `Promise.all()`.
+Since this package manages its own execution queues, it also supports premature
+shutdown or _cancellation_.
+
 
 ## Overview
 
-Basic usage of this package's default-exported main class is straight-forward:
+Using this package's main attraction, the asynchronous task executor, is rather
+straight-forward:
 
 ```js
-// Import the package.
-import Executor from '@grr/async';
+// Import the task executor.
+import Task from '@grr/async/task';
 
 // Create an instance.
-const runner = new Executor();
+const runner = new Task.Executor();
 
 // Run some tasks.
 const complete = Promise.all(
@@ -27,32 +32,40 @@ await complete;
 await runner.stop();
 ```
 
-## Helpers
-
-These helper functions and class are exported by name.
-
-##### didPoll()
-
-Return a promise that resolves after the event loop is done polling and hence
-has executed I/O event handlers, i.e., via `setImmediate()`.
+## Promises
 
 ```js
-await didPoll();
+import {
+  delay, didPoll, raise, settleable
+} from '@grr/async/promise';
 ```
 
 ##### delay(ms = 0)
 
-Return a promise that resolves after the given delay.
+Create a new promise that resolves after the given number of milliseconds.
 
-##### rethrow(error)
+##### didPoll()
 
-Throw the given error again, but do so after the event loop is done polling,
-i.e., via `setImmediate`.
+Create a new promise that resolves after the event loop is done polling and
+hence has executed  I/O event handlers.
 
-##### newPromiseCapability(container = {})
+##### raise(error)
+
+Synchronously raise the error outside the current promise context. That does
+require another asynchronous delay, since a simple `throw` will just result in a
+promise rejection.
+
+##### settleable(container = {})
 
 Enrich the given container with a new promise capability, i.e., a new `promise`
-and its `resolve` and `reject` settlement handlers.
+and the `resolve` and `reject` handlers necessary for settling the promise.
+
+
+## Tasks
+
+```js
+import Task from '@grr/async/task';
+````
 
 ##### Task(fn, receiver, ...args)
 
@@ -73,8 +86,11 @@ bring down the process.
 
 Return the string tag for this type, which is `@grr/async/Task`.
 
+### Task Execution
 
-## Asynchronous Task Executor
+```js
+const { Executor } = Task;
+```
 
 ##### Executor({ capacity = 8, context = {} } = {})
 
@@ -83,7 +99,7 @@ Create a new executor with the given `capacity`, i.e., maximum concurrency, and
 a context does not have an `executor` property, the executor patches itself into
 the context under that name.
 
-### State Inspection
+#### State
 
 The internal fields of an executor can be polled with the `isIdle()`,
 `isRunning()`, `isStopping()`, `hasStopped()`, `hasCapacity()`,
@@ -139,7 +155,7 @@ method is the stringified version of `status()`.
 
 ##### Executor.prototype[Symbol.toStringTag]
 
-Return the string tag for this type, which is `@grr/async/Executor`.
+Return the string tag for this type, which is `@grr/async/Task.Executor`.
 
 ##### Executor.prototype.onIdle()
 
@@ -157,7 +173,7 @@ Return a promise that resolves when `stop()` has been invoked.
 Return a promise that resolves when the executor has stopped.
 
 
-### Task Execution
+#### Control
 
 The following methods actually do something useful, i.e., add tasks for
 execution and stop execution altogether.
@@ -206,4 +222,5 @@ await executor.stop();
 
 ---
 
-__@grr/async__ is © 2019 Robert Grimm and licensed under [MIT](LICENSE) terms.
+__@grr/async__ is © 2019–2020 Robert Grimm and licensed under [MIT](LICENSE)
+terms.

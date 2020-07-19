@@ -1,10 +1,15 @@
 /* © 2019-2020 Robert Grimm */
 
 import { AsyncResource } from 'async_hooks';
+import { settleable } from './promise.js';
 import { inspect } from 'util';
 import { strict } from 'assert';
 
-const { create } = Object;
+const LABEL_TASK = '@grr/async/Task';
+const LABEL_EXECUTOR = LABEL_TASK + '.Executor';
+
+const configurable = true;
+const { defineProperty } = Object;
 const { has } = Reflect;
 const IDLE = Symbol('idle');
 const RUNNING = Symbol('running');
@@ -23,42 +28,20 @@ const format = value => {
   }
 };
 
-export function rethrow(error) {
-  setImmediate(() => {
-    throw error;
-  });
-}
-
-export function newPromiseCapability(container = create(null)) {
-  container.promise = new Promise((resolve, reject) => {
-    container.resolve = resolve;
-    container.reject = reject;
-  });
-  return container;
-}
-
-export function didPoll() {
-  return new Promise(resolve => setImmediate(resolve, 'didPoll'));
-}
-
-export function delay(ms = 0) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 // -----------------------------------------------------------------------------
 
-export class Task extends AsyncResource {
+class Task extends AsyncResource {
   constructor(fn, that, ...args) {
-    super('@grr/async/Task');
+    super(LABEL_TASK);
     this._fn = fn;
     this._that = that;
     this._args = args;
     this._didRun = false;
 
-    const cap = newPromiseCapability();
-    this._promise = cap.promise;
-    this._resolve = cap.resolve;
-    this._reject = cap.reject;
+    const s = settleable();
+    this._promise = s.promise;
+    this._resolve = s.resolve;
+    this._reject = s.reject;
   }
 
   get() {
@@ -87,13 +70,13 @@ export class Task extends AsyncResource {
   }
 
   get [toStringTag]() {
-    return '@grr/async/Task';
+    return LABEL_TASK;
   }
 }
 
 // -----------------------------------------------------------------------------
 
-export default class Executor {
+class Executor {
   constructor({ capacity = 8, context = {} } = {}) {
     this._state = IDLE;
     this._ready = [];
@@ -102,9 +85,9 @@ export default class Executor {
     this._completed = 0;
     this._context = context;
     if (!has(this._context, 'executor')) this._context.executor = this;
-    this._idle = newPromiseCapability();
-    this._stop = newPromiseCapability();
-    this._didStop = newPromiseCapability();
+    this._idle = settleable();
+    this._stop = settleable();
+    this._didStop = settleable();
   }
 
   get length() {
@@ -191,7 +174,7 @@ export default class Executor {
       if (this.isRunning()) {
         this._state = IDLE;
         this._idle.resolve();
-        this._idle = newPromiseCapability();
+        this._idle = settleable();
       } else if (this.isStopping()) {
         this._state = STOPPED;
         this._didStop.resolve();
@@ -223,10 +206,17 @@ export default class Executor {
   }
 
   toString() {
-    return '@grr/async/Executor ' + inspect(this.status());
+    return `${LABEL_EXECUTOR} ${inspect(this.status())}`;
   }
 
   get [toStringTag]() {
-    return '@grr/async/Executor';
+    return LABEL_EXECUTOR;
   }
 }
+
+defineProperty(Task, 'Executor', {
+  configurable,
+  value: Executor,
+});
+
+export default Task;

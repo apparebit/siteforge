@@ -1,10 +1,11 @@
 /* © 2019-2020 Robert Grimm */
 
 import { basename, join } from 'path';
-import { didPoll, default as Executor, newPromiseCapability } from '@grr/async';
+import Task from '@grr/async/task';
 import harness from './harness.js';
 import { tmpdir } from 'os';
 import { mkdir, rmdir, symlink, toDirectory, writeFile } from '@grr/fs';
+import { didPoll, settleable } from '@grr/async/promise';
 import walk from '@grr/walk';
 
 const DOT = '.'.charCodeAt(0);
@@ -47,8 +48,9 @@ harness.test('@grr/walk', async t => {
   const expectedFilesShortWalk = [
     '/async/LICENSE',
     '/async/README.md',
-    '/async/async.js',
     '/async/package.json',
+    '/async/promise.js',
+    '/async/task.js',
     '/walk/LICENSE',
     '/walk/README.md',
     '/walk/package.json',
@@ -56,7 +58,7 @@ harness.test('@grr/walk', async t => {
   ];
 
   const expectedFiles = [
-    ...expectedFilesShortWalk.slice(0, 4),
+    ...expectedFilesShortWalk.slice(0, 5),
     '/builder/LICENSE',
     '/builder/README.md',
     '/builder/builder.js',
@@ -80,6 +82,7 @@ harness.test('@grr/walk', async t => {
     '/http/LICENSE',
     '/http/README.md',
     '/http/event-source.js',
+    '/http/file-type.js',
     '/http/media-type.js',
     '/http/package.json',
     '/inventory/LICENSE',
@@ -132,7 +135,7 @@ harness.test('@grr/walk', async t => {
     '/schemata/context.js',
     '/schemata/package.json',
     '/schemata/schemata.js',
-    ...expectedFilesShortWalk.slice(4),
+    ...expectedFilesShortWalk.slice(5),
   ];
 
   // ---------------------------------------------------------------------------
@@ -152,17 +155,17 @@ harness.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     __proto__: null,
     readdir: 3,
-    entries: 24,
-    lstat: 11,
+    entries: 25,
+    lstat: 12,
     realpath: 0,
-    file: 8,
+    file: 9,
   });
 
   // ---------------------------------------------------------------------------
   // A longer walk with concurrent tasks.
 
   actualFiles.length = 0;
-  const executor = new Executor();
+  const executor = new Task.Executor();
 
   ({ done, metrics } = walk(root, {
     isExcluded: path => path.includes('node_modules'),
@@ -180,10 +183,10 @@ harness.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     __proto__: null,
     readdir: 17,
-    entries: 100,
-    lstat: 100,
+    entries: 102,
+    lstat: 102,
     realpath: 0,
-    file: 83,
+    file: 85,
   });
 
   // ---------------------------------------------------------------------------
@@ -299,7 +302,7 @@ harness.test('@grr/walk', async t => {
   const makePuppet = () => {
     return function puppet(...args) {
       puppet.in = args;
-      puppet.out = newPromiseCapability();
+      puppet.out = settleable();
       return puppet.out.promise;
     };
   };

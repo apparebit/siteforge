@@ -1,10 +1,12 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import Executor from '@grr/async';
+import Task from '@grr/async/task';
 import Inventory from '@grr/inventory';
 import Metrics from '@grr/metrics';
 import Rollcall from '@grr/rollcall';
+
+const { Executor } = Task;
 
 export default async function createContext(configure) {
   // Start measuring tool latency before doing anything else.

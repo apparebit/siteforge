@@ -55,7 +55,7 @@ const loadSiteManifest = async () => {
 };
 
 const loadForgeManifest = async () => {
-  const path = join(__directory, '../package.json');
+  const path = join(__directory, 'package.json');
   try {
     return parseJSON(await readFile(path));
   } catch (x) {

@@ -9,6 +9,7 @@
     "Schnapszahl",
     "Schnapszahlen",
     "Secreto",
+    "Soros",
     "Webm",
     "Zahlen",
     "Zweistellige",
@@ -19,7 +20,11 @@
     "decycled",
     "delooper",
     "dottard",
+    "flac",
+    "fswatch",
     "iface",
+    "jfif",
+    "jsonld",
     "metric's",
     "netaddr",
     "noout",
@@ -32,8 +37,11 @@
     "rsync",
     "slugify",
     "stateful",
+    "svgz",
     "transpilation",
-    "unstyled"
+    "unstyled",
+    "vcard",
+    "wasm"
   ],
   "debug.node.useV3": true,
   "debug.javascript.usePreview": true

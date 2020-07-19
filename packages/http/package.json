@@ -6,12 +6,14 @@
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
   "type": "module",
-  "main": "./rollcall.js",
   "dependencies": {
+    "@grr/async": "0.1.0",
+    "@grr/oddjob": "0.1.0",
     "chokidar": "3.4.0"
   },
   "exports": {
     "./event-source": "./event-source.js",
+    "./file-type": "./file-type.js",
     "./media-type": "./media-type.js"
   },
   "engines": {

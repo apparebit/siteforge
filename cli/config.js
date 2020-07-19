@@ -88,7 +88,6 @@ const optionTypes = aliased(
     pageProvider: FilePath,
     staticAssets: FileGlob,
     tlsCertificate: FilePath,
-    trailingSlash: Boolean,
     versionAssets: Boolean,
     _: validateTask,
   })

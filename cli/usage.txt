@@ -44,9 +44,6 @@
 
   <i>Content</i>
 
-      --trailing-slash          End canonical URL with trailing slash, which
-                                simplifies relative linking but also clutters
-                                the public namespace (disabled)
       --static-assets <u>glob</u>      Treat JavaScript files as static assets, not as
                                 views ("**/asset/**|**/assets/**|**/static/**")
       --version-assets          Version scripts and styles by injecting content

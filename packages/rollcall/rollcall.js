@@ -446,14 +446,12 @@ export default class Rollcall {
 
       // The difference between expected and actual result.
       if (diff) {
-        for (let [index, line] of diff.split(/\r?\n/gu).entries()) {
-          if (index >= 2) {
-            const code = line.charCodeAt(0);
-            if (code === MINUS) {
-              line = this.#candy.red(line);
-            } else if (code === PLUS) {
-              line = this.#candy.green(line);
-            }
+        for (let line of diff.split(/\r?\n/gu)) {
+          const code = line.charCodeAt(0);
+          if (code === MINUS) {
+            line = this.#candy.red(line);
+          } else if (code === PLUS) {
+            line = this.#candy.green(line);
           }
           this.println(this.indent() + line);
         }

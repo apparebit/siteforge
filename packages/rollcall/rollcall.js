@@ -449,9 +449,9 @@ export default class Rollcall {
         for (let line of diff.split(/\r?\n/gu)) {
           const code = line.charCodeAt(0);
           if (code === MINUS) {
-            line = this.#candy.red(line);
-          } else if (code === PLUS) {
             line = this.#candy.green(line);
+          } else if (code === PLUS) {
+            line = this.#candy.red(line);
           }
           this.println(this.indent() + line);
         }

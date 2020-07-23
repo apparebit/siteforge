@@ -9,7 +9,7 @@
   "dependencies": {
     "@grr/async": "0.1.0",
     "@grr/oddjob": "0.1.0",
-    "chokidar": "3.4.0"
+    "chokidar": "3.4.1"
   },
   "exports": {
     "./event-source": "./event-source.js",

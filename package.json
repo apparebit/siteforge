@@ -28,14 +28,15 @@
     "@grr/run": "0.1.0",
     "@grr/schemata": "0.1.0",
     "@grr/siteforge": "0.1.0",
+    "@grr/temple": "0.1.0",
     "@grr/walk": "0.1.0",
     "babel-eslint": "10.1.0",
-    "c8": "7.2.0",
-    "eslint": "7.3.1",
+    "c8": "7.2.1",
+    "eslint": "7.5.0",
     "eslint-config-prettier": "6.11.0",
-    "open": "7.0.4",
+    "open": "7.1.0",
     "prettier": "2.0.5",
-    "tap": "14.10.7"
+    "tap": "14.10.8"
   },
   "resolutions": {
     "minimist": "1.2.5"

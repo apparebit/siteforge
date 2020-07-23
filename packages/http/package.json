@@ -14,7 +14,8 @@
   "exports": {
     "./event-source": "./event-source.js",
     "./file-type": "./file-type.js",
-    "./media-type": "./media-type.js"
+    "./media-type": "./media-type.js",
+    "./parse-path": "./parse-path.js"
   },
   "engines": {
     "node": ">= 12.0.0"

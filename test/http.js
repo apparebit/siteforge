@@ -1,7 +1,5 @@
 /* © 2020 Robert Grimm */
 
-//import { strict as assert } from 'assert';
-
 import {
   compareMediaTypes,
   matchMediaType,
@@ -9,8 +7,10 @@ import {
   parseMediaRanges,
   parseMediaType,
   parseQuotedString,
+  render,
 } from '@grr/http/media-type';
 
+import parsePath from '@grr/http/parse-path';
 import harness from './harness.js';
 
 // Some structured media types to help with assertions.
@@ -149,22 +149,25 @@ harness.test('@grr/http', t => {
       ),
       [TextPlainUtf8FixedFormat, TextPlainUtf8, TextPlain, Text, Any]
     );
-    // `*/*; q=0.1, ` +
-    //   `text/plain; q=0.5, ` +
-    //   `text/plain; charset=UTF-8; format=fixed; q=0.8, ` +
-    //   `text/plain; charset=utf8, ` +
-    //   `text/*; q=0.2`
-    //   )
-    // );
-    //   [
-    //     TextPlainUtf8,
-    //     { ...TextPlainUtf8FixedFormat, weight: 0.8 },
-    //     { ...TextPlain, weight: 0.5 },
-    //     { ...Any, weight: 0.2 },
-    //   ]
-    // );
 
-    // ------------------------------------------------------- matchMediaTypes()
+    t.same(
+      parseAcceptHeader(
+        `*/*; q=0.1, ` +
+          `text/plain; q=0.5, ` +
+          `text/plain; charset=UTF-8; format=fixed; q=0.8, ` +
+          `text/plain; charset=utf8, ` +
+          `text/*; q=0.2`
+      ),
+      [
+        TextPlainUtf8,
+        { ...TextPlainUtf8FixedFormat, weight: 0.8 },
+        { ...TextPlain, weight: 0.5 },
+        { ...Text, weight: 0.2 },
+        { ...Any, weight: 0.1 },
+      ]
+    );
+
+    // -------------------------------------------------------- matchMediaType()
     t.ok(matchMediaType(TextPlain, Any));
     t.notOk(matchMediaType(TextPlain, Video));
     t.ok(matchMediaType(VideoMp4, Video));
@@ -205,6 +208,48 @@ harness.test('@grr/http', t => {
     t.notOk(matchMediaType(VideoMp4, TextPlain));
     t.notOk(matchMediaType(VideoMp4, Text));
     t.ok(matchMediaType(VideoMp4, Any));
+
+    // ---------------------------------------------------------------- render()
+    t.is(render(Any), '*/*');
+    t.is(render(Text), 'text/*');
+    t.is(render(TextPlain), 'text/plain');
+    t.is(render(TextPlainUtf8), 'text/plain; charset=UTF-8');
+
+    t.end();
+  });
+
+  // --------------------------------------------------------------- parsePath()
+  t.test('parse-path', t => {
+    t.throws(() => parsePath('?query'));
+    t.throws(() => parsePath('/a%2fb'));
+    t.throws(() => parsePath('a/b.html'));
+
+    t.same(parsePath('/'), {
+      directory: '/',
+      file: '',
+      extension: '',
+      path: '/',
+      trailingSlash: false,
+      queryAndHash: '',
+    });
+
+    t.same(parsePath('/a////b/./../../././../a/b/c.html?some-query'), {
+      directory: '/a/b',
+      file: 'c',
+      extension: '.html',
+      path: '/a/b/c.html',
+      trailingSlash: false,
+      queryAndHash: '?some-query',
+    });
+
+    t.same(parsePath('/a/%2e/b/%2e%2e/file.json#anchor'), {
+      directory: '/a',
+      file: 'file',
+      extension: '.json',
+      path: '/a/file.json',
+      trailingSlash: false,
+      queryAndHash: '#anchor',
+    });
 
     t.end();
   });

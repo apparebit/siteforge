@@ -79,12 +79,14 @@ harness.test('@grr/walk', async t => {
     '/html/model.json',
     '/html/package.json',
     '/html/schema.js',
+    '/html/syntax.js',
     '/http/LICENSE',
     '/http/README.md',
     '/http/event-source.js',
     '/http/file-type.js',
     '/http/media-type.js',
     '/http/package.json',
+    '/http/parse-path.js',
     '/inventory/LICENSE',
     '/inventory/README.md',
     '/inventory/inventory.js',
@@ -135,6 +137,10 @@ harness.test('@grr/walk', async t => {
     '/schemata/context.js',
     '/schemata/package.json',
     '/schemata/schemata.js',
+    '/temple/LICENSE',
+    '/temple/README.md',
+    '/temple/package.json',
+    '/temple/temple.js',
     ...expectedFilesShortWalk.slice(5),
   ];
 
@@ -155,7 +161,7 @@ harness.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     __proto__: null,
     readdir: 3,
-    entries: 25,
+    entries: 26,
     lstat: 12,
     realpath: 0,
     file: 9,
@@ -182,11 +188,11 @@ harness.test('@grr/walk', async t => {
   t.strictSame(actualFiles.sort(), expectedFiles);
   t.strictSame(metrics, {
     __proto__: null,
-    readdir: 17,
-    entries: 102,
-    lstat: 102,
+    readdir: 18,
+    entries: 109,
+    lstat: 109,
     realpath: 0,
-    file: 85,
+    file: 91,
   });
 
   // ---------------------------------------------------------------------------

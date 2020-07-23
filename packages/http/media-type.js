@@ -3,7 +3,7 @@
 
 import { strict as assert } from 'assert';
 
-const { create } = Object;
+const { create, entries: entriesOf, freeze } = Object;
 const { isArray } = Array;
 
 // This module implements helper functions for dealing with media types. As far
@@ -67,6 +67,14 @@ const skipTrailing = (s, position = s.length) => {
   while (position > 0 && isSpace(s.charCodeAt(position - 1))) position--;
   return position;
 };
+
+// =============================================================================
+
+/** The parsed HTML media type. */
+export const HTML = freeze({ type: 'text', subtype: 'html' });
+
+/** The parsed JSON media type. */
+export const JSON = freeze({ type: 'application', subtype: 'json' });
 
 // =============================================================================
 
@@ -467,4 +475,19 @@ export const qualityFactorOf = (type, accept) => {
     }
   }
   return 0;
+};
+
+// =============================================================================
+
+/** Render a media type or range. */
+export const render = type => {
+  let s = `${type.type}/${type.subtype}`;
+  for (let [key, value] of entriesOf(type.parameters ?? {})) {
+    if (!TOKEN.test(value)) {
+      value = `"${value.replace(/[\\"]/gu, `\\$&`)}"`;
+    }
+    s += `; ${key}=${value}`;
+  }
+  if (type.weight) s += `; q=${type.weight}`;
+  return s;
 };

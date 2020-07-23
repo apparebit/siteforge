@@ -19,7 +19,8 @@
   "type": "module",
   "exports": {
     ".": "./model.js",
-    "./schema": "./schema.js"
+    "./schema": "./schema.js",
+    "./syntax": "./syntax.js"
   },
   "dependencies": {
     "@grr/schemata": "0.1.0"

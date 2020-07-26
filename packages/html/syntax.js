@@ -16,4 +16,5 @@ const ESCAPES = {
 
 const ESCAPE_IN_TEXT = /["&'/<>]/gu;
 
-export const escapeHtml = text => text.replace(ESCAPE_IN_TEXT, c => ESCAPES[c]);
+export const escapeBodyText = text =>
+  text.replace(ESCAPE_IN_TEXT, c => ESCAPES[c]);

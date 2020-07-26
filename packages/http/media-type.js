@@ -70,6 +70,9 @@ const skipTrailing = (s, position = s.length) => {
 
 // =============================================================================
 
+/** The parsed media range matching any type. */
+export const ANY_TYPE = freeze({ type: '*', subtype: '*' });
+
 /** The parsed HTML media type. */
 export const HTML = freeze({ type: 'text', subtype: 'html' });
 

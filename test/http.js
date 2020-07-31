@@ -1,7 +1,8 @@
 /* © 2020 Robert Grimm */
 
+import { fileURLToPath } from 'url';
 import harness from './harness.js';
-import { MediaType, parseRequestPath } from '@grr/http';
+import { MediaType, parseRequestPath, refreshen } from '@grr/http';
 
 const { Any, Audio, Image, Text, Video } = MediaType;
 const AudioMp4 = MediaType('audio', 'mp4');
@@ -19,7 +20,7 @@ const TextPlainUtf8FixedFormat = TextPlain.with({
 });
 
 harness.test('@grr/http', t => {
-  t.test('media-type', t => {
+  t.test('MediaType()', t => {
     // ----------------------------------------------------- MediaType.unquote()
     t.throws(() => MediaType.unquote('#boo#'));
     t.is(MediaType.unquote(`""`), ``);
@@ -172,7 +173,7 @@ harness.test('@grr/http', t => {
   });
 
   // -------------------------------------------------------- parseRequestPath()
-  t.test('parse-path', t => {
+  t.test('parseRequestPath()', t => {
     t.throws(() => parseRequestPath('?query'));
     t.throws(() => parseRequestPath('/a%2fb'));
     t.throws(() => parseRequestPath('a/b.html'));
@@ -203,6 +204,17 @@ harness.test('@grr/http', t => {
       trailingSlash: false,
       queryAndHash: '#anchor',
     });
+
+    t.end();
+  });
+
+  t.test('Http2Server', async t => {
+    const openssl = '/usr/local/opt/openssl/bin/openssl';
+    const path = fileURLToPath(new URL('../tls', import.meta.url));
+    const { cert, key } = await refreshen({ openssl, path });
+
+    t.ok(cert);
+    t.ok(key);
 
     t.end();
   });

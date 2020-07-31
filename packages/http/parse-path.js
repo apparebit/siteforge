@@ -8,7 +8,7 @@ const PATH_ONLY = /^([^?#]*)(.*)$/u;
 
 const endsWithSlash = s => s.charCodeAt(s.length - 1) === CODE_SLASH;
 
-const parsePath = uri => {
+const parseRequestPath = uri => {
   // Chop off query and hash. Check for obvious errors.
   const [, rawPath, queryAndHash] = String(uri).match(PATH_ONLY);
   if (rawPath === '') {
@@ -67,4 +67,4 @@ const parsePath = uri => {
   };
 };
 
-export default parsePath;
+export default parseRequestPath;

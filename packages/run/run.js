@@ -68,7 +68,7 @@ export default function run(cmd, args = [], options = {}) {
         message += ` with exit code "${code}"`;
       }
       message += ` (${cmd} ${args
-        .map(a => (a.includes(' ') ? `"${a}"` : a))
+        .map(a => (a && a.includes(' ') ? `"${a}"` : a))
         .join(' ')})`;
       reject(new Error(message));
     }

@@ -1,38 +1,30 @@
 /* © 2020 Robert Grimm */
-/* eslint-disable no-control-regex */
 
 import { strict as assert } from 'assert';
 
-const { create, entries: entriesOf, freeze } = Object;
-const { isArray } = Array;
+const {
+  create,
+  defineProperties,
+  defineProperty,
+  entries: entriesOf,
+  freeze,
+  keys: keysOf,
+} = Object;
 
-// This module implements helper functions for dealing with media types. As far
-// as syntax is concerned, it uses two strategies. If relevant standards only
-// specify declarative grammar rules, then this modules implements those rules
-// with minimal tolerance for error. If relevant standards specify an algorithm,
-// then this module implements that algorithm, even if it is far more permissive
-// than the grammar. Notably, that is the case for parsing media types. Either
-// way, all relevant standards are referenced and quoted.
+const enumerable = true;
 
-// -----------------------------------------------------------------------------
+/* eslint-disable no-control-regex */
 
-// https://tools.ietf.org/html/rfc7231#section-3.1.1.2:
-// To specify UTF-8 charset, value of parameter must be `UTF-8` ignoring case;
-// upper case is canonical. Since Node.js accepts dashless version, do so too.
-const UTF_8 = /^utf-?8$/iu;
-
-// Helpers for quotedString() and parse()
 const CHARCODE_BACKSLASH = `\\`.charCodeAt(0);
 const CHARCODE_COMMA = `,`.charCodeAt(0);
 const CHARCODE_DQUOTE = `"`.charCodeAt(0);
-
 const DQUOTE_SLASH = /["\\]/gu;
-
-const PARAM_SEP = /[=;]/gu;
-const PARAM_SEP_EXT = /[=;,]/gu;
-
 const END_OF_CLAUSE = /[;]/gu;
 const END_OF_CLAUSE_EXT = /[;,]/gu;
+const PARAM_SEP = /[=;]/gu;
+const PARAM_SEP_EXT = /[=;,]/gu;
+const TYPE_SEP = /[/]/gu;
+const TYPE_SEP_EXT = /[/,]/gu;
 
 // https://tools.ietf.org/html/rfc7231#section-5.3.1
 const QUALITY = /0(\.\d{0,3})?|1(\.0{0,3})?/u;
@@ -43,7 +35,66 @@ const QUOTED_STRING = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/u;
 // https://mimesniff.spec.whatwg.org/#http-token-code-point
 const TOKEN = /^[-!#$%&'*+.^`|~\w]+$/u;
 
-// -----------------------------------------------------------------------------
+const TYPE_NAMES = [
+  '*',
+  'application',
+  'audio',
+  'font',
+  'image',
+  'message',
+  'model',
+  'multipart',
+  'text',
+  'video',
+];
+
+// https://tools.ietf.org/html/rfc7231#section-3.1.1.2:
+// To specify UTF-8 charset, value of parameter must be `UTF-8` ignoring case;
+// upper case is canonical. Since Node.js accepts dashless version, do so too.
+const UTF_8 = /^utf-?8$/iu;
+
+// =============================================================================
+// The Default Export: Class MediaType
+
+/** The in-memory representation of a media type. */
+export default function MediaType(type, subtype, params) {
+  if (!new.target) {
+    return new MediaType(type, subtype, params);
+  }
+
+  if (typeof type !== 'string') {
+    return undefined;
+  }
+  type = type.toLowerCase();
+  if (!TYPE_NAMES.includes(type) || typeof subtype !== 'string') {
+    return undefined;
+  }
+  subtype = subtype.toLowerCase();
+  if (subtype === '' || (subtype !== '*' && type === '*')) {
+    return undefined;
+  }
+
+  let parameters;
+  if (params != null && typeof params === 'object') {
+    parameters = params;
+  }
+
+  defineProperties(this, {
+    type: { enumerable, value: type },
+    subtype: { enumerable, value: subtype },
+    parameters: { enumerable, value: parameters },
+  });
+}
+
+for (const type of TYPE_NAMES) {
+  const name = type === '*' ? 'Any' : type[0].toUpperCase() + type.slice(1);
+  defineProperty(MediaType, name, {
+    value: freeze(MediaType(type, '*')),
+  });
+}
+
+// =============================================================================
+// Helper Functions: String Manipulation
 
 // https://fetch.spec.whatwg.org/#http-whitespace
 const isSpace = c => {
@@ -68,25 +119,112 @@ const skipTrailing = (s, position = s.length) => {
   return position;
 };
 
+// -----------------------------------------------------------------------------
+// Helper Functions: Media Type Manipulation
+
+// While these functions certainly work with instances of MediaType, they do not
+// require them but rather work with plain old JavaScript objects as well.
+
+const withoutParameters = type => new MediaType(type.type, type.subtype);
+
+const withParameters = (type, parameters) => {
+  let newParameters;
+
+  const set = (key, value) => {
+    if (value != null) {
+      if (!newParameters) newParameters = create(null);
+      newParameters[key.toLowerCase()] = value;
+    }
+  };
+
+  for (const [key, value] of entriesOf(Object(type.parameters))) {
+    set(key, value);
+  }
+  for (const [key, value] of entriesOf(Object(parameters))) {
+    set(key, value);
+  }
+  return new MediaType(type.type, type.subtype, newParameters);
+};
+
+const charsetOf = type => type.parameters?.charset;
+const qualityOf = type => {
+  const q = type.parameters?.q ?? 1;
+  return typeof q === 'number' ? q : Number(q);
+};
+const precedenceOf = type => {
+  if (type.subtype === '*') {
+    return type.type === '*' ? 1 : 2;
+  } else {
+    if (!type.parameters) return 3;
+    const keys = keysOf(type.parameters);
+    return keys.length === 1 && keys[0] === 'q' ? 3 : 4;
+  }
+};
+
+const compare = (type1, type2) => {
+  const p1 = precedenceOf(type1);
+  const p2 = precedenceOf(type2);
+  if (p1 !== p2) return p2 - p1;
+
+  const q1 = qualityOf(type1);
+  const q2 = qualityOf(type2);
+  return q2 - q1;
+};
+
+const matches = (type, range) => {
+  // No match necessary.
+  if (range.type === '*' && range.subtype === '*') return true;
+
+  // Match on type.
+  if (type.type !== range.type) return false;
+  if (range.subtype === '*') return true;
+
+  // Match on subtype.
+  if (type.subtype !== range.subtype) return false;
+  if (range.type !== 'text') return true;
+
+  // Match on charset for text.
+  const rangeCharset = range.parameters?.charset;
+  if (rangeCharset == null) return true;
+  const typeCharset = type.parameters?.charset;
+  if (typeCharset == null) return true;
+
+  return typeCharset === rangeCharset;
+};
+
+const matchingQuality = (type, ranges) => {
+  for (const range of ranges) {
+    if (matches(type, range)) return qualityOf(range);
+  }
+  return 0;
+};
+
+const render = type => {
+  let s = `${type.type}/${type.subtype}`;
+
+  const { parameters } = type;
+  if (parameters) {
+    for (let [key, value] of entriesOf(parameters)) {
+      value = String(value);
+      if (!TOKEN.test(value)) {
+        value = `"${value.replace(/[\\"]/gu, `\\$&`)}"`;
+      }
+      s += `; ${key}=${value}`;
+    }
+  }
+
+  return s;
+};
+
 // =============================================================================
-
-/** The parsed media range matching any type. */
-export const ANY_TYPE = freeze({ type: '*', subtype: '*' });
-
-/** The parsed HTML media type. */
-export const HTML = freeze({ type: 'text', subtype: 'html' });
-
-/** The parsed JSON media type. */
-export const JSON = freeze({ type: 'application', subtype: 'json' });
-
-// =============================================================================
+// Parsing: Quoted Strings, Media Types, and Accept Headers
 
 /**
  * Parse a quoted string. The parse starts at the given position, faithfully
  * implements the WhatWG's algorithm from the `fetch` specification, but always
  * extracts the value.
  */
-export const parseQuotedString = (s, position = 0) => {
+const parseQuotedString = (s, position = 0) => {
   // https://fetch.spec.whatwg.org/#collect-an-http-quoted-string
 
   // To collect an HTTP quoted string from a string input,
@@ -158,25 +296,15 @@ export const parseQuotedString = (s, position = 0) => {
   //     inclusive, within input.
 };
 
-// =============================================================================
+// -----------------------------------------------------------------------------
 
-/**
- * Parse a media type or range. The parse starts at the given position and
- * optionally recognizes a weight parameter and a terminating comma. The
- * function faithfully implements the WhatWG's algorithm from the MIME sniffing
- * specification. The resulting object is guaranteed to have `type` and
- * `subtype` properties. But it only has a `weight` or `parameters` properties
- * if the input contains the corresponding elements.
- */
-export const parseMediaType = (
-  s,
-  { position = 0, withComma = false, withWeight = false } = {}
-) => {
+const parseMediaType = (s, { position = 0, isRepeated = false } = {}) => {
   // https://mimesniff.spec.whatwg.org/#parsing-a-mime-type
 
   // To parse a MIME type, given a string input, run these steps:
-  const InParamSep = withComma ? PARAM_SEP_EXT : PARAM_SEP;
-  const EndOfClause = withComma ? END_OF_CLAUSE_EXT : END_OF_CLAUSE;
+  const TypeSep = isRepeated ? TYPE_SEP_EXT : TYPE_SEP;
+  const InParamSep = isRepeated ? PARAM_SEP_EXT : PARAM_SEP;
+  const EndOfClause = isRepeated ? END_OF_CLAUSE_EXT : END_OF_CLAUSE;
 
   //  1. Remove any leading and trailing HTTP whitespace from input.
   let { length } = s;
@@ -186,50 +314,60 @@ export const parseMediaType = (
   //     initially pointing at the start of input.
   //  3. Let type be the result of collecting a sequence of code points
   //     that are not U+002F (/) from input, given position.
-  let end = s.indexOf('/', start);
+  TypeSep.lastIndex = start;
+  let match = TypeSep.exec(s);
+  let end = match?.index ?? length;
 
   //  4. If type is the empty string or does not solely contain
   //     HTTP token code points, then return failure.
   //  5. If position is past the end of input, then return failure.
-  // NB. Delay some error returns to finish parsing type/subtype pair.
-  if (end === -1) return { next: start };
-  let isDelayedError = start === end;
-  const type = s.slice(start, end);
-  if (!TOKEN.test(type)) isDelayedError = true;
+  // NB. Delay error returns to finish parsing complete media type up to comma.
+  let type = s.slice(start, end);
+  let failed = start === end || !TOKEN.test(type);
+  if (match?.[0] === ',') return { next: end };
 
   //  6. Advance position by 1. (This skips past U+002F (/).)
   //  7. Let subtype be the result of collecting a sequence of code points
   //     that are not U+003B (;) from input, given position.
   start = end + 1;
   EndOfClause.lastIndex = start;
-  const match = EndOfClause.exec(s);
-  end = match?.index ?? length;
-  position = end;
-  if (isDelayedError) return { next: position };
+  match = EndOfClause.exec(s);
+  position = end = match?.index ?? length;
 
   //  8. Remove any trailing HTTP whitespace from subtype.
   end = skipTrailing(s, end); // May step backwards.
 
   //  9. If subtype is the empty string or does not solely contain
   //     HTTP token code points, then return failure.
-  if (start === end) return { next: position };
-  const subtype = s.slice(start, end);
-  if (!TOKEN.test(subtype)) return { next: position };
+  if (start === end) failed = true;
+  let subtype = s.slice(start, end);
+  if (!TOKEN.test(subtype)) failed = true;
 
   // 10. Let mimeType be a new MIME type record whose type is type,
   //     in ASCII lowercase, and subtype is subtype, in ASCII lowercase.
-  const mediaType = {
-    type: type.toLowerCase(),
-    subtype: subtype.toLowerCase(),
-  };
+  type = type.toLowerCase();
+  subtype = subtype.toLowerCase();
 
-  // NB. Comma indicates a new media type.
-  if (withComma && match?.[0] === ',') {
-    return { mediaType, next: position };
+  // NB. If we reached end of input or a comma in repeated mode,
+  //     there are no parameters to parse and we can return right here.
+  if (end === length || (isRepeated && match?.[0] === ',')) {
+    if (failed) {
+      // We are at a well-defined boundary: It's ok to return failure now.
+      return { next: end };
+    } else if (subtype === '*') {
+      if (type === '*') {
+        return { mediaType: MediaType.Any, next: end };
+      } else {
+        const name = type[0].toUpperCase() + type.slice(1).toLowerCase();
+        return { mediaType: MediaType[name], next: end };
+      }
+    } else {
+      return { mediaType: new MediaType(type, subtype), next: end };
+    }
   }
 
   // NB. If type is text, we normalize the charset parameter below.
-  const isText = mediaType.type === 'text';
+  const isText = type === 'text';
 
   // 11. While position is not past the end of input:
   let parameters;
@@ -252,7 +390,7 @@ export const parseMediaType = (
     if (end === length) break;
 
     // NB. Comma indicates a new media type.
-    if (withComma && match?.[0] === ',') break;
+    if (isRepeated && match?.[0] === ',') break;
 
     //  5. If position is not past the end of input, then:
     //  5. 1. If the code point at position within input is U+003B (;),
@@ -275,25 +413,25 @@ export const parseMediaType = (
       //  8. 1. Set parameterValue to the result of collecting an HTTP quoted
       //        string from input, given position and the extract-value flag.
       ({ value, next: end } = parseQuotedString(s, start));
+
       //  8. 2. Collect a sequence of code points that are not U+003B (;)
       //        from input, given position.
-
       EndOfClause.lastIndex = end;
       const match = EndOfClause.exec(s);
       position = match?.index ?? length;
 
-      if (withComma && match?.[0] === ',') {
+      if (isRepeated && match?.[0] === ',') {
         loopEndBreak = true;
       }
     } else {
       //  9. Otherwise:
       //  9. 1. Set parameterValue to the result of collecting a sequence of
       //        code points that are not U+003B (;) from input, given position.
-      EndOfClause.lastIndex = end;
+      EndOfClause.lastIndex = start;
       const match = EndOfClause.exec(s);
       position = end = match?.index ?? length;
 
-      if (withComma && match?.[0] === ',') {
+      if (isRepeated && match?.[0] === ',') {
         loopEndBreak = true;
       }
 
@@ -301,16 +439,8 @@ export const parseMediaType = (
       end = skipTrailing(s, end); // May step backwards.
 
       //  9. 3. If parameterValue is the empty string, then continue.
-      if (start === end) continue;
+      if (!loopEndBreak && start === end) continue;
       value = s.slice(start, end);
-
-      // NB. If enabled, weight's value must be valid quality.
-      //     weight follows after properties.
-      if (withWeight && name === 'q') {
-        if (!QUALITY.test(value)) continue;
-        mediaType.weight = Number(value);
-        break;
-      }
     }
 
     // 10. If all of the following are true
@@ -325,51 +455,44 @@ export const parseMediaType = (
       parameters?.[name] === undefined
     ) {
       // then set mimeType’s parameters[parameterName] to parameterValue.
-      if (!parameters) parameters = create(null);
       if (isText && name === 'charset') {
+        // charset
+        if (!parameters) parameters = create(null);
         parameters.charset = UTF_8.test(value) ? 'UTF-8' : value.toUpperCase();
-      } else {
+      } else if (name !== 'q') {
+        if (!parameters) parameters = create(null);
         parameters[name] = value;
+      } else if (QUALITY.test(value)) {
+        if (!parameters) parameters = create(null);
+        parameters[name] = Number(value);
       }
     }
 
     if (loopEndBreak) break;
   }
 
-  if (parameters) mediaType.parameters = parameters;
-
   // 12. Return mimeType.
+  let mediaType = failed ? undefined : new MediaType(type, subtype, parameters);
   return { mediaType, next: position };
 };
 
-// =============================================================================
+// -----------------------------------------------------------------------------
 
-/**
- * Parse the comma-separated list of media types and ranges. The parse starts
- * at the given position and returns the individual media types and ranges
- * in source order.
- */
-export const parseMediaRanges = (s, position = 0) => {
+const parseMediaRanges = (s, position = 0) => {
   const { length } = s;
   const mediaRanges = [];
 
   while (true) {
-    const { mediaType, next } =
-      parseMediaType(s, {
-        position,
-        withComma: true,
-        withWeight: true,
-      }) ?? {};
+    const { mediaType, next } = parseMediaType(s, {
+      position,
+      isRepeated: true,
+    });
 
     if (mediaType != null) {
       mediaRanges.push(mediaType);
     }
 
-    if (
-      position < next &&
-      next < length &&
-      s.charCodeAt(next) === CHARCODE_COMMA
-    ) {
+    if (next < length && s.charCodeAt(next) === CHARCODE_COMMA) {
       position = next + 1;
     } else {
       position = next;
@@ -381,116 +504,130 @@ export const parseMediaRanges = (s, position = 0) => {
 };
 
 // =============================================================================
+// Static Media Type Methods (which operate on POJOs as much as on MediaTypes)
 
-const precedenceOf = mediaType => {
-  if (mediaType.subtype === '*') {
-    if (mediaType.type === '*') {
-      return 1;
-    } else {
-      return 2;
-    }
-  } else if (mediaType.parameters == null) {
-    return 3;
-  } else {
-    return 4;
-  }
-};
+defineProperties(MediaType, {
+  /** Parse a quote value and return the equivalent unquoted version. */
+  unquote: {
+    value(s) {
+      return parseQuotedString(s).value;
+    },
+  },
 
-/**
- * Compare the given media types. Consistent with RFC 7231, this function
- * prioritizes specific media types with parameters over specific media types
- * followed by subtype ranges and then the arbitrary range. It uses the weight
- * as a tie breaker.
- */
-export const compareMediaTypes = (type1, type2) => {
-  // https://tools.ietf.org/html/rfc7231#section-5.3.2
+  /** Return a copy of the given media type without parameters. */
+  without: { value: withoutParameters },
+  /** Return a copy of the given media type with the given parameters. */
+  with: { value: withParameters },
 
-  // Media ranges can be overridden by more specific media ranges or
-  // specific media types.  If more than one media range applies to a
-  // given type, the most specific reference has precedence.
-  // [...]
-  // The media type quality factor associated with a given type is
-  // determined by finding the media range with the highest precedence
-  // that matches the type.
-  const p1 = precedenceOf(type1);
-  const p2 = precedenceOf(type2);
-  if (p1 !== p2) return p2 - p1;
+  /** Return the charset parameter for the given media type. */
+  charset: { value: charsetOf },
+  /** Return the quality parameter for the given media type. */
+  quality: { value: qualityOf },
+  /** Return the precedence for the given media type. */
+  precedence: { value: precedenceOf },
 
-  const w1 = type1.weight ?? 1;
-  const w2 = type2.weight ?? 1;
-  return w2 - w1;
-};
+  /** Compare the given two media types for ordering by precedence. */
+  compare: { value: compare },
+  /** Compare the given media type and range for compatibility. */
+  matches: { value: matches },
+
+  /** Render the given media type as a string. */
+  render: { value: render },
+
+  /** Parse the given string as a media type. */
+  of: {
+    value(s) {
+      return parseMediaType(s).mediaType;
+    },
+  },
+
+  /** Parse the string as a comma-separated sequence of media types. */
+  accept: {
+    value(s) {
+      if (!s) return [MediaType.Any];
+      s = s.trim();
+      if (s === '*/*') return [MediaType.Any];
+      const { mediaRanges } = parseMediaRanges(s);
+      if (mediaRanges.length === 0) return [MediaType.Any];
+
+      mediaRanges.sort(compare);
+      return mediaRanges;
+    },
+  },
+
+  /** The canonical HTML media type. */
+  HTML: { value: new MediaType('text', 'html') },
+  /** The canonical JSON media type. */
+  JSON: { value: new MediaType('application', 'json') },
+  /** The canonical binary media type.a */
+  Binary: { value: new MediaType('application', 'octet-stream') },
+});
 
 // -----------------------------------------------------------------------------
+// Instance Methods (as alternative API implemented with same static functions).
 
-/**
- * Parse the accept header's value. This function parses the media types making
- * up the header with `parseMediaRange()` and then sorts them with
- * `compareMediaTypes()`.
- */
-export const parseAcceptHeader = value => {
-  const { mediaRanges } = parseMediaRanges(value);
-  mediaRanges.sort(compareMediaTypes);
-  return mediaRanges;
-};
+const MediaTypePrototype = MediaType.prototype;
+defineProperties(MediaTypePrototype, {
+  /** Create a copy of this media type without any parameters. */
+  without: {
+    value() {
+      return withoutParameters(this);
+    },
+  },
 
-// =============================================================================
+  /** Create a copy of this media type with the given parameters. */
+  with: {
+    value(parameters) {
+      return withParameters(this, parameters);
+    },
+  },
 
-/**
- * Match the given media type against the media range, which may be a specific
- * media type or a range using wildcards. If the range is a text type with an
- * explicit charset parameter, the type matches only if it omits the charset or
- * has the same parameter (ignoring case).
- */
-export const matchMediaType = (type, range) => {
-  // The "any" range.
-  if (range.type === '*' && range.subtype === '*') return true;
+  /** Get the `charset` parameter for this media type. */
+  charset: {
+    get() {
+      return charsetOf(this);
+    },
+  },
 
-  // Matching type and "any subtype" range.
-  if (type.type !== range.type) return false;
-  if (range.subtype === '*') return true;
+  /** Get the quality parameter for this media type. */
+  quality: {
+    get() {
+      return qualityOf(this);
+    },
+  },
 
-  // Matching type and subtype modulo text.
-  if (type.subtype !== range.subtype) return false;
-  if (range.type !== 'text') return true;
+  /** Get the precedence for this media type. */
+  precedence: {
+    get() {
+      return precedenceOf(this);
+    },
+  },
 
-  // No charset in range or no charset in type.
-  const rangeCharset = range.parameters?.charset;
-  if (rangeCharset == null) return true;
-  const typeCharset = type.parameters?.charset;
-  if (typeCharset == null) return true;
+  /** Compare with another type to determine precedence order. */
+  compareTo: {
+    value(other) {
+      return compare(this, other);
+    },
+  },
 
-  // Matching charsets.
-  return typeCharset === rangeCharset;
-};
+  /** Determine whether this media type is acceptable to the given range. */
+  matches: {
+    value(range) {
+      return matches(this, range);
+    },
+  },
 
-/**
- * Determine the quality factor of the given media type for the given accept
- * header. If the accept header is empty or missing, this function returns a
- * quality factor of 1.
- */
-export const qualityFactorOf = (type, accept) => {
-  if (!isArray(accept) || accept.length === 0) return 1;
+  /** Determine the matching quality for this media type. */
+  matchingQuality: {
+    value(ranges) {
+      return matchingQuality(this, ranges);
+    },
+  },
 
-  for (const range of accept) {
-    if (matchMediaType(type, range)) {
-      return range.weight ?? 1;
-    }
-  }
-  return 0;
-};
-
-// =============================================================================
-
-/** Render a media type or range. */
-export const render = type => {
-  let s = `${type.type}/${type.subtype}`;
-  for (let [key, value] of entriesOf(type.parameters ?? {})) {
-    if (!TOKEN.test(value)) {
-      value = `"${value.replace(/[\\"]/gu, `\\$&`)}"`;
-    }
-    s += `; ${key}=${value}`;
-  }
-  if (type.weight) s += `; q=${type.weight}`;
-  return s;
-};
+  /** Render this media type to a string. */
+  toString: {
+    value() {
+      return render(this);
+    },
+  },
+});

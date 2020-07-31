@@ -8,14 +8,14 @@
   "type": "module",
   "dependencies": {
     "@grr/async": "0.1.0",
+    "@grr/html": "0.1.0",
     "@grr/oddjob": "0.1.0",
+    "@grr/run": "0.1.0",
+    "@grr/temple": "0.1.0",
     "chokidar": "3.4.1"
   },
   "exports": {
-    "./event-source": "./event-source.js",
-    "./file-type": "./file-type.js",
-    "./media-type": "./media-type.js",
-    "./parse-path": "./parse-path.js"
+    ".": "./index.js"
   },
   "engines": {
     "node": ">= 12.0.0"

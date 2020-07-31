@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+<meta charset=utf-8>
+<title>${status} ${statusMessage}</title>
+<style>
+* {
+  padding: 0;
+  margin: 0;
+}
+*:before, *, *:after {
+  box-sizing: inherit;
+}
+:root {
+  box-sizing: border-box;
+  background: #fafbfc;
+  color: #292a37;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+body {
+  margin: 1.5em;
+}
+h1, h2 {
+  font-weight: bold;
+  margin-bottom: 1em;
+}
+h2 {
+  font-size: 1.5rem;
+}
+h1 {
+  font-size: 2.25rem;
+}
+dd {
+  margin-bottom: 1em;
+}
+</style>
+</head>
+
+<body>
+<h1>${status} ${statusMessage}</h1>
+
+<h2>Request Headers</h2>
+<dl>
+${requestHeaders.map((key, value) =>
+  `<dt>${escape(key)}</dt>\n<dd>${escape(value)</dd>\n`)}
+</dl>
+
+${error ? `
+<h2>Error Stack</h2>
+<p>${escape(error.stack).replace('\n', '<br>')}</p>
+` : ''}
+</body>

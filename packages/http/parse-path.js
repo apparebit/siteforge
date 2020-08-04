@@ -2,69 +2,55 @@
 
 import { strict as assert } from 'assert';
 
+const CODE_DOT = '.'.charCodeAt(0);
 const CODE_SLASH = '/'.charCodeAt(0);
-const PERCENT_ENCODED_SLASH = /%2f/iu;
-const PATH_ONLY = /^([^?#]*)(.*)$/u;
+const PATH_AND_QUERY = /^([^?#]*)([^#]*)/u;
+const PERCENT_TWO_EFF = /%2f/iu;
 
-const endsWithSlash = s => s.charCodeAt(s.length - 1) === CODE_SLASH;
+const isDotted = s => s.charCodeAt(0) === CODE_DOT;
 
-const parseRequestPath = uri => {
-  // Chop off query and hash. Check for obvious errors.
-  const [, rawPath, queryAndHash] = String(uri).match(PATH_ONLY);
+export default function parseRequestPath(value) {
+  // Split `:path` into raw path and raw query.
+  if (!value) throw new Error(`No request path`);
+
+  const [, rawPath, rawQuery] = value.match(PATH_AND_QUERY);
   if (rawPath === '') {
-    throw new Error(`Resource URI "${uri}" has no path component`);
-  } else if (PERCENT_ENCODED_SLASH.test(rawPath)) {
-    throw new Error(`Resource URI "${uri}" contains percent-coded slash`);
+    throw new Error(`Request path is empty`);
+  } else if (PERCENT_TWO_EFF.test(rawPath)) {
+    throw new Error(`Request path "${value}" contains percent-coded slash`);
   } else if (rawPath.charCodeAt(0) !== CODE_SLASH) {
-    throw new Error(`Resource URI "${uri}" has relative path`);
+    throw new Error(`Request path "${value}" is relative`);
   }
 
-  // Decode path and split into segments.
+  // Decode raw path and normalize segments.
   const rawSegments = decodeURIComponent(rawPath).split('/');
-  assert(rawSegments.shift() === '');
+  assert(rawSegments.length >= 2 && rawSegments[0] === '');
 
   const segments = [];
   for (const segment of rawSegments) {
     if (segment === '' || segment === '.') {
-      // Ignore.
+      // Ignore empty or single-dot segment.
     } else if (segment === '..') {
       segments.pop();
+    } else if (
+      isDotted(segment) &&
+      (segment !== '.well-known' || segments.length === 1)
+    ) {
+      // Reject dotted segment unless it is `/.well-known`
+      throw new Error(`Request path "${value}" contains dotted path segment`);
     } else {
       segments.push(segment);
     }
   }
 
-  // Determine file and extension.
-  let file = '';
-  let extension = '';
-  if (segments.length) {
-    file = segments.pop();
+  // Et voila!
+  const path = `/${segments.join('/')}`;
+  const endsInSlash = path !== '/' && rawPath.endsWith('/');
 
-    const dot = file.lastIndexOf('.');
-    if (dot !== -1) {
-      extension = file.slice(dot);
-      file = file.slice(0, dot);
-    }
-  }
-
-  // Determine directory and clean path.
-  const directory = `/` + segments.join('/');
-  let path = directory;
-  if (file || extension) {
-    if (!endsWithSlash(path)) path = path + '/';
-    path = path + file + extension;
-  }
-  const trailingSlash = path !== '/' && endsWithSlash(rawPath);
-
-  // Done.
   return {
-    directory,
-    file,
-    extension,
+    rawPath,
+    rawQuery,
     path,
-    trailingSlash,
-    queryAndHash,
+    endsInSlash,
   };
-};
-
-export default parseRequestPath;
+}

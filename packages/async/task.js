@@ -77,57 +77,67 @@ class Task extends AsyncResource {
 // -----------------------------------------------------------------------------
 
 class Executor {
+  #state = IDLE;
+  #ready = [];
+  #inflight = 0;
+  #capacity;
+  #completed = 0;
+  #context;
+  #idle = settleable();
+  #stop = settleable();
+  #didStop = settleable();
+
   constructor({ capacity = 8, context = {} } = {}) {
-    this._state = IDLE;
-    this._ready = [];
-    this._inflight = 0;
-    this._capacity = capacity;
-    this._completed = 0;
-    this._context = context;
-    if (!has(this._context, 'executor')) this._context.executor = this;
-    this._idle = settleable();
-    this._stop = settleable();
-    this._didStop = settleable();
+    this.#state = IDLE;
+    this.#ready = [];
+    this.#inflight = 0;
+    this.#capacity = capacity;
+    this.#completed = 0;
+    this.#context = context;
+    if (!has(this.#context, 'executor')) this.#context.executor = this;
+    this.#idle = settleable();
+    this.#stop = settleable();
+    this.#didStop = settleable();
   }
 
   get length() {
-    return this._inflight + this._ready.length;
+    return this.#inflight + this.#ready.length;
   }
 
   isIdle() {
-    return this._state === IDLE;
+    return this.#state === IDLE;
   }
 
   isRunning() {
-    return this._state === RUNNING;
+    return this.#state === RUNNING;
   }
 
   isStopping() {
-    return this._state === STOPPING;
+    return this.#state === STOPPING;
   }
 
   hasStopped() {
-    return this._state === STOPPED;
+    return this.#state === STOPPED;
   }
 
   hasCapacity() {
-    return this._inflight < this._capacity;
+    return this.#inflight < this.#capacity;
   }
 
   hasTaskReady() {
-    return this._ready.length;
+    return this.#ready.length;
   }
 
   onIdle() {
-    return this._idle.promise;
+    return this.#idle.promise;
   }
 
   onStop() {
-    return this._stop.promise;
+    return this.#stop.promise;
   }
 
   onDidStop() {
-    return this._didStop.promise;
+    return this.#didStop.promise;
   }
 
   submit(fn, that, ...args) {
@@ -139,14 +149,14 @@ class Executor {
       typeof fn === 'function',
       'First argument to run() must be function'
     );
-    if (this.isIdle()) this._state = RUNNING;
+    if (this.isIdle()) this.#state = RUNNING;
     strict.ok(this.isRunning());
 
-    const task = new Task(fn, that == null ? this._context : that, ...args);
+    const task = new Task(fn, that == null ? this.#context : that, ...args);
     if (this.hasCapacity()) {
       this._run(task);
     } else {
-      this._ready.push(task);
+      this.#ready.push(task);
       this._schedule();
     }
     return task.get();
@@ -154,54 +164,54 @@ class Executor {
 
   async _run(task) {
     strict.ok(this.isRunning());
-    this._inflight++;
+    this.#inflight++;
     try {
       await task.run();
     } catch {
       // Ignore
     } finally {
-      this._completed++;
-      this._inflight--;
+      this.#completed++;
+      this.#inflight--;
       this._schedule();
     }
   }
 
   _schedule() {
     while (this.isRunning() && this.hasTaskReady() && this.hasCapacity()) {
-      this._run(this._ready.shift());
+      this._run(this.#ready.shift());
     }
-    if (this._inflight === 0) {
+    if (this.#inflight === 0) {
       if (this.isRunning()) {
-        this._state = IDLE;
-        this._idle.resolve();
-        this._idle = settleable();
+        this.#state = IDLE;
+        this.#idle.resolve();
+        this.#idle = settleable();
       } else if (this.isStopping()) {
-        this._state = STOPPED;
-        this._didStop.resolve();
+        this.#state = STOPPED;
+        this.#didStop.resolve();
       }
     }
   }
 
   stop() {
     if (this.isIdle()) {
-      this._state = STOPPED;
-      this._stop.resolve();
-      this._didStop.resolve();
+      this.#state = STOPPED;
+      this.#stop.resolve();
+      this.#didStop.resolve();
     } else if (this.isRunning()) {
-      this._state = STOPPING;
-      this._stop.resolve();
+      this.#state = STOPPING;
+      this.#stop.resolve();
     }
-    this._ready.length = 0;
-    return this._didStop.promise;
+    this.#ready.length = 0;
+    return this.#didStop.promise;
   }
 
   status() {
     return {
-      state: this._state.description,
-      ready: this._ready.length,
-      inflight: this._inflight,
-      capacity: this._capacity,
-      completed: this._completed,
+      state: this.#state.description,
+      ready: this.#ready.length,
+      inflight: this.#inflight,
+      capacity: this.#capacity,
+      completed: this.#completed,
     };
   }
 

@@ -3,7 +3,7 @@
 import run from '@grr/run';
 import harness from './harness.js';
 
-harness.test('tooling/run', async t => {
+harness.test('@grr/run', async t => {
   const { stdout, stderr } = await run('printf', ['Hello, world!'], {
     stdio: 'buffer',
   });

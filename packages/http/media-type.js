@@ -18,6 +18,7 @@ const enumerable = true;
 const CHARCODE_BACKSLASH = `\\`.charCodeAt(0);
 const CHARCODE_COMMA = `,`.charCodeAt(0);
 const CHARCODE_DQUOTE = `"`.charCodeAt(0);
+const CHARSET_UTF8 = freeze({ charset: 'UTF-8' });
 const DQUOTE_SLASH = /["\\]/gu;
 const END_OF_CLAUSE = /[;]/gu;
 const END_OF_CLAUSE_EXT = /[;,]/gu;
@@ -478,6 +479,24 @@ const parseMediaType = (s, { position = 0, isRepeated = false } = {}) => {
 
 // -----------------------------------------------------------------------------
 
+const toMediaType = value => {
+  if (value instanceof MediaType) {
+    return value;
+  } else if (
+    value != null &&
+    typeof value.type === 'string' &&
+    typeof value.subtype === 'string'
+  ) {
+    return new MediaType(value.type, value.subtype, value.parameters);
+  } else if (typeof value === 'string') {
+    return parseMediaType(value).mediaType;
+  } else {
+    throw new Error(`Cannot convert "${value}" to media type`);
+  }
+};
+
+// -----------------------------------------------------------------------------
+
 const parseMediaRanges = (s, position = 0) => {
   const { length } = s;
   const mediaRanges = [];
@@ -530,15 +549,19 @@ defineProperties(MediaType, {
   compare: { value: compare },
   /** Compare the given media type and range for compatibility. */
   matches: { value: matches },
+  /** Compute the quality of the given media type for the accept ranges. */
+  matchingQuality: { value: matchingQuality },
 
   /** Render the given media type as a string. */
   render: { value: render },
 
-  /** Parse the given string as a media type. */
+  /**
+   * Convert value to media type. The value must be a valid media type string, a
+   * media type instance, or a POJO with a media type's `type` and `subtype`
+   * properties.
+   */
   of: {
-    value(s) {
-      return parseMediaType(s).mediaType;
-    },
+    value: toMediaType,
   },
 
   /** Parse the string as a comma-separated sequence of media types. */
@@ -555,10 +578,14 @@ defineProperties(MediaType, {
     },
   },
 
+  /** The canonical plain text media type. */
+  PlainText: { value: new MediaType('text', 'plain', CHARSET_UTF8) },
+  /** The canonical markdown media type. */
+  Markdown: { value: new MediaType('text', 'markdown', CHARSET_UTF8) },
   /** The canonical HTML media type. */
-  HTML: { value: new MediaType('text', 'html') },
-  /** The canonical JSON media type. */
-  JSON: { value: new MediaType('application', 'json') },
+  HTML: { value: new MediaType('text', 'html', CHARSET_UTF8) },
+  /** The canonical JSON media type, with explicit charset for security. */
+  JSON: { value: new MediaType('application', 'json', CHARSET_UTF8) },
   /** The canonical binary media type.a */
   Binary: { value: new MediaType('application', 'octet-stream') },
 });

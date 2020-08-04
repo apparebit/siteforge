@@ -11,7 +11,7 @@ const LOCALHOST_CFG = 'localhost.cfg';
 const LOCALHOST_CRT = 'localhost.crt';
 const LOCALHOST_KEY = 'localhost.key';
 
-const { readFile } = promises;
+const { mkdir, readFile } = promises;
 
 // -----------------------------------------------------------------------------
 
@@ -21,7 +21,10 @@ const { readFile } = promises;
  * private key are stored in the directory with the given path. This function
  * expects that OpenSSL is installed and on the path.
  */
-export const certifyLocalhost = ({ openssl = 'openssl', path }) => {
+export const certifyLocalhost = async ({ openssl = 'openssl', path }) => {
+  // Make sure the directory exists.
+  await mkdir(path, { recursive: true });
+
   // prettier-ignore
   const args = [
     'req', '-x509',
@@ -34,7 +37,7 @@ export const certifyLocalhost = ({ openssl = 'openssl', path }) => {
     '-out', LOCALHOST_CRT,
   ];
 
-  return run(openssl, args, { cwd: path });
+  await run(openssl, args, { cwd: path });
 };
 
 // -----------------------------------------------------------------------------

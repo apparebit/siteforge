@@ -16,13 +16,13 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
 // reasonable error reporting is only a few event handlers and a `pipeline`
 // away.
 
-process.title = 'Site:forge Testing';
+process.title = 'test:forge';
 
 const metrics = new Metrics();
 const endTest = metrics.timer('main').start();
 
 const parser = new Parser({});
-const rollcall = new Rollcall({});
+const rollcall = new Rollcall({ volume: 0 });
 parser.on('result', result => rollcall.test(result));
 
 const onComment = comment => rollcall.info(comment);

@@ -1,8 +1,19 @@
 /* © 2020 Robert Grimm */
 
+import { constants } from 'http2';
 import { fileURLToPath } from 'url';
 import harness from './harness.js';
-import { MediaType, parseRequestPath, refreshen } from '@grr/http';
+
+import {
+  connect,
+  MediaType,
+  parseRequestPath,
+  refreshen,
+  Server,
+} from '@grr/http';
+
+const ContentType = constants.HTTP2_HEADER_CONTENT_TYPE;
+const ContentLength = constants.HTTP2_HEADER_CONTENT_LENGTH;
 
 const { Any, Audio, Image, Text, Video } = MediaType;
 const AudioMp4 = MediaType('audio', 'mp4');
@@ -179,42 +190,110 @@ harness.test('@grr/http', t => {
     t.throws(() => parseRequestPath('a/b.html'));
 
     t.same(parseRequestPath('/'), {
-      directory: '/',
-      file: '',
-      extension: '',
+      rawPath: '/',
+      rawQuery: '',
       path: '/',
-      trailingSlash: false,
-      queryAndHash: '',
+      endsInSlash: false,
     });
 
     t.same(parseRequestPath('/a////b/./../../././../a/b/c.html?some-query'), {
-      directory: '/a/b',
-      file: 'c',
-      extension: '.html',
+      rawPath: '/a////b/./../../././../a/b/c.html',
+      rawQuery: '?some-query',
       path: '/a/b/c.html',
-      trailingSlash: false,
-      queryAndHash: '?some-query',
+      endsInSlash: false,
     });
 
-    t.same(parseRequestPath('/a/%2e/b/%2e%2e/file.json#anchor'), {
-      directory: '/a',
-      file: 'file',
-      extension: '.json',
+    t.same(parseRequestPath('/a/%2e/b/%2e%2e/file.json/#anchor'), {
+      rawPath: '/a/%2e/b/%2e%2e/file.json/',
+      rawQuery: '',
       path: '/a/file.json',
-      trailingSlash: false,
-      queryAndHash: '#anchor',
+      endsInSlash: true,
     });
 
     t.end();
   });
 
-  t.test('Http2Server', async t => {
+  t.test('Server', async t => {
     const openssl = '/usr/local/opt/openssl/bin/openssl';
     const path = fileURLToPath(new URL('../tls', import.meta.url));
     const { cert, key } = await refreshen({ openssl, path });
+    const authority = 'https://localhost:6651';
 
-    t.ok(cert);
-    t.ok(key);
+    const testcases = [
+      {
+        async client(session) {
+          const response = await session.request();
+
+          t.is(response[':status'], 200);
+          t.is(response[ContentType], 'text/plain; charset=UTF-8');
+          t.is(response[ContentLength], 5);
+          t.is(response[':body'], 'first');
+        },
+        server(exchange, next) {
+          t.is(exchange.method, 'GET');
+          t.is(exchange.path, '/');
+
+          exchange.body = 'first';
+          exchange.type = MediaType.PlainText;
+          return next();
+        },
+      },
+      {
+        async client(session) {
+          const response = await session.request({
+            ':method': 'HEAD',
+            ':path': '/answer',
+          });
+
+          t.is(response[':status'], 200);
+          t.is(response[ContentType], 'application/json; charset=UTF-8');
+          t.is(response[ContentLength], 13);
+          t.is(response[':body'], '');
+        },
+        server(exchange, next) {
+          t.is(exchange.method, 'HEAD');
+          t.is(exchange.path, '/answer');
+
+          exchange.json({ answer: 42 });
+          return next();
+        },
+      },
+      {
+        async client(session) {
+          const response = await session.request({ ':path': '/answer' });
+
+          t.is(response[':status'], 200);
+          t.is(response[ContentType], 'application/json; charset=UTF-8');
+          t.is(response[ContentLength], 13);
+          t.is(response[':body'], '{"answer":42}');
+        },
+        server(exchange, next) {
+          t.is(exchange.method, 'GET');
+          t.is(exchange.path, '/answer');
+
+          exchange.json({ answer: 42 });
+          return next();
+        },
+      },
+    ];
+
+    let client, server;
+    try {
+      let index = -1;
+      server = new Server({ cert, key, port: 6651 });
+      server.use((exchange, next) => testcases[++index].server(exchange, next));
+      await server.listen();
+
+      client = connect({ authority, ca: cert });
+      await client.didConnect();
+
+      for (const testcase of testcases) {
+        await testcase.client(client);
+      }
+    } finally {
+      if (client) await client.disconnect();
+      if (server) await server.stop();
+    }
 
     t.end();
   });

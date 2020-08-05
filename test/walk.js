@@ -59,20 +59,24 @@ harness.test('@grr/walk', async t => {
 
   const expectedFiles = [
     ...expectedFilesShortWalk.slice(0, 5),
+
     '/builder/LICENSE',
     '/builder/README.md',
     '/builder/builder.js',
     '/builder/context.js',
     '/builder/package.json',
     '/builder/transform.js',
+
     '/fs/LICENSE',
     '/fs/README.md',
     '/fs/fs.js',
     '/fs/package.json',
+
     '/glob/LICENSE',
     '/glob/README.md',
     '/glob/glob.js',
     '/glob/package.json',
+
     '/html/LICENSE',
     '/html/README.md',
     '/html/model.js',
@@ -80,24 +84,31 @@ harness.test('@grr/walk', async t => {
     '/html/package.json',
     '/html/schema.js',
     '/html/syntax.js',
+
     '/http/LICENSE',
     '/http/README.md',
     '/http/certificate.js',
+    '/http/client.js',
+    '/http/date.js',
     '/http/error.html',
     '/http/event-source.js',
+    '/http/exchange.js',
     '/http/file-type.js',
-    '/http/http2-server.js',
+    '/http/identity.js',
     '/http/index.js',
     '/http/localhost.cfg',
     '/http/media-type.js',
     '/http/package.json',
     '/http/parse-path.js',
     '/http/redirect.html',
+    '/http/server.js',
+
     '/inventory/LICENSE',
     '/inventory/README.md',
     '/inventory/inventory.js',
     '/inventory/kind.js',
     '/inventory/package.json',
+
     '/loader/LICENSE',
     '/loader/README.md',
     '/loader/call.js',
@@ -106,10 +117,12 @@ harness.test('@grr/walk', async t => {
     '/loader/launch.js',
     '/loader/loader.js',
     '/loader/package.json',
+
     '/metrics/LICENSE',
     '/metrics/README.md',
     '/metrics/metrics.js',
     '/metrics/package.json',
+
     '/oddjob/LICENSE',
     '/oddjob/README.md',
     '/oddjob/builtin.js',
@@ -120,33 +133,40 @@ harness.test('@grr/walk', async t => {
     '/oddjob/pickle.js',
     '/oddjob/string.js',
     '/oddjob/types.js',
+
     '/options/LICENSE',
     '/options/README.md',
     '/options/options.js',
     '/options/package.json',
+
     '/proact/LICENSE',
     '/proact/README.md',
     '/proact/index.js',
     '/proact/package.json',
     '/proact/render.js',
     '/proact/vdom.js',
+
     '/rollcall/LICENSE',
     '/rollcall/README.md',
     '/rollcall/package.json',
     '/rollcall/rollcall.js',
+
     '/run/LICENSE',
     '/run/README.md',
     '/run/package.json',
     '/run/run.js',
+
     '/schemata/LICENSE',
     '/schemata/README.md',
     '/schemata/context.js',
     '/schemata/package.json',
     '/schemata/schemata.js',
+
     '/temple/LICENSE',
     '/temple/README.md',
     '/temple/package.json',
     '/temple/temple.js',
+
     ...expectedFilesShortWalk.slice(5),
   ];
 
@@ -195,10 +215,10 @@ harness.test('@grr/walk', async t => {
   t.strictSame(metrics, {
     __proto__: null,
     readdir: 18,
-    entries: 115,
-    lstat: 115,
+    entries: 119,
+    lstat: 119,
     realpath: 0,
-    file: 97,
+    file: 101,
   });
 
   // ---------------------------------------------------------------------------

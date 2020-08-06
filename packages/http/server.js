@@ -48,6 +48,8 @@ export default class Server {
   }
 
   // ---------------------------------------------------------------------------
+  // Register Middleware
+  // ---------------------------------------------------------------------------
 
   use(...handlers) {
     assert(this.#server == null);
@@ -60,7 +62,8 @@ export default class Server {
   }
 
   // ---------------------------------------------------------------------------
-  // Listen for incoming connections
+  // Listen For and Accept Incoming Connections
+  // ---------------------------------------------------------------------------
 
   /* async */ listen() {
     if (this.#server != null) return Promise.resolve();
@@ -83,9 +86,6 @@ export default class Server {
     return once(server, 'listening');
   }
 
-  // ---------------------------------------------------------------------------
-  // Accept a connection or session
-
   accept(session) {
     this.#stats.sessions++;
 
@@ -104,7 +104,8 @@ export default class Server {
   }
 
   // ---------------------------------------------------------------------------
-  // Handle Streams
+  // Handle Requests
+  // ---------------------------------------------------------------------------
 
   async request(stream, headers) {
     this.#stats.streams++;
@@ -131,6 +132,7 @@ export default class Server {
 
   // ---------------------------------------------------------------------------
   // Handle Errors
+  // ---------------------------------------------------------------------------
 
   /** Handle the given error within the given descriptive context. */
   didError(error, context) {
@@ -145,7 +147,8 @@ export default class Server {
   }
 
   // ---------------------------------------------------------------------------
-  // Shut Down Effectively and Gracefully
+  // Shut Down Gracefully
+  // ---------------------------------------------------------------------------
 
   /** End the given session. */
   disconnect(session) {

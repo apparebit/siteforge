@@ -31,7 +31,7 @@ const TextPlainUtf8FixedFormat = TextPlain.with({
 });
 
 harness.test('@grr/http', t => {
-  t.test('MediaType()', t => {
+  t.test('@grr/http/MediaType', t => {
     // ----------------------------------------------------- MediaType.unquote()
     t.throws(() => MediaType.unquote('#boo#'));
     t.is(MediaType.unquote(`""`), ``);
@@ -141,7 +141,7 @@ harness.test('@grr/http', t => {
       ]
     );
 
-    // -------------------------------------------------------- matchMediaType()
+    // --------------------------------------------------------------- matches()
     t.ok(TextPlain.matches(Any));
     t.notOk(TextPlain.matches(Video));
     t.ok(VideoMp4.matches(Video));
@@ -183,8 +183,9 @@ harness.test('@grr/http', t => {
     t.end();
   });
 
-  // -------------------------------------------------------- parseRequestPath()
-  t.test('parseRequestPath()', t => {
+  // ===========================================================================
+
+  t.test('@grr/http/parseRequestPath', t => {
     t.throws(() => parseRequestPath('?query'));
     t.throws(() => parseRequestPath('/a%2fb'));
     t.throws(() => parseRequestPath('a/b.html'));
@@ -213,13 +214,16 @@ harness.test('@grr/http', t => {
     t.end();
   });
 
-  t.test('Server', async t => {
+  // ===========================================================================
+
+  t.test('@grr/http/Client+Server', async t => {
     const openssl = '/usr/local/opt/openssl/bin/openssl';
     const path = fileURLToPath(new URL('../tls', import.meta.url));
     const { cert, key } = await refreshen({ openssl, path });
     const authority = 'https://localhost:6651';
 
     const testcases = [
+      // An implicit GET /
       {
         async client(session) {
           const response = await session.request();
@@ -238,6 +242,8 @@ harness.test('@grr/http', t => {
           return next();
         },
       },
+
+      // HEAD for a JSON response
       {
         async client(session) {
           const response = await session.request({
@@ -258,6 +264,8 @@ harness.test('@grr/http', t => {
           return next();
         },
       },
+
+      // GET for the same JSON response
       {
         async client(session) {
           const response = await session.request({ ':path': '/answer' });
@@ -275,6 +283,8 @@ harness.test('@grr/http', t => {
           return next();
         },
       },
+
+      // A permanent redirect
     ];
 
     let client, server;

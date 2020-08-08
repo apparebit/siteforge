@@ -26,6 +26,7 @@ import {
 } from '@grr/oddjob/error';
 import { isBoxed, isMap, isSet, isStringArray, isURL } from '@grr/oddjob/types';
 import pickle from '@grr/oddjob/pickle';
+import { enumView, readOnlyView } from '@grr/oddjob/object';
 import { runInNewContext } from 'vm';
 import { types } from 'util';
 
@@ -219,63 +220,24 @@ harness.test('@grr/oddjob', t => {
   });
 
   // ===========================================================================
-  t.test('string', t => {
-    // -------------------------------------------------------------- asciify()
-    t.is(
-      asciify('àáâ ãäå æçè éêë ìíî ïñò óôõ öœø ùúû üýÿ ðłß Ǆǅǆ'),
-      'aaa aaeaa aece eee iii ino ooo oeoeoe uuu ueyy dlss DZDzdz'
-    );
-    t.is(
-      asciify('ÀÁÂ ÃÄÅ ÆÇÈ ÉÊË ÌÍÎ ÏÑÒ ÓÔÕ ÖŒØ ÙÚÛ ÜÝŸ ÐŁẞ'),
-      'AAA AAeAa AeCE EEE III INO OOO OeOeOe UUU UeYY DLSS'
-    );
-    t.is(asciify('㎧ ㏗ ⓠ ſ Ⅷ 🅏 ẚ ŉ'), `m/s pH q s VIII WC a' 'n`);
-    t.is(asciify('-﹣－‐‑﹘–—'), '--------');
+  t.test('object', t => {
+    const object = {
+      answer: 665,
+    };
+    t.is(object.answer, 665);
 
-    // ---------------------------------------------------------- escapeRegex()
-    t.is(escapeRegex('[a-z]{26}(00)*?'), '\\[a\\-z\\]\\{26\\}\\(00\\)\\*\\?');
+    object.answer = 42;
+    t.is(object.answer, 42);
 
-    // -------------------------------------------------------------- slugify()
-    t.is(slugify('Çäłÿ at - 7 ㎯?'), 'caely-at-7-rads2');
+    const reader = readOnlyView(object);
+    t.is(reader.answer, 42);
+    t.throws(() => (reader.answer = 13));
+    t.is(reader.mark, undefined);
 
-    // -------------------------------------------------------- toKeyPathKeys()
-
-    t.same(toKeyPathKeys('$'), []);
-    t.same(
-      toKeyPathKeys(`$.k1['k2']["k3"][*][1][2][3].*.k1[1].k2[2].k3[3].*`),
-      [
-        'k1',
-        'k2',
-        'k3',
-        WILDCARD,
-        1,
-        2,
-        3,
-        WILDCARD,
-        'k1',
-        1,
-        'k2',
-        2,
-        'k3',
-        3,
-        WILDCARD,
-      ]
-    );
-    t.throws(
-      () => toKeyPathKeys(`key`),
-      /key path "key" does not start with "\$"/u
-    );
-    t.throws(
-      () => toKeyPathKeys(`.key`),
-      /key path ".key" does not start with "\$"/u
-    );
-    t.throws(
-      () => toKeyPathKeys(`$..key`),
-      /key path "\$..key" contains invalid expression/u
-    );
-
-    t.is(toKeyPathPath([]), '$');
-    t.is(toKeyPathPath(['key', 665, '@id']), '$.key[665]["@id"]');
+    const enumeration = enumView(object);
+    t.is(enumeration.answer, 42);
+    t.throws(() => (enumeration.answer = 13));
+    t.throws(() => enumeration.mark);
 
     t.end();
   });
@@ -372,6 +334,68 @@ harness.test('@grr/oddjob', t => {
       ),
       `{"a":2,"f":3,"z":1}`
     );
+
+    t.end();
+  });
+
+  // ===========================================================================
+  t.test('string', t => {
+    // -------------------------------------------------------------- asciify()
+    t.is(
+      asciify('àáâ ãäå æçè éêë ìíî ïñò óôõ öœø ùúû üýÿ ðłß Ǆǅǆ'),
+      'aaa aaeaa aece eee iii ino ooo oeoeoe uuu ueyy dlss DZDzdz'
+    );
+    t.is(
+      asciify('ÀÁÂ ÃÄÅ ÆÇÈ ÉÊË ÌÍÎ ÏÑÒ ÓÔÕ ÖŒØ ÙÚÛ ÜÝŸ ÐŁẞ'),
+      'AAA AAeAa AeCE EEE III INO OOO OeOeOe UUU UeYY DLSS'
+    );
+    t.is(asciify('㎧ ㏗ ⓠ ſ Ⅷ 🅏 ẚ ŉ'), `m/s pH q s VIII WC a' 'n`);
+    t.is(asciify('-﹣－‐‑﹘–—'), '--------');
+
+    // ---------------------------------------------------------- escapeRegex()
+    t.is(escapeRegex('[a-z]{26}(00)*?'), '\\[a\\-z\\]\\{26\\}\\(00\\)\\*\\?');
+
+    // -------------------------------------------------------------- slugify()
+    t.is(slugify('Çäłÿ at - 7 ㎯?'), 'caely-at-7-rads2');
+
+    // -------------------------------------------------------- toKeyPathKeys()
+
+    t.same(toKeyPathKeys('$'), []);
+    t.same(
+      toKeyPathKeys(`$.k1['k2']["k3"][*][1][2][3].*.k1[1].k2[2].k3[3].*`),
+      [
+        'k1',
+        'k2',
+        'k3',
+        WILDCARD,
+        1,
+        2,
+        3,
+        WILDCARD,
+        'k1',
+        1,
+        'k2',
+        2,
+        'k3',
+        3,
+        WILDCARD,
+      ]
+    );
+    t.throws(
+      () => toKeyPathKeys(`key`),
+      /key path "key" does not start with "\$"/u
+    );
+    t.throws(
+      () => toKeyPathKeys(`.key`),
+      /key path ".key" does not start with "\$"/u
+    );
+    t.throws(
+      () => toKeyPathKeys(`$..key`),
+      /key path "\$..key" contains invalid expression/u
+    );
+
+    t.is(toKeyPathPath([]), '$');
+    t.is(toKeyPathPath(['key', 665, '@id']), '$.key[665]["@id"]');
 
     t.end();
   });

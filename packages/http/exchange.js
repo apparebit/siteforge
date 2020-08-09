@@ -2,9 +2,8 @@
 
 import { strict as assert } from 'assert';
 import { constants } from 'http2';
-import { escapeBodyText } from '@grr/html/syntax';
+import { escapeText } from '@grr/html/syntax';
 import { types } from 'util';
-import { identifyEndpoint } from './identity.js';
 import { join } from 'path';
 import MediaType from './media-type.js';
 import mediaTypeForPath from './file-type.js';
@@ -12,6 +11,7 @@ import parseDate from './date.js';
 import parseRequestPath from './parse-path.js';
 import pickle from '@grr/oddjob/pickle';
 import { promises } from 'fs';
+import { readOnlyView } from '@grr/oddjob/object';
 import { settleable } from '../async/promise.js';
 import { STATUS_CODES } from 'http';
 import templatize from '@grr/temple';
@@ -507,27 +507,19 @@ export default class Exchange {
     checkStatus(400, status, 599);
     if (error != null) assert(isNativeError(error));
 
-    // Do not proceed if headers have been sent.
-    if (this.#stream.headersSent) return;
-
-    // Set up status, with explicit argument taking priority.
-    if (status != null) this.#status = status;
-    if (status == null) this.#status = HTTP_STATUS_INTERNAL_SERVER_ERROR;
-    const statusMessage = STATUS_CODES[status] ?? '';
-
-    // Set the body.
-    if (!PRODUCTION && this.quality(MediaType.HTML) > 0) {
-      // Only show detailed error information outside of production.
-      this.#body = await formatError({
-        status,
-        statusMessage,
-        error,
-        requestHeaders: this.#request,
-      });
-    } else {
-      this.#body = `${status} ${statusMessage}`;
-      this.#response[HTTP2_HEADER_CONTENT_TYPE] = MediaType.PlainText;
+    if (this.#stream.headersSent || this.#stage === Stage.Done) {
+      return this.#didRespond;
+    } else if (this.#stage === Stage.Ready) {
+      this.#stage = Stage.Responding;
     }
+
+    // The body.
+    this.#body = await formatError({
+      status,
+      statusMessage: STATUS_CODES[status] ?? '',
+      error: !PRODUCTION ? error : undefined,
+      requestHeaders: !PRODUCTION ? this.#request : undefined,
+    });
 
     // The headers.
     const headers = this.#response;
@@ -538,12 +530,10 @@ export default class Exchange {
     // Prepare and send.
     this.prepare();
     this.send();
+    return this.#didRespond;
   }
 
   // ---------------------------------------------------------------------------
-
-  // TODO: Handle 304 Not Modified separately. Minimize headers but do include
-  // cache-control, content-location, date, etag, expires, vary.
 
   /**
    * Redirect the exchange. This method transitions from the ready to the
@@ -551,6 +541,7 @@ export default class Exchange {
    */
   async redirect(status, location) {
     assert(this.#stage === Stage.Ready);
+    this.#stage = Stage.Responding;
 
     checkStatus(300, status, 399);
     // Make sure location is well-formed and escape for response header.
@@ -571,8 +562,10 @@ export default class Exchange {
     headers[HTTP2_HEADER_LOCATION] = sanitizedLocation;
     headers[HTTP2_HEADER_STATUS] = status;
 
+    // Prepare and send.
     this.prepare();
     this.send();
+    return this.#didRespond;
   }
 
   // ---------------------------------------------------------------------------
@@ -586,9 +579,12 @@ export default class Exchange {
    * the path is a directory, and at `path + ".html"` if the path does not
    * exist. This method returns a promise for the completion of the exchange.
    */
-  async respond() {
-    assert(this.#stage === Stage.Ready);
-    this.#stage = Stage.Responding;
+  /* async */ respond() {
+    if (this.#stage === Stage.Ready) {
+      this.#stage = Stage.Responding;
+    } else {
+      return this.#didRespond;
+    }
 
     // If status and body are missing, middleware didn't do its job. That's an
     // internal server error.
@@ -600,7 +596,7 @@ export default class Exchange {
     if (this.#body == null || this.#body.type !== FILE_PATH) {
       this.prepare();
       this.send();
-      return;
+      return this.#didRespond;
     }
 
     // .........................................................................
@@ -653,16 +649,16 @@ export default class Exchange {
       statCheck,
       onError,
     });
+    return this.#didRespond;
   }
 
   // ===========================================================================
 
   /** Prepare the response by filling in common headers. */
-  prepare({ headers = this.#response, fileStatus } = {}) {
-    assert(this.#stage !== Stage.Done);
-    if (this.#stage === Stage.Ready) this.#stage = Stage.Respondding;
+  prepare(headers = this.#response) {
+    assert(this.#stage !== Stage.Ready && this.#stage !== Stage.Done);
 
-
+    // Also see https://owasp.org/www-project-secure-headers/
 
     const type = headers[HTTP2_HEADER_CONTENT_TYPE];
     if (type.type === 'font') {
@@ -683,13 +679,16 @@ export default class Exchange {
     }
 
     if (!headers[HTTP2_HEADER_STRICT_TRANSPORT_SECURITY]) {
-      // Per Mozilla, two years is best current practice.
       headers[HTTP2_HEADER_STRICT_TRANSPORT_SECURITY] = `max-age=${
-        2 * 365 * 24 * 60 * 60
+        // Limit recommended minimum of 120 days to production.
+        (PRODUCTION ? 120 : 1) * 24 * 60 * 60
       }`;
     }
     if (!headers[HTTP2_HEADER_X_CONTENT_TYPE_OPTIONS]) {
       headers[HTTP2_HEADER_X_CONTENT_TYPE_OPTIONS] = 'nosniff';
+    }
+    if (!headers[HTTP2_HEADER_X_PERMITTED_CROSS_DOMAIN_POLICIES]) {
+      headers[HTTP2_HEADER_X_PERMITTED_CROSS_DOMAIN_POLICIES] = 'none';
     }
 
     return headers;

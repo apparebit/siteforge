@@ -197,6 +197,10 @@ export default class Exchange {
    * requires streaming the response instead of sending it in one chunk right
    * after the headers.
    */
+  get stream() {
+    return this.#stream;
+  }
+
   // ===========================================================================
   // Middleware
   // ===========================================================================

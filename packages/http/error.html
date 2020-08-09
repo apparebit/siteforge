@@ -40,14 +40,18 @@ dd {
 <body>
 <h1>${status} ${statusMessage}</h1>
 
+<p>Unfortunately, the request resulted in an error.</p>
+${requestHeaders ? `
 <h2>Request Headers</h2>
 <dl>
-${requestHeaders.map((key, value) =>
-  `<dt>${escape(key)}</dt>\n<dd>${escape(value)</dd>\n`)}
+${requestHeaders
+  .map(([key, value]) =>
+    `<dt>${escape(key)}</dt>\n<dd>${escape(value)}</dd>\n`)
+  .join('')}
 </dl>
-
-${error ? `
+` : ''}${error ? `
 <h2>Error Stack</h2>
-<p>${escape(error.stack).replace('\n', '<br>')}</p>
+
+<p>${escape(error.stack).replace(/\r?\n/gu, '<br>$&')}</p>
 ` : ''}
 </body>

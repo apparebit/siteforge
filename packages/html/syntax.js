@@ -14,7 +14,11 @@ const ESCAPES = {
 // https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html#rule-1-html-encode-before-inserting-untrusted-data-into-html-element-content
 // recommends escaping slash, even though it is not strictly necessary.
 
-const ESCAPE_IN_TEXT = /["&'/<>]/gu;
+const ESCAPE_UNTRUSTED_TEXT = /["&'/<>]/gu;
+const ESCAPE_TEXT = /["&'<>]/gu;
 
-export const escapeBodyText = text =>
-  text.replace(ESCAPE_IN_TEXT, c => ESCAPES[c]);
+export const escapeUntrustedText = text =>
+  text.replace(ESCAPE_UNTRUSTED_TEXT, c => ESCAPES[c]);
+
+export const escapeText = text =>
+  String(text).replace(ESCAPE_TEXT, c => ESCAPES[c]);

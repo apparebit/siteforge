@@ -172,6 +172,13 @@ export default class Exchange {
     this.#request = headers;
     this.#method = this.#request[HTTP2_HEADER_METHOD];
 
+    const { promise, resolve } = settleable();
+    stream.on('close', () => {
+      this.#stage = Stage.Done;
+      resolve();
+    });
+    this.#didRespond = promise;
+
     try {
       const { path, endsInSlash } = parseRequestPath(
         this.#request[HTTP2_HEADER_PATH]
@@ -237,15 +244,6 @@ export default class Exchange {
 
   /** Return a promise that resolves once this exchange is done. */
   didRespond() {
-    if (this.#didRespond == null) {
-      if (this.#stage !== Stage.Done) {
-        const { promise, resolve } = settleable();
-        this.#stream.on('close', resolve);
-        this.#didRespond = promise;
-      } else {
-        this.#didRespond = Promise.resolve();
-      }
-    }
     return this.#didRespond;
   }
 

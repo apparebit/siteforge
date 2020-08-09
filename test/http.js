@@ -1,16 +1,22 @@
 /* © 2020 Robert Grimm */
 
 import { constants } from 'http2';
+import { EOL } from 'os';
 import { fileURLToPath } from 'url';
 import harness from './harness.js';
 
 import {
   connect,
+  identifyHttp2Stream,
+  identifyLocal,
   MediaType,
+  parseDate,
   parseRequestPath,
   refreshen,
   Server,
 } from '@grr/http';
+
+const { keys: keysOf } = Object;
 
 const ContentType = constants.HTTP2_HEADER_CONTENT_TYPE;
 const ContentLength = constants.HTTP2_HEADER_CONTENT_LENGTH;
@@ -216,13 +222,65 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
+  t.test('@grr/http/identify', t => {
+    t.is(
+      identifyLocal({
+        localAddress: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
+        localFamily: 'IPv6',
+        localPort: 42,
+      }),
+      '[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:42'
+    );
+
+    t.is(
+      identifyHttp2Stream({
+        id: 665,
+        session: {
+          socket: {
+            remoteAddress: '127.0.0.1',
+            remoteFamily: 'IPv4',
+            remotePort: 13,
+          },
+        },
+      }),
+      'https://127.0.0.1:13/#665'
+    );
+
+    t.end();
+  });
+
+  // ===========================================================================
+
+  t.test('@grr/http/parseDate', t => {
+    t.is(parseDate(), undefined);
+    t.is(parseDate('Sat, 08 Aug 2020 16:08:24 EST'), undefined);
+    t.is(
+      parseDate('Sat, 08 Aug 2020 16:08:24 GMT').toISOString(),
+      '2020-08-08T16:08:24.000Z'
+    );
+
+    t.end();
+  });
+
+  // ===========================================================================
+
   t.test('@grr/http/Client+Server', async t => {
     const openssl = '/usr/local/opt/openssl/bin/openssl';
     const path = fileURLToPath(new URL('../tls', import.meta.url));
     const { cert, key } = await refreshen({ openssl, path });
     const authority = 'https://localhost:6651';
 
+    const checkSecurityHeaders = response => {
+      t.is(response['referrer-policy'], 'origin-when-cross-origin');
+      t.is(response['strict-transport-security'], 'max-age=86400');
+      t.is(response['x-content-type-options'], 'nosniff');
+      t.is(response['x-frame-options'], 'DENY');
+      t.is(response['x-permitted-cross-domain-policies'], 'none');
+      t.is(response['x-xss-protection'], '1; mode-block');
+    };
+
     const testcases = [
+      // -----------------------------------------------------------------------
       // An implicit GET /
       {
         async client(session) {
@@ -233,16 +291,31 @@ harness.test('@grr/http', t => {
           t.is(response[ContentLength], 5);
           t.is(response[':body'], 'first');
         },
-        server(exchange, next) {
+
+        async server(exchange, next) {
+          t.ok(exchange.isReady());
+          t.notOk(exchange.isResponding());
+          t.notOk(exchange.isDone());
           t.is(exchange.method, 'GET');
           t.is(exchange.path, '/');
+          t.notOk(exchange.endsInSlash);
 
-          exchange.body = 'first';
-          exchange.type = MediaType.PlainText;
-          return next();
+          exchange.body('first', MediaType.PlainText);
+          t.is(exchange.getBody(), 'first');
+
+          const done = next();
+          t.notOk(exchange.isReady());
+          t.ok(exchange.isResponding());
+          t.notOk(exchange.isDone());
+
+          await done;
+          t.notOk(exchange.isReady());
+          t.notOk(exchange.isResponding());
+          t.ok(exchange.isDone());
         },
       },
 
+      // -----------------------------------------------------------------------
       // HEAD for a JSON response
       {
         async client(session) {
@@ -256,6 +329,7 @@ harness.test('@grr/http', t => {
           t.is(response[ContentLength], 13);
           t.is(response[':body'], '');
         },
+
         server(exchange, next) {
           t.is(exchange.method, 'HEAD');
           t.is(exchange.path, '/answer');
@@ -265,6 +339,7 @@ harness.test('@grr/http', t => {
         },
       },
 
+      // -----------------------------------------------------------------------
       // GET for the same JSON response
       {
         async client(session) {
@@ -275,6 +350,7 @@ harness.test('@grr/http', t => {
           t.is(response[ContentLength], 13);
           t.is(response[':body'], '{"answer":42}');
         },
+
         server(exchange, next) {
           t.is(exchange.method, 'GET');
           t.is(exchange.path, '/answer');
@@ -284,7 +360,90 @@ harness.test('@grr/http', t => {
         },
       },
 
+      // -----------------------------------------------------------------------
       // A permanent redirect
+      {
+        async client(session) {
+          const response = await session.request({ ':path': '/some/page/' });
+
+          t.is(response[':status'], 301);
+          t.is(response['content-type'], 'text/html; charset=UTF-8');
+          t.is(response['x-powered-by'], '12 Monkeys');
+
+          const location = response['location'];
+          t.ok(
+            location === 'https://127.0.0.1:6651/some/page' ||
+              location === 'https://[::ffff:7f00:1]:6651/some/page' ||
+              location === 'https://localhost:6651/some/page'
+          );
+          const contentLength = 130 + 2 * location.length;
+          t.is(Number(response['content-length']), contentLength);
+          t.is(response[':body'].length, contentLength);
+
+          checkSecurityHeaders(response);
+        },
+
+        server(exchange, next) {
+          t.is(exchange.path, '/some/page');
+          t.ok(exchange.endsInSlash);
+
+          t.is(typeof exchange.request, 'object');
+          t.is(exchange.request[':path'], '/some/page/');
+
+          t.is(typeof exchange.response, 'object');
+          t.is(keysOf(exchange.response).join(','), '');
+
+          t.is(exchange.status, undefined);
+          exchange.status = 418;
+          t.is(exchange.status, 418);
+
+          t.is(exchange.type, undefined);
+          exchange.type = MediaType.Binary;
+          t.is(exchange.type, MediaType.Binary);
+
+          t.is(exchange.length, undefined);
+          exchange.length = 665;
+          t.is(exchange.length, 665);
+          exchange.setResponseHeader('content-length', 42);
+          t.is(exchange.length, 42);
+          exchange.deleteResponseHeader('content-length');
+          t.is(exchange.length, undefined);
+
+          t.is(exchange.getResponseHeader('x-powered-by'), undefined);
+          exchange.ooh();
+          t.is(exchange.getResponseHeader('x-powered-by'), 'George Soros');
+          exchange.setResponseHeader('x-powered-by', '12 Monkeys');
+
+          // redirect() is async and thus should be await'ed for. Without that,
+          // control flows into next() and then respond(). In other words, this
+          // does test whether respond() tolerates repeated invocation.
+          exchange.redirect(301, exchange.origin + exchange.path);
+          return next();
+        },
+      },
+
+      // -----------------------------------------------------------------------
+      // An Error
+      {
+        async client(session) {
+          const response = await session.request({ ':path': '/boo' });
+
+          t.is(response[':status'], 418);
+          t.is(response['content-type'], 'text/html; charset=UTF-8');
+
+          const body = response[':body'];
+          t.ok(body.includes(`<h1>418 I'm a Teapot</h1>`));
+          t.ok(body.includes(`<dt>:path</dt>${EOL}<dd>/boo</dd>`));
+          t.ok(body.includes(`<p>Error: boo!<br>`));
+
+          checkSecurityHeaders(response);
+        },
+
+        async server(exchange, next) {
+          await exchange.fail(418, new Error('boo!'));
+          await next();
+        },
+      },
     ];
 
     let client, server;

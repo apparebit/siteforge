@@ -66,7 +66,7 @@ const formatRedirect = async data => {
     const url = new URL('redirect.html', import.meta.url);
     doFormatRedirect = templatize({
       bindings: ['status', 'statusMessage', 'location'],
-      body: await readFile(url, 'utf-8'),
+      source: await readFile(url, 'utf-8'),
       name: 'generate(redirect.html)',
     });
   }
@@ -79,7 +79,7 @@ const formatError = async data => {
     const url = new URL('error.html', import.meta.url);
     doFormatError = templatize({
       bindings: ['status', 'statusMessage', 'error', 'requestHeaders'],
-      body: await readFile(url, 'utf-8'),
+      source: await readFile(url, 'utf-8'),
       name: 'generate(error.html)',
     });
   }

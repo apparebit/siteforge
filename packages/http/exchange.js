@@ -19,6 +19,7 @@ import templatize from '@grr/temple';
 const {
   HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  HTTP_STATUS_NOT_MODIFIED,
   HTTP_STATUS_OK,
   HTTP2_HEADER_ACCEPT,
   HTTP2_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -608,7 +609,14 @@ export default class Exchange {
     const { path, type } = this.#body;
     assert(type === FILE_PATH);
 
+    // eslint-disable-next-line consistent-return
     const statCheck = (fileStatus, headers) => {
+      if (!this.isModified(fileStatus.mtime)) {
+        // Send minimal response and stop Node.js from sending file.
+        this.send(HTTP_STATUS_NOT_MODIFIED);
+        return false;
+      }
+
       headers[HTTP2_HEADER_CONTENT_LENGTH] = fileStatus.size;
       headers[HTTP2_HEADER_LAST_MODIFIED] = fileStatus.mtime.toUTCString();
       headers[HTTP2_HEADER_STATUS] =

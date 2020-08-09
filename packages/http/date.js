@@ -29,5 +29,7 @@ export default function parseDate(value) {
   if (components == null) return undefined;
 
   const [, , day, month, year, hours, minutes, seconds] = components;
-  return new Date(year, MONTH_INDEX[month], day, hours, minutes, seconds);
+  return new Date(
+    Date.UTC(year, MONTH_INDEX[month], day, hours, minutes, seconds)
+  );
 }

@@ -6,9 +6,7 @@
  * remote endpoint.
  */
 export const identifyHttp2Stream = stream =>
-  `stream ${stream.id} of session with https://${identifyRemote(
-    stream.session.socket
-  )}`;
+  `https://${identifyRemote(stream.session.socket)}/#${stream.id}`;
 
 /** Identify the local end of a socket. */
 export const identifyLocal = ({ localAddress, localFamily, localPort }) =>

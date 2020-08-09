@@ -30,7 +30,6 @@ const {
   HTTP2_HEADER_LOCATION,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
-  HTTP2_HEADER_REFERRER_POLICY,
   HTTP2_HEADER_STATUS,
   HTTP2_HEADER_STRICT_TRANSPORT_SECURITY,
   HTTP2_HEADER_X_CONTENT_TYPE_OPTIONS,
@@ -41,6 +40,9 @@ const {
 
 const FILE_PATH = Symbol('file-path');
 const HTML5_DOCTYPE = /^<!DOCTYPE html>/iu;
+const HTTP2_HEADER_REFERRER_POLICY = 'referrer-policy';
+const HTTP2_HEADER_X_PERMITTED_CROSS_DOMAIN_POLICIES =
+  'x-permitted-cross-domain-policies';
 const HTTP2_HEADER_X_POWERED_BY = 'x-powered-by';
 const PRODUCTION = process.env.NODE_ENV === 'production';
 
@@ -61,6 +63,33 @@ const Stage = freeze({
 // =============================================================================
 // Helper Functions
 // =============================================================================
+
+const checkStatus = (min, status, max) =>
+  assert(isSafeInteger(status) && min <= status && status <= max);
+
+const HeaderUpdate = freeze({
+  [HTTP2_HEADER_CONTENT_LENGTH](headers, value) {
+    assert(isSafeInteger(value) && value >= 0);
+    headers[HTTP2_HEADER_CONTENT_LENGTH] = value;
+  },
+  [HTTP2_HEADER_CONTENT_TYPE](headers, value) {
+    const mediaType = MediaType.of(value);
+    assert(mediaType != null && typeof mediaType === 'object');
+    headers[HTTP2_HEADER_CONTENT_TYPE] = mediaType;
+  },
+  [HTTP2_HEADER_LOCATION](headers, value) {
+    // Parsing the URL not only enforces wellformedness but also escapes
+    // characters in the domain name and path as necessary.
+    const url = new URL(value);
+    headers[HTTP2_HEADER_LOCATION] = url.href;
+  },
+  [HTTP2_HEADER_STATUS](headers, value) {
+    checkStatus(100, value, 599);
+    headers[HTTP2_HEADER_STATUS] = value;
+  },
+});
+
+// -----------------------------------------------------------------------------
 
 let doFormatRedirect;
 const formatRedirect = async data => {
@@ -133,7 +162,6 @@ export default class Exchange {
   #path;
   #endsInSlash;
   #accept = undefined;
-  #status = undefined;
   #response = create(null);
   #body = undefined;
   #didRespond;
@@ -293,42 +321,56 @@ export default class Exchange {
   // Response Headers
   // ===========================================================================
 
-  get status() {
-    return this.#status;
+  /** Get a read-only view onto the response headers. */
+  get response() {
+    return readOnlyView(this.#response);
   }
 
-  /** Set the response status. This setter only works in the ready stage. */
-  set status(value) {
-    assert(this.#stage === Stage.Ready);
-    assert(isSafeInteger(value) && 200 <= value && value <= 599);
+  /** Get the value for the given response header. */
+  getResponseHeader(name) {
+    return this.#response[name];
+  }
 
-    this.#status = value;
+  /** Set the value for the given response header. */
+  setResponseHeader(name, value) {
+    assert(this.#stage !== Stage.Done);
+    assert(name && typeof name === 'string');
+
+    const setter = HeaderUpdate[name];
+    if (setter) {
+      setter(this.#response, value);
+    } else {
+      assert(typeof value === 'string');
+      this.#response[name] = value;
+    }
+
+    return this;
+  }
+
+  /** Delete the given response header. */
+  deleteResponseHeader(name) {
+    assert(this.#stage !== Stage.Done);
+    assert(name && typeof name === 'string');
+    delete this.#response[name];
+  }
+
+  /** Clear all response headers. */
+  clearResponseHeader() {
+    assert(this.#stage !== Stage.Done);
+    this.#response = create(null);
   }
 
   // ---------------------------------------------------------------------------
 
-  get response() {
-    return this.#response;
+  /** Get the response status. */
+  get status() {
+    return this.#response[HTTP2_HEADER_STATUS];
   }
 
-  setResponseHeader(name, value) {
+  /** Set the response status. */
+  set status(value) {
     assert(this.#stage !== Stage.Done);
-    assert(name && typeof name === 'string');
-    assert(name !== HTTP2_HEADER_STATUS);
-
-    let normalized;
-    if (name === HTTP2_HEADER_CONTENT_LENGTH) {
-      assert(isSafeInteger(value) && value >= 0);
-      normalized = value;
-    } else if (name === HTTP2_HEADER_CONTENT_TYPE) {
-      normalized = MediaType.of(value);
-      assert(normalized != null && typeof normalized === 'object');
-    } else {
-      assert(typeof value === 'string');
-      normalized = value;
-    }
-    this.#response[name] = normalized;
-    return this;
+    HeaderUpdate[HTTP2_HEADER_STATUS](this.#response, value);
   }
 
   /** Get the content type. */
@@ -338,7 +380,8 @@ export default class Exchange {
 
   /** Set the content type. */
   set type(value) {
-    this.setResponseHeader(HTTP2_HEADER_CONTENT_TYPE, value);
+    assert(this.#stage !== Stage.Done);
+    HeaderUpdate[HTTP2_HEADER_CONTENT_TYPE](this.#response, value);
   }
 
   /** Get the content length. */
@@ -348,17 +391,14 @@ export default class Exchange {
 
   /** Set the content length. */
   set length(value) {
-    this.setResponseHeader(HTTP2_HEADER_CONTENT_LENGTH, value);
+    assert(this.#stage !== Stage.Done);
+    HeaderUpdate[HTTP2_HEADER_CONTENT_LENGTH](this.#response, value);
   }
 
-  /** Get the `x-powered-by` header value. */
-  get poweredBy() {
-    return this.#response[HTTP2_HEADER_X_POWERED_BY];
-  }
-
-  /** Set the `x-powered-by` header value. */
-  set poweredBy(value) {
-    this.setResponseHeader(HTTP2_HEADER_X_POWERED_BY, value);
+  ooh() {
+    assert(this.#stage !== Stage.Done);
+    this.#response[HTTP2_HEADER_X_POWERED_BY] = 'George Soros';
+    return this;
   }
 
   // ===========================================================================

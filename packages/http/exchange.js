@@ -59,6 +59,8 @@ const Stage = freeze({
 });
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
 
 let doFormatRedirect;
 const formatRedirect = async data => {
@@ -90,6 +92,8 @@ const formatError = async data => {
 };
 
 // =============================================================================
+// Exchange State
+// =============================================================================
 
 /**
  * An HTTP request/response exchange. This class implements a thin veneer over
@@ -100,26 +104,25 @@ const formatError = async data => {
  * Since this class builds on HTTP/2 streams directly, it also is restricted to
  * that protocol version. In contrast, Koa.js builds on the request/response API
  * supported by both protocol versions. However, in case of HTTP/2, the
- * implementation comes with some overhead—after all, it is implemented on top
- * of the HTTP/2 stream API—and also is not entirely faithful—which is not
- * surprising since the two versions have fundamentally different network
- * communications patterns.
+ * implementation comes with some overhead, since it is implemented on top of
+ * the HTTP/2 stream API. It also diverges from the earlier API in some corner
+ * cases, which is not surprising since the two versions have fundamentally
+ * different network communications patterns.
  *
  * Each exchange goes through three user-discernible stages, from __Ready__ to
- * __Responding__ to __Done__. During the first stage, user-code uses getters,
- * setters, and helper methods to determine the response headers and body.
- * Invoking `respond()`, `fail()`, or `redirect()` then transitions to the
- * second stage. The exchange now reads any file content from the file system
- * and transmits the response headers and body to the client. Finally, when the
- * underlying stream has been destroyed, the exchange transitions into the third
- * and final stage.
+ * __Responding__ to __Done__. During the first stage, user-code inspects the
+ * request and builds up the response headers and body. When done, it invokes
+ * `redirect()`, `respond()`, or `fail()`, which transition the exchange into
+ * the second stage and initiate I/O, including the transmission of the
+ * response. Once the underlying stream has finished with the transmission, the
+ * exchange enters the third and final stage.
  *
- * The implementation internally recognizes two more stages, __TryingIndexFile__
- * to check for an `index.html` file when the request path names a directory and
+ * The implementation internally uses two more stages, __TryingIndexFile__ to
+ * check for an `index.html` file when the request path names a directory and
  * __TryingDotHtml__ to check for a file with the `.html` extension when the
  * request path does not exist. While both states are necessary for
- * implementation correctness, they also are refinements of the __Responding__
- * stage and thus not exposed to user-code.
+ * implementation correctness, they are refinements of the __Responding__ stage
+ * and not exposed to user-code.
  */
 export default class Exchange {
   #stage = Stage.Ready;
@@ -153,6 +156,14 @@ export default class Exchange {
     }
   }
 
+  /**
+   * Access the underlying Node.js HTTP/2 stream. This getter is an escape hatch
+   * from this class to enable functionality, such as server-sent events, that
+   * requires streaming the response instead of sending it in one chunk right
+   * after the headers.
+   */
+  // ===========================================================================
+  // Middleware
   // ===========================================================================
 
   /**
@@ -279,7 +290,7 @@ export default class Exchange {
   }
 
   // ===========================================================================
-  // Response Headers and Body
+  // Response Headers
   // ===========================================================================
 
   get status() {
@@ -350,7 +361,9 @@ export default class Exchange {
     this.setResponseHeader(HTTP2_HEADER_X_POWERED_BY, value);
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // Response Body
+  // ===========================================================================
 
   /** Get the body value. */
   get body() {
@@ -358,13 +371,15 @@ export default class Exchange {
   }
 
   /**
-   * Set the body value. The given value must be `undefined`, `null`, a string,
-   * or a buffer. An undefined or null body is semantically equivalent to the
-   * absence of a body. In contrast, a zero-length string or buffer as body
-   * indicates the presence of a body. The difference is observable: This class
-   * automatically adds a `content-length` to a response with body, but does not
-   * do so for a response without body. This setter only works in the ready
-   * stage.
+   * Set the body to the given value and update the content length and type
+   * headers accordingly. If the given body value is `undefined` or `null`, it
+   * denotes an absence of a body. In that case, this method ignores the type
+   * argument and deletes the body as well as the content length and type
+   * headers. Otherwise, the given body value must be a string or buffer. In
+   * that case, this method updates the body as well as the content length and
+   * type headers. Note that a zero-length string or buffer still denote the
+   * presence of a body; it just happens to be empty. This method only works in
+   * the ready stage.
    */
   set body(value) {
     assert(this.#stage === Stage.Ready);
@@ -375,7 +390,7 @@ export default class Exchange {
 
   /**
    * Get the symbol indicating a file path. If the body is an object whose
-   * `type` property has this symbol as value, the `path` property indicates
+   * `type` property has this symbol as its value, the `path` property indicates
    * the file's path.
    */
   static get FilePath() {
@@ -384,8 +399,9 @@ export default class Exchange {
 
   /**
    * Set the response body to the contents of the file with given path. This
-   * method only records the path. Actual I/O is initiated by calling
-   * `respond()`, which also fills in content type and length.
+   * method simply records the path. It only works in the ready stage. The
+   * `respond()` method performs actual I/O. It also sets the content length
+   * and type.
    */
   file(path) {
     assert(this.#stage === Stage.Ready);
@@ -395,7 +411,8 @@ export default class Exchange {
 
   /**
    * Set the response body to the given HTML value. This method also sets the
-   * content type as HTML.
+   * content length and type. It only works in the ready stage. The given HTML
+   * string must start with the document type declaration for HTML5.
    */
   html(value) {
     assert(this.#stage === Stage.Ready);
@@ -407,7 +424,8 @@ export default class Exchange {
 
   /**
    * Serialize the given value to JSON and set the response body to the result.
-   * This method does not use the `JSON.stringify`also sets the content type as JSON.
+   * This method also sets the content length and type. It only works in the
+   * ready stage.
    */
   json(value, { stringify = pickle } = {}) {
     assert(this.#stage === Stage.Ready);
@@ -421,11 +439,9 @@ export default class Exchange {
   // ===========================================================================
 
   /**
-   * Fail this exchange. The arguments are optional, with a missing status
-   * defaulting to a `500 Internal Server Error`. When not running in
-   * production, the error object's stack trace is included in the error page to
-   * improve debugability. If this exchange is in the ready stage, calling this
-   * method transitions it to the responding stage.
+   * Fail this exchange. The arguments are optional, with the status defaulting
+   * to `500 Internal Server Error`. If this exchange is in the ready stage,
+   * calling this method transitions it to the responding stage.
    */
   async fail(status, error) {
     if (status != null) {
@@ -493,13 +509,13 @@ export default class Exchange {
   // ---------------------------------------------------------------------------
 
   /**
-   * Send a response. If neither status nor body have been set, this method
-   * sends a `500 Internal Server Error`. Otherwise, if the body is not a file
-   * path, this method prepares the body and its headers and thereafter sends
-   * them. Finally, if the body is a file path, this method tries to respond
-   * with the contents of the file at that path, at file `path + "/index.html"`
-   * if that path is a directory, and at the file `path + ".html"` if that path
-   * does not exist.
+   * Respond to the request. If neither status nor body have been set, this
+   * method responds with a `500 Internal Server Error`. If there is no body or
+   * the body is not a file path, this method simply invokes `prepare()` and
+   * `send()`. Finally, if the body is a file path, this method tries to respond
+   * with the contents of the file at that path, at `path + "/index.html"` if
+   * the path is a directory, and at `path + ".html"` if the path does not
+   * exist. This method returns a promise for the completion of the exchange.
    */
   async respond() {
     assert(this.#stage === Stage.Ready);

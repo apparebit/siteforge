@@ -19,7 +19,8 @@ const { assign } = Object;
 export default class Server {
   #cert;
   #key;
-  #host;
+  #origin;
+  #ip;
   #port;
   #handlers;
   #server;
@@ -27,10 +28,11 @@ export default class Server {
   #logError;
   #stats;
 
-  constructor({ cert, key, host, port, logError }) {
+  constructor({ cert, key, host, ip, port, logError }) {
     this.#cert = cert;
     this.#key = key;
-    this.#host = host;
+    this.#origin = `https://${host ?? ip ?? '127.0.0.1'}:${port}`;
+    this.#ip = ip;
     this.#port = port;
     this.#handlers = [];
     this.#sessions = new Set();
@@ -80,7 +82,7 @@ export default class Server {
       );
 
     const endpoint = [this.#port];
-    if (this.#host) endpoint.push(this.#host);
+    if (this.#ip) endpoint.push(this.#ip);
     server.listen(...endpoint);
 
     return once(server, 'listening');
@@ -111,7 +113,7 @@ export default class Server {
     this.#stats.streams++;
     this.#stats.openStreams++;
 
-    const exchange = new Exchange(stream, headers);
+    const exchange = new Exchange({ origin: this.#origin, stream, headers });
     exchange.didRespond().then(() => this.#stats.openStreams--);
 
     if (!exchange.isReady()) {
@@ -124,7 +126,7 @@ export default class Server {
         // Apply middleware to the exchange.
         await exchange.handleWith(...this.#handlers);
       } catch (x) {
-        this.#logError('Middleware failed', x);
+        this.#logError('[Middleware]', x);
         await exchange.fail(HTTP_STATUS_INTERNAL_SERVER_ERROR, x);
       }
     }

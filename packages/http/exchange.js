@@ -123,22 +123,22 @@ const formatError = async data => {
  */
 export default class Exchange {
   #stage = Stage.Ready;
+  #origin;
   #stream;
   #request;
   #method;
   #path;
   #endsInSlash;
-  #origin = undefined;
   #accept = undefined;
   #status = undefined;
   #response = create(null);
   #body = undefined;
   #didRespond;
 
-  constructor(stream, request) {
+  constructor({ origin, stream, headers }) {
+    this.#origin = origin;
     this.#stream = stream;
-    this.#origin = identifyEndpoint(stream.session.socket.address());
-    this.#request = request;
+    this.#request = headers;
     this.#method = this.#request[HTTP2_HEADER_METHOD];
 
     try {

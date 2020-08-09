@@ -10,11 +10,11 @@ harness.test('@grr/temple', t => {
   t.throws(() => templatize({ bindings: ['<>'] }));
   t.throws(() => templatize({ escape: 'escape' }));
   t.throws(() => templatize({ name: 665 }));
-  t.throws(() => templatize({ text: 665 }));
+  t.throws(() => templatize({ source: 665 }));
 
   let template = templatize({
     bindings: 'code',
-    text: '<code>${escape(code)}</code>',
+    source: '<code>${escape(code)}</code>',
   });
 
   t.is(template({ code: '<tag>' }), '<code>&lt;tag&gt;</code>');

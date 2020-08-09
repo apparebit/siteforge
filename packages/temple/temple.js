@@ -1,7 +1,7 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import { escapeBodyText } from '@grr/html/syntax';
+import { escapeText } from '@grr/html/syntax';
 
 const configurable = true;
 const { defineProperty } = Object;
@@ -10,7 +10,6 @@ const { isArray } = Array;
 // -----------------------------------------------------------------------------
 
 const IDENTIFIER = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
-const SLASH_TICK = /[\\`]/gu;
 
 /**
  * Create a new template function. The newly created function has the given name
@@ -24,9 +23,9 @@ const SLASH_TICK = /[\\`]/gu;
  */
 const templatize = ({
   bindings = [],
-  escape = escapeBodyText,
+  escape = escapeText,
   name = 'template',
-  text = '',
+  source = '',
 }) => {
   // This function returns a function. That makes validation more important.
   if (typeof bindings === 'string') bindings = [bindings];
@@ -43,7 +42,7 @@ const templatize = ({
   }
   assert(typeof escape === 'function');
   assert(typeof name === 'string');
-  assert(typeof text === 'string');
+  assert(typeof source === 'string');
 
   // Instantiate the bindings of the template through parameter destructuring.
   let data;
@@ -54,7 +53,7 @@ const templatize = ({
   }
 
   // The template body is trivial.
-  const body = `return \`${text.replace(SLASH_TICK, '\\$&')}\`;`;
+  const body = `return \`${source}\`;`;
 
   // But passing live values requires the power of Function.prototype.bind.
   // eslint-disable-next-line no-new-func

@@ -39,7 +39,9 @@ const {
 } = constants;
 
 const FILE_PATH = Symbol('file-path');
-const HTML5_DOCTYPE = /^<!DOCTYPE html>/iu;
+// Yet for us there is but one markup language, HTML née HTML5,
+// from which all text came and for which text exists.
+const HTML_DOCUMENT = /^<!DOCTYPE html>/iu;
 const HTTP2_HEADER_REFERRER_POLICY = 'referrer-policy';
 const HTTP2_HEADER_X_PERMITTED_CROSS_DOMAIN_POLICIES =
   'x-permitted-cross-domain-policies';
@@ -407,8 +409,11 @@ export default class Exchange {
   // Response Body
   // ===========================================================================
 
-  /** Get the body value. */
-  get body() {
+  /**
+   * Get the body value. The value is either `undefined`, a buffer, or a
+   * string.
+   */
+  getBody() {
     return this.#body;
   }
 
@@ -423,11 +428,18 @@ export default class Exchange {
    * presence of a body; it just happens to be empty. This method only works in
    * the ready stage.
    */
-  set body(value) {
+  body(value, type = MediaType.Binary) {
     assert(this.#stage === Stage.Ready);
-    assert(value == null || typeof value === 'string' || isBuffer(value));
+    if (value == null) {
+      this.#body = undefined;
+      return this;
+    }
+
+    assert(typeof value === 'string' || isBuffer(value));
     this.#body = value;
     this.#response[HTTP2_HEADER_CONTENT_LENGTH] = byteLength(value);
+    HeaderUpdate[HTTP2_HEADER_CONTENT_TYPE](this.#response, type);
+    return this;
   }
 
   /**
@@ -447,8 +459,9 @@ export default class Exchange {
    */
   file(path) {
     assert(this.#stage === Stage.Ready);
-    assert(typeof path === 'string');
+    assert(typeof path === 'string' && path.length > 0);
     this.#body = { type: FILE_PATH, path };
+    return this;
   }
 
   /**
@@ -458,10 +471,12 @@ export default class Exchange {
    */
   html(value) {
     assert(this.#stage === Stage.Ready);
-    assert(typeof value === 'string');
+    assert(typeof value === 'string' && HTML_DOCUMENT.test(value));
 
-    this.body = value; // Sets content-length.
+    this.#body = value;
+    this.#response[HTTP2_HEADER_CONTENT_LENGTH] = byteLength(value);
     this.#response[HTTP2_HEADER_CONTENT_TYPE] = MediaType.HTML;
+    return this;
   }
 
   /**
@@ -472,8 +487,10 @@ export default class Exchange {
   json(value, { stringify = pickle } = {}) {
     assert(this.#stage === Stage.Ready);
 
-    this.body = stringify(value); // Sets content-length.
+    this.#body = stringify(value);
+    this.#response[HTTP2_HEADER_CONTENT_LENGTH] = byteLength(this.#body);
     this.#response[HTTP2_HEADER_CONTENT_TYPE] = MediaType.JSON;
+    return this;
   }
 
   // ===========================================================================
@@ -485,10 +502,8 @@ export default class Exchange {
    * to `500 Internal Server Error`. If this exchange is in the ready stage,
    * calling this method transitions it to the responding stage.
    */
-  async fail(status, error) {
-    if (status != null) {
-      assert(isSafeInteger(status) && 400 <= status && status <= 599);
-    }
+  async fail(status = HTTP_STATUS_INTERNAL_SERVER_ERROR, error = undefined) {
+    checkStatus(400, status, 599);
     if (error != null) assert(isNativeError(error));
 
     // Do not proceed if headers have been sent.
@@ -513,6 +528,13 @@ export default class Exchange {
       this.#response[HTTP2_HEADER_CONTENT_TYPE] = MediaType.PlainText;
     }
 
+    // The headers.
+    const headers = this.#response;
+    headers[HTTP2_HEADER_CONTENT_LENGTH] = byteLength(this.#body);
+    headers[HTTP2_HEADER_CONTENT_TYPE] = MediaType.HTML;
+    headers[HTTP2_HEADER_STATUS] = status;
+
+    // Prepare and send.
     this.prepare();
     this.send();
   }
@@ -528,21 +550,25 @@ export default class Exchange {
    */
   async redirect(status, location) {
     assert(this.#stage === Stage.Ready);
-    assert(301 <= status && status <= 308 && status !== 306);
 
-    // NB: Parsing a URL as a WhatWG's URL encodes non-ASCII characters in the
-    // domain name and escapes path characters as necessary. That's just what's
-    // needed here, but it does rule out URL for routing.
-    const url = new URL(location).href;
+    checkStatus(300, status, 399);
+    // Make sure location is well-formed and escape for response header.
+    const sanitizedLocation = new URL(location).href;
 
-    this.#status = status;
-    this.#response[HTTP2_HEADER_LOCATION] = url;
+    // The body.
     this.#body = await formatRedirect({
       status,
       statusMessage: STATUS_CODES[status] ?? '',
       // Escape the original location string for embedding in HTML.
-      location: escapeBodyText(location),
+      location: escapeText(location),
     });
+
+    // The headers.
+    const headers = this.#response;
+    headers[HTTP2_HEADER_CONTENT_LENGTH] = byteLength(this.#body);
+    headers[HTTP2_HEADER_CONTENT_TYPE] = MediaType.HTML;
+    headers[HTTP2_HEADER_LOCATION] = sanitizedLocation;
+    headers[HTTP2_HEADER_STATUS] = status;
 
     this.prepare();
     this.send();
@@ -565,15 +591,8 @@ export default class Exchange {
 
     // If status and body are missing, middleware didn't do its job. That's an
     // internal server error.
-    if (this.#status == null && this.#body == null) {
-      await this.fail(HTTP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    }
-
-    // Otherwise, if the status is missing, we assume everything is aok. After
-    // all, we have a body.
-    if (this.#status == null) {
-      this.#status = HTTP_STATUS_OK;
+    if (this.#response[HTTP2_HEADER_STATUS] == null && this.#body == null) {
+      return this.fail(HTTP_STATUS_INTERNAL_SERVER_ERROR);
     }
 
     // The body's data is right there. We just need to prepare and send.
@@ -590,7 +609,11 @@ export default class Exchange {
     assert(type === FILE_PATH);
 
     const statCheck = (fileStatus, headers) => {
-      this.#response = this.prepare({ headers, fileStatus });
+      headers[HTTP2_HEADER_CONTENT_LENGTH] = fileStatus.size;
+      headers[HTTP2_HEADER_LAST_MODIFIED] = fileStatus.mtime.toUTCString();
+      headers[HTTP2_HEADER_STATUS] =
+        headers[HTTP2_HEADER_STATUS] ?? HTTP_STATUS_OK;
+      this.#response = this.prepare(headers);
     };
 
     const onError = error => {
@@ -631,29 +654,7 @@ export default class Exchange {
     assert(this.#stage !== Stage.Done);
     if (this.#stage === Stage.Ready) this.#stage = Stage.Respondding;
 
-    // Fill in status.
-    headers[HTTP2_HEADER_STATUS] = this.#status ?? HTTP_STATUS_OK;
 
-    if (this.#body != null && headers[HTTP2_HEADER_CONTENT_TYPE] == null) {
-      // Fill in content-type.
-      if (typeof this.#body === 'string' && HTML5_DOCTYPE.test(this.#body)) {
-        headers[HTTP2_HEADER_CONTENT_TYPE] = MediaType.HTML;
-      } else {
-        headers[HTTP2_HEADER_CONTENT_TYPE] = MediaType.Binary;
-      }
-
-      // Fill in content-length.
-      if (headers[HTTP2_HEADER_CONTENT_LENGTH] === undefined) {
-        headers[HTTP2_HEADER_CONTENT_LENGTH] = byteLength(this.#body);
-      }
-    }
-
-    // FIXME: Set up cache-control.
-    if (fileStatus) {
-      if (!headers[HTTP2_HEADER_LAST_MODIFIED]) {
-        headers[HTTP2_HEADER_LAST_MODIFIED] = fileStatus.mtime.toUTCString();
-      }
-    }
 
     const type = headers[HTTP2_HEADER_CONTENT_TYPE];
     if (type.type === 'font') {
@@ -686,10 +687,17 @@ export default class Exchange {
     return headers;
   }
 
+  // ---------------------------------------------------------------------------
+
   /** Send the response headers and body. */
-  send() {
+  send(status = undefined) {
     assert(this.#stage !== Stage.Ready && this.#stage !== Stage.Done);
 
+    // Fill in response status.
+    this.#response[HTTP2_HEADER_STATUS] =
+      status ?? this.#response[HTTP2_HEADER_STATUS] ?? HTTP_STATUS_OK;
+
+    // Send response.
     const endStream = this.#method === HTTP2_METHOD_HEAD || this.#body == null;
     this.#stream.respond(this.#response, { endStream });
     if (!endStream) this.#stream.end(this.#body);

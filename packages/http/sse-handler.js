@@ -17,12 +17,12 @@ const configurable = true;
 const { defineProperties } = Object;
 const { isSafeInteger } = Number;
 
-export default function createServerSentEventsHandler({
+const createServerSentEventsHandler = ({
   heartbeat = 10 * 60 * 1000,
   reconnect = 500,
   startTimer = setInterval,
   stopTimer = clearInterval,
-} = {}) {
+} = {}) => {
   assert(isSafeInteger(heartbeat) && heartbeat >= 0);
   assert(isSafeInteger(reconnect) && reconnect >= 0);
   assert(typeof startTimer === 'function');
@@ -113,4 +113,6 @@ export default function createServerSentEventsHandler({
     close: { configurable, value: close },
   });
   return handleServerSentEvents;
-}
+};
+
+export default createServerSentEventsHandler;

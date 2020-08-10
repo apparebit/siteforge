@@ -12,6 +12,7 @@ const {
   HTTP_STATUS_SERVICE_UNAVAILABLE,
 } = constants;
 
+const { apply } = Reflect;
 const { assign } = Object;
 
 // =============================================================================
@@ -29,6 +30,11 @@ export default class Server {
   #stats;
 
   constructor({ cert, key, host, ip, port, logError }) {
+    assert(host == null || typeof host === 'string');
+    assert(host == null || typeof ip === 'string');
+    assert(typeof port === 'number');
+    assert(logError == null || typeof logError === 'function');
+
     this.#cert = cert;
     this.#key = key;
     this.#origin = `https://${host ?? ip ?? '127.0.0.1'}:${port}`;
@@ -53,12 +59,22 @@ export default class Server {
   // Register Middleware
   // ---------------------------------------------------------------------------
 
+  /**
+   * Register the given functions as middleware. A middleware handler is any
+   * function `(exchange, next) => done` that takes an exchange and callback as
+   * arguments and returns a promise for the exchange's completion. Typically,
+   * the handler performs some operations on the `exchange` object and then
+   * invokes `next()` to execute the, ahem, next middleware handler in this
+   * server's middleware pipeline. Just like handlers, `next()` is a promise
+   * returning, asynchronous function. In fact, it may just return the next
+   * middleware handler's promise.
+   *
+   * If a middleware handler has a function-valued `close` property, it is
+   * invoked as a method when closing this server.
+   */
   use(...handlers) {
     assert(this.#server == null);
-
-    for (const handler of handlers) {
-      assert(typeof handler === 'function');
-    }
+    handlers.forEach(handler => assert(typeof handler === 'function'));
     this.#handlers.push(...handlers);
     return this;
   }
@@ -92,7 +108,7 @@ export default class Server {
     this.#stats.sessions++;
 
     if (!this.#server) {
-      this.end(session);
+      this.disconnect(session);
       return;
     }
 
@@ -160,21 +176,34 @@ export default class Server {
   }
 
   /**
-   * Start to asynchronously shut down the server and return a promise
-   * that fulfills with a completed shutdown.
+   * Close down this server and return a promise that fulfills with a complete
+   * shutdown. This method explicitly closes all connections with the server as
+   * well as any middleware that has a `close()` method.
    */
   stop() {
     if (this.#server == null) {
       return Promise.resolve();
     }
 
+    // Close server so that it stops accepting new connections.
     const server = this.#server;
     this.#server = undefined;
     const done = close(server);
 
+    // Close handlers, which may also hold resources including connections.
+    for (const handler of this.#handlers) {
+      // Protect against the treachery of nondeterministic getters.
+      const close = handler.close;
+      if (typeof close === 'function') {
+        apply(close, handler, []);
+      }
+    }
+
+    // Close sessions, which also closes underlying connections.
     for (const session of this.#sessions) {
       this.disconnect(session);
     }
+
     return done.then(() => assert(this.#sessions.size === 0));
   }
 }

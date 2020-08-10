@@ -40,6 +40,36 @@ export const certifyLocalhost = async ({ openssl = 'openssl', path }) => {
   await run(openssl, args, { cwd: path });
 };
 
+// =============================================================================
+
+// Helper function to convert (part of a) certificate to text.
+const getCertInfo = ({ openssl = 'openssl', path, cert, info = '-text' }) => {
+  // prettier-ignore
+  const args = [
+    'x509',
+    ...(path ? ['-in', path] : []),
+    '-noout',
+    info,
+  ];
+
+  const promise = run(openssl, args, { stdio: 'pipe' });
+  const { child } = promise;
+  const { stdin, stdout, stderr } = child;
+
+  // If we have the certificate in memory, write it to stdin.
+  if (cert) stdin.write(cert);
+
+  // Capture stdout and stderr.
+  const cap = settleable();
+  let out = '';
+  stdout.on('data', chunk => (out += chunk));
+  stderr.on('data', () => {});
+  child.on('close', () => cap.resolve(out));
+
+  // Return a promise for the output.
+  return cap.promise;
+};
+
 // -----------------------------------------------------------------------------
 
 /**
@@ -49,29 +79,10 @@ export const certifyLocalhost = async ({ openssl = 'openssl', path }) => {
  * that OpenSSL is installed and on the path.
  */
 export const readCertDates = async ({ openssl = 'openssl', path, cert }) => {
-  // prettier-ignore
-  const args = [
-    'x509',
-    ...(path ? ['-in', path] : []),
-    '-noout',
-    '-dates'
-  ];
-
-  const promise = run(openssl, args, { stdio: 'pipe' });
-
-  // Write certificate to stdin and capture stdout.
-  const { child } = promise;
-  const { stdin, stdout, stderr } = child;
-  if (cert) stdin.write(cert);
-
-  const cap = settleable();
-  let out = '';
-  stdout.on('data', chunk => (out += chunk));
-  stderr.on('data', () => {});
-  child.on('close', () => cap.resolve(out));
+  const output = getCertInfo({ openssl, path, cert, info: '-dates' });
 
   // Parse OpenSSL's output of two lines with key=value pairs.
-  const lines = (await cap.promise).split(/\r?\n/u);
+  const lines = (await output).split(/\r?\n/u);
 
   let [label, date] = lines[0].split('=');
   assert(label === 'notBefore');
@@ -86,6 +97,15 @@ export const readCertDates = async ({ openssl = 'openssl', path, cert }) => {
 };
 
 // -----------------------------------------------------------------------------
+
+/** Convert a certificate to its human-readable representation. */
+export const dumpCertificate = /* async */ ({
+  openssl = 'openssl',
+  path,
+  cert,
+}) => getCertInfo({ openssl, path, cert });
+
+// =============================================================================
 
 /**
  * Load the TLS certificate and key from the given directory. If the certificate

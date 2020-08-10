@@ -7,11 +7,14 @@ import harness from './harness.js';
 
 import {
   connect,
+  createPathHandler,
+  createSSEHandler,
+  events,
   identifyHttp2Stream,
   identifyLocal,
   MediaType,
   parseDate,
-  parseRequestPath,
+  parsePath,
   refreshen,
   Server,
 } from '@grr/http';
@@ -35,6 +38,14 @@ const TextPlainUtf8FixedFormat = TextPlain.with({
   charset: 'UTF-8',
   format: 'fixed',
 });
+
+const prepareSecrets = async () => {
+  const openssl = '/usr/local/opt/openssl/bin/openssl';
+  const path = fileURLToPath(new URL('../tls', import.meta.url));
+  const secrets = await refreshen({ openssl, path });
+  secrets.authority = 'https://localhost:6651';
+  return secrets;
+};
 
 harness.test('@grr/http', t => {
   t.test('@grr/http/MediaType', t => {
@@ -191,26 +202,26 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/parseRequestPath', t => {
-    t.throws(() => parseRequestPath('?query'));
-    t.throws(() => parseRequestPath('/a%2fb'));
-    t.throws(() => parseRequestPath('a/b.html'));
+  t.test('@grr/http/parse-util', t => {
+    t.throws(() => parsePath('?query'));
+    t.throws(() => parsePath('/a%2fb'));
+    t.throws(() => parsePath('a/b.html'));
 
-    t.same(parseRequestPath('/'), {
+    t.same(parsePath('/'), {
       rawPath: '/',
       rawQuery: '',
       path: '/',
       endsInSlash: false,
     });
 
-    t.same(parseRequestPath('/a////b/./../../././../a/b/c.html?some-query'), {
+    t.same(parsePath('/a////b/./../../././../a/b/c.html?some-query'), {
       rawPath: '/a////b/./../../././../a/b/c.html',
       rawQuery: '?some-query',
       path: '/a/b/c.html',
       endsInSlash: false,
     });
 
-    t.same(parseRequestPath('/a/%2e/b/%2e%2e/file.json/#anchor'), {
+    t.same(parsePath('/a/%2e/b/%2e%2e/file.json/#anchor'), {
       rawPath: '/a/%2e/b/%2e%2e/file.json/',
       rawQuery: '',
       path: '/a/file.json',
@@ -264,12 +275,7 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/Client+Server', async t => {
-    const openssl = '/usr/local/opt/openssl/bin/openssl';
-    const path = fileURLToPath(new URL('../tls', import.meta.url));
-    const { cert, key } = await refreshen({ openssl, path });
-    const authority = 'https://localhost:6651';
-
+  t.test('@grr/http/Server', async t => {
     const checkSecurityHeaders = response => {
       t.is(response['referrer-policy'], 'origin-when-cross-origin');
       t.is(response['strict-transport-security'], 'max-age=86400');
@@ -448,8 +454,10 @@ harness.test('@grr/http', t => {
 
     let client, server;
     try {
-      let index = -1;
+      const { authority, cert, key } = await prepareSecrets();
       server = new Server({ cert, key, port: 6651 });
+
+      let index = -1;
       server.use((exchange, next) => testcases[++index].server(exchange, next));
       await server.listen();
 
@@ -458,6 +466,70 @@ harness.test('@grr/http', t => {
 
       for (const testcase of testcases) {
         await testcase.client(client);
+      }
+    } finally {
+      if (client) await client.disconnect();
+      if (server) await server.stop();
+    }
+
+    t.end();
+  });
+
+  // ===========================================================================
+
+  t.test('@grr/http/createSSEHandler', async t => {
+    let client, server;
+    try {
+      // Set up SSE middleware.
+      const handleSSE = createSSEHandler();
+      const handleEvents = createPathHandler('/.well-known/alerts', handleSSE, {
+        exact: true,
+      });
+
+      t.is(handleEvents.name, 'handleServerSentEvents');
+      t.is(handleEvents.name, handleSSE.name);
+      t.is(handleEvents.emit, handleSSE.emit);
+      t.is(handleEvents.close, handleSSE.close);
+
+      // Set up server hosting middleware.
+      const { authority, cert, key } = await prepareSecrets();
+      server = new Server({ cert, key, port: 6651 });
+      server.use(handleEvents);
+      await server.listen();
+
+      // Schedule events to be sent.
+      setTimeout(() => handleSSE.emit({ id: 665, data: 'yo!' }), 50);
+      setTimeout(() => handleEvents.emit({ event: 'yell', data: 'damn!' }), 50);
+      setTimeout(() => handleSSE.close(), 100);
+
+      // Set up client and consume events.
+      client = connect({ authority, ca: cert });
+      await client.didConnect();
+
+      let count = 0;
+      for await (const event of events(client.session, '/.well-known/alerts')) {
+        switch (++count) {
+          case 1:
+            t.is(event.data, undefined);
+            t.is(event.event, undefined);
+            t.is(event.id, undefined);
+            t.is(event.retry, '500');
+            break;
+          case 2:
+            t.is(event.data, 'yo!');
+            t.is(event.event, undefined);
+            t.is(event.id, '665');
+            t.is(event.retry, undefined);
+            break;
+          case 3:
+            t.is(event.data, 'damn!');
+            t.is(event.event, 'yell');
+            t.is(event.id, undefined);
+            t.is(event.retry, undefined);
+            break;
+          default:
+            t.fail();
+        }
       }
     } finally {
       if (client) await client.disconnect();

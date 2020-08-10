@@ -91,7 +91,6 @@ harness.test('@grr/walk', async t => {
     '/http/client.js',
     '/http/date.js',
     '/http/error.html',
-    '/http/event-source.js',
     '/http/exchange.js',
     '/http/file-type.js',
     '/http/identity.js',
@@ -99,9 +98,12 @@ harness.test('@grr/walk', async t => {
     '/http/localhost.cfg',
     '/http/media-type.js',
     '/http/package.json',
-    '/http/parse-path.js',
+    '/http/path-handler.js',
+    '/http/path-util.js',
     '/http/redirect.html',
     '/http/server.js',
+    '/http/sse-client.js',
+    '/http/sse-handler.js',
 
     '/inventory/LICENSE',
     '/inventory/README.md',
@@ -171,6 +173,11 @@ harness.test('@grr/walk', async t => {
     ...expectedFilesShortWalk.slice(5),
   ];
 
+  const expectedPackages = new Set();
+  for (const file of expectedFiles) {
+    expectedPackages.add((file.match(/^\/([^/]+)\//u) || [])[1]);
+  }
+
   // ---------------------------------------------------------------------------
   // A short walk() with the default executor run().
 
@@ -215,11 +222,11 @@ harness.test('@grr/walk', async t => {
   t.strictSame(actualFiles.sort(), expectedFiles);
   t.strictSame(metrics, {
     __proto__: null,
-    readdir: 18,
-    entries: 120,
-    lstat: 120,
+    readdir: 1 + expectedPackages.size,
+    entries: 1 + expectedPackages.size + expectedFiles.length,
+    lstat: 1 + expectedPackages.size + expectedFiles.length,
     realpath: 0,
-    file: 102,
+    file: expectedFiles.length,
   });
 
   // ---------------------------------------------------------------------------

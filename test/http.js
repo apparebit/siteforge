@@ -91,6 +91,10 @@ harness.test('@grr/http', t => {
       TextPlain.with({ charset: 'UTF-8', format: 'FIXED' })
     );
 
+    const css = MediaType.of('text/css');
+    t.is(MediaType.of('text/css'), css);
+    t.is(css.parameters.charset, 'UTF-8');
+
     // ----------------------------------------------------- MediaType.compare()
     const cmt = MediaType.compare;
 

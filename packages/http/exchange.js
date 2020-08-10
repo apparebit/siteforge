@@ -8,7 +8,7 @@ import { join } from 'path';
 import MediaType from './media-type.js';
 import mediaTypeForPath from './file-type.js';
 import parseDate from './date.js';
-import parseRequestPath from './parse-path.js';
+import { parsePath } from './path-util.js';
 import pickle from '@grr/oddjob/pickle';
 import { promises } from 'fs';
 import { readOnlyView } from '@grr/oddjob/object';
@@ -183,9 +183,7 @@ export default class Exchange {
     this.#didRespond = promise;
 
     try {
-      const { path, endsInSlash } = parseRequestPath(
-        this.#request[HTTP2_HEADER_PATH]
-      );
+      const { path, endsInSlash } = parsePath(this.#request[HTTP2_HEADER_PATH]);
       this.#path = path;
       this.#endsInSlash = endsInSlash;
     } catch (x) {
@@ -208,10 +206,7 @@ export default class Exchange {
   // Middleware
   // ===========================================================================
 
-  /**
-   * Handle this exchange with the given series of asynchronous middleware
-   * functions.
-   */
+  /** Handle this exchange with the given middleware handlers. */
   handleWith(...handlers) {
     let index = -1;
 
@@ -586,14 +581,14 @@ export default class Exchange {
       return this.#didRespond;
     }
 
-    // If status and body are missing, middleware didn't do its job. That's an
-    // internal server error.
-    if (this.#response[HTTP2_HEADER_STATUS] == null && this.#body == null) {
-      return this.fail(HTTP_STATUS_INTERNAL_SERVER_ERROR);
-    }
+    const status = this.#response[HTTP2_HEADER_STATUS];
+    const body = this.#body;
 
-    // The body's data is right there. We just need to prepare and send.
-    if (this.#body == null || this.#body.type !== FILE_PATH) {
+    if (status == null && body == null) {
+      // If there is no status and no body, somebody didn't do their work.
+      return this.fail(HTTP_STATUS_INTERNAL_SERVER_ERROR);
+    } else if (body == null || typeof body === 'string' || isBuffer(body)) {
+      // If there is no body or the body is a (byte) string, just send it.
       this.prepare();
       this.send();
       return this.#didRespond;
@@ -707,6 +702,12 @@ export default class Exchange {
     // Send response.
     const endStream = this.#method === HTTP2_METHOD_HEAD || this.#body == null;
     this.#stream.respond(this.#response, { endStream });
-    if (!endStream) this.#stream.end(this.#body);
+    if (endStream) return;
+
+    if (typeof this.#body === 'string') {
+      this.#stream.end(this.#body, 'utf8');
+    } else {
+      this.#stream.end(this.#body);
+    }
   }
 }

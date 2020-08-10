@@ -479,24 +479,6 @@ const parseMediaType = (s, { position = 0, isRepeated = false } = {}) => {
 
 // -----------------------------------------------------------------------------
 
-const toMediaType = value => {
-  if (value instanceof MediaType) {
-    return value;
-  } else if (
-    value != null &&
-    typeof value.type === 'string' &&
-    typeof value.subtype === 'string'
-  ) {
-    return new MediaType(value.type, value.subtype, value.parameters);
-  } else if (typeof value === 'string') {
-    return parseMediaType(value).mediaType;
-  } else {
-    throw new Error(`Cannot convert "${value}" to media type`);
-  }
-};
-
-// -----------------------------------------------------------------------------
-
 const parseMediaRanges = (s, position = 0) => {
   const { length } = s;
   const mediaRanges = [];
@@ -555,15 +537,6 @@ defineProperties(MediaType, {
   /** Render the given media type as a string. */
   render: { value: render },
 
-  /**
-   * Convert value to media type. The value must be a valid media type string, a
-   * media type instance, or a POJO with a media type's `type` and `subtype`
-   * properties.
-   */
-  of: {
-    value: toMediaType,
-  },
-
   /** Parse the string as a comma-separated sequence of media types. */
   accept: {
     value(s) {
@@ -577,19 +550,6 @@ defineProperties(MediaType, {
       return mediaRanges;
     },
   },
-
-  /** The canonical plain text media type. */
-  PlainText: { value: new MediaType('text', 'plain', CHARSET_UTF8) },
-  /** The canonical markdown media type. */
-  Markdown: { value: new MediaType('text', 'markdown', CHARSET_UTF8) },
-  /** The canonical HTML media type. */
-  HTML: { value: new MediaType('text', 'html', CHARSET_UTF8) },
-  /** The canonical JSON media type, with explicit charset for security. */
-  JSON: { value: new MediaType('application', 'json', CHARSET_UTF8) },
-  /** The canonical binary media type.a */
-  Binary: { value: new MediaType('application', 'octet-stream') },
-  /** The canonical event stream. */
-  EventStream: { value: new MediaType('text', 'event-stream') },
 });
 
 // -----------------------------------------------------------------------------
@@ -660,3 +620,43 @@ defineProperties(MediaTypePrototype, {
     },
   },
 });
+
+// =============================================================================
+// Canonical Media Types
+
+const SomeMediaTypes = {
+  Binary: new MediaType('application', 'octet-stream'),
+  CSS: new MediaType('text', 'css', CHARSET_UTF8),
+  EventStream: new MediaType('text', 'event-stream', CHARSET_UTF8),
+  HTML: new MediaType('text', 'html', CHARSET_UTF8),
+  JSON: new MediaType('application', 'json', CHARSET_UTF8),
+  Markdown: new MediaType('text', 'markdown', CHARSET_UTF8),
+  PlainText: new MediaType('text', 'plain', CHARSET_UTF8),
+};
+
+const CanonicalMediaTypes = create(null);
+for (const key of keysOf(SomeMediaTypes)) {
+  const value = SomeMediaTypes[key];
+  defineProperty(MediaType, key, { value });
+  CanonicalMediaTypes[value.without().toString()] = value;
+}
+
+// -----------------------------------------------------------------------------
+
+const toMediaType = value => {
+  if (value instanceof MediaType) {
+    return value;
+  } else if (
+    value != null &&
+    typeof value.type === 'string' &&
+    typeof value.subtype === 'string'
+  ) {
+    return new MediaType(value.type, value.subtype, value.parameters);
+  } else if (typeof value === 'string') {
+    return CanonicalMediaTypes[value.trim()] ?? parseMediaType(value).mediaType;
+  } else {
+    throw new Error(`Cannot convert "${value}" to media type`);
+  }
+};
+
+defineProperty(MediaType, 'of', { value: toMediaType });

@@ -588,6 +588,8 @@ defineProperties(MediaType, {
   JSON: { value: new MediaType('application', 'json', CHARSET_UTF8) },
   /** The canonical binary media type.a */
   Binary: { value: new MediaType('application', 'octet-stream') },
+  /** The canonical event stream. */
+  EventStream: { value: new MediaType('text', 'event-stream') },
 });
 
 // -----------------------------------------------------------------------------

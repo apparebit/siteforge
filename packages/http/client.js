@@ -5,8 +5,8 @@ import { close, settleable } from '@grr/async/promise';
 import { connect as doConnect, constants } from 'http2';
 import { once } from 'events';
 
-const BODY = ':body';
 const { create } = Object;
+const HTTP2_HEADER_BODY = ':body';
 const { HTTP2_HEADER_CONTENT_LENGTH } = constants;
 
 class Client {
@@ -45,6 +45,11 @@ class Client {
       .on('error', this.didError.bind(this))
       .on('frameError', this.didFrameError.bind(this));
     this.#didConnect = once(session, 'connect');
+  }
+
+  /** Get the HTTP/2 session object. */
+  get session() {
+    return this.#session;
   }
 
   /** Handle the error. */
@@ -90,19 +95,17 @@ class Client {
       if (length != null) {
         response[HTTP2_HEADER_CONTENT_LENGTH] = Number(length);
       }
-
-      response[BODY] = '';
+      response[HTTP2_HEADER_BODY] = '';
     });
 
     stream.setEncoding('utf8');
-    stream.on('data', data => (response[BODY] += data));
+    stream.on('data', data => (response[HTTP2_HEADER_BODY] += data));
     stream.on('end', () => resolve(response));
 
-    if (request[BODY] != null) {
-      stream.write(request[BODY]);
+    if (request[HTTP2_HEADER_BODY] != null) {
+      stream.write(request[HTTP2_HEADER_BODY]);
     }
     stream.end();
-
     return promise;
   }
 

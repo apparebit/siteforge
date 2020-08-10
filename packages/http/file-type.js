@@ -6,7 +6,7 @@ const { create, keys: keysOf } = Object;
 const { isArray } = Array;
 
 const REGISTRY = (() => {
-  const data = {
+  const ExtensionsPerType = {
     'application/atom+xml': 'atom',
     'application/geo+json': 'geojson',
     'application/json': 'json',
@@ -46,8 +46,8 @@ const REGISTRY = (() => {
   };
 
   const mapping = create(null);
-  for (const mediaType of keysOf(data)) {
-    let extensions = data[mediaType];
+  for (const mediaType of keysOf(ExtensionsPerType)) {
+    let extensions = ExtensionsPerType[mediaType];
     if (!isArray(extensions)) extensions = [extensions];
 
     for (const extension of extensions) {

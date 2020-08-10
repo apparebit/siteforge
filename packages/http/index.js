@@ -11,7 +11,8 @@ export {
 
 export { default as connect } from './client.js';
 export { default as createPathHandler } from './path-handler.js';
-export { default as createSSEHandler } from './sse-handler.js';
+export { default as createServerEventHandler } from './sse-handler.js';
+export { default as createStaticContentHandler } from './static-handler.js';
 export { default as Exchange } from './exchange.js';
 export { default as events } from './sse-client.js';
 export { default as MediaType } from './media-type.js';

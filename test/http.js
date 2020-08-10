@@ -4,11 +4,13 @@ import { constants } from 'http2';
 import { EOL } from 'os';
 import { fileURLToPath } from 'url';
 import harness from './harness.js';
+import { promises } from 'fs';
 
 import {
   connect,
   createPathHandler,
-  createSSEHandler,
+  createServerEventHandler,
+  createStaticContentHandler,
   events,
   identifyHttp2Stream,
   identifyLocal,
@@ -19,7 +21,9 @@ import {
   Server,
 } from '@grr/http';
 
+const { byteLength } = Buffer;
 const { keys: keysOf } = Object;
+const { readFile } = promises;
 
 const ContentType = constants.HTTP2_HEADER_CONTENT_TYPE;
 const ContentLength = constants.HTTP2_HEADER_CONTENT_LENGTH;
@@ -70,8 +74,8 @@ harness.test('@grr/http', t => {
     t.is(MediaType.of(`b(o)o/boo`), undefined);
     t.is(MediaType.of(`boo/b(o)o`), undefined);
 
-    t.same(MediaType.of('text/plain'), TextPlain);
-    t.same(MediaType.of('text/plain   '), TextPlain);
+    t.same(MediaType.of('audio/mp4'), AudioMp4);
+    t.same(MediaType.of('audio/mp4   '), AudioMp4);
     t.same(MediaType.of('text/plain ; charset'), TextPlain);
 
     t.same(MediaType.of('text/plain; charset; charset=utf-8'), TextPlainUtf8);
@@ -477,16 +481,16 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/createSSEHandler', async t => {
+  t.test('@grr/http/createServerEventHandler', async t => {
     let client, server;
     try {
       // Set up SSE middleware.
-      const handleSSE = createSSEHandler();
+      const handleSSE = createServerEventHandler();
       const handleEvents = createPathHandler('/.well-known/alerts', handleSSE, {
         exact: true,
       });
 
-      t.is(handleEvents.name, 'handleServerSentEvents');
+      t.is(handleEvents.name, 'handleServerEvents');
       t.is(handleEvents.name, handleSSE.name);
       t.is(handleEvents.emit, handleSSE.emit);
       t.is(handleEvents.close, handleSSE.close);
@@ -530,6 +534,74 @@ harness.test('@grr/http', t => {
           default:
             t.fail();
         }
+      }
+    } finally {
+      if (client) await client.disconnect();
+      if (server) await server.stop();
+    }
+
+    t.end();
+  });
+
+  // ===========================================================================
+
+  t.test('@grr/http/createStaticContentHandler', async t => {
+    let client, server;
+    try {
+      // Set up server with static content middleware.
+      const root = fileURLToPath(new URL('fixtures/content', import.meta.url));
+      const handleStaticContent = createStaticContentHandler({ root });
+      const { authority, cert, key } = await prepareSecrets();
+      server = new Server({ cert, key, port: 6651 });
+      server.use(handleStaticContent);
+      await server.listen();
+
+      // Set up client and initiate tests.
+      client = connect({ authority, ca: cert });
+      await client.didConnect();
+
+      // Set up tests
+      // ============
+
+      const tests = [
+        {
+          path: '/amanda-gris.css',
+          type: MediaType.CSS,
+          length: 0,
+          content: '/amanda-gris.css',
+        },
+        {
+          path: '/la-flor',
+          type: MediaType.HTML,
+          length: 0,
+          content: '/la-flor.html',
+        },
+        {
+          path: '/mujeres',
+          type: MediaType.HTML,
+          length: 0,
+          content: '/mujeres/index.html',
+        },
+      ];
+
+      for (const test of tests) {
+        test.content = await readFile(root + test.content, 'utf8');
+        test.length = byteLength(test.content);
+      }
+
+      // Run tests
+      // =========
+
+      for (const test of tests) {
+        const response = await client.request({
+          ':method': 'GET',
+          ':path': test.path,
+        });
+
+        t.is(response[':status'], 200);
+        t.is(response['content-type'], test.type.toString());
+        t.is(response['content-length'], test.length);
+        t.ok(response[':body'], test.content);
       }
     } finally {
       if (client) await client.disconnect();

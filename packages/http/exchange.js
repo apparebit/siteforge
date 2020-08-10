@@ -3,10 +3,8 @@
 import { strict as assert } from 'assert';
 import { constants } from 'http2';
 import { escapeText } from '@grr/html/syntax';
-import { types } from 'util';
-import { join } from 'path';
+import { isAbsolute } from 'path';
 import MediaType from './media-type.js';
-import mediaTypeForPath from './file-type.js';
 import parseDate from './date.js';
 import { parsePath } from './path-util.js';
 import pickle from '@grr/oddjob/pickle';
@@ -15,11 +13,12 @@ import { readOnlyView } from '@grr/oddjob/object';
 import { settleable } from '../async/promise.js';
 import { STATUS_CODES } from 'http';
 import templatize from '@grr/temple';
+import { types } from 'util';
 
 const {
   HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_NOT_MODIFIED,
+
   HTTP_STATUS_OK,
   HTTP2_HEADER_ACCEPT,
   HTTP2_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -27,7 +26,6 @@ const {
   HTTP2_HEADER_CONTENT_TYPE,
   HTTP2_HEADER_IF_MODIFIED_SINCE,
   HTTP2_HEADER_IF_UNMODIFIED_SINCE,
-  HTTP2_HEADER_LAST_MODIFIED,
   HTTP2_HEADER_LOCATION,
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
@@ -39,7 +37,6 @@ const {
   HTTP2_METHOD_HEAD,
 } = constants;
 
-const FILE_PATH = Symbol('file-path');
 // Yet for us there is but one markup language, HTML née HTML5,
 // from which all text came and for which text exists.
 const HTML_DOCUMENT = /^<!DOCTYPE html>/iu;
@@ -48,6 +45,7 @@ const HTTP2_HEADER_X_PERMITTED_CROSS_DOMAIN_POLICIES =
   'x-permitted-cross-domain-policies';
 const HTTP2_HEADER_X_POWERED_BY = 'x-powered-by';
 const PRODUCTION = process.env.NODE_ENV === 'production';
+const STATIC_CONTENT = Symbol('static-content');
 
 const { byteLength, isBuffer } = Buffer;
 const { create, entries: entriesOf, freeze } = Object;
@@ -58,8 +56,6 @@ const { readFile } = promises;
 const Stage = freeze({
   Ready: Symbol('ready'),
   Responding: Symbol('responding'),
-  TryingIndexFile: Symbol('trying "index.html"'),
-  TryingDotHtml: Symbol('trying ".html"'),
   Done: Symbol('done'),
 });
 
@@ -439,24 +435,28 @@ export default class Exchange {
   }
 
   /**
-   * Get the symbol indicating a file path. If the body is an object whose
-   * `type` property has this symbol as its value, the `path` property indicates
-   * the file's path.
+   * Get the symbol indicating static content. If the body is an object whose
+   * `type` property has this symbol as its value, then `path` possibly denotes
+   * a file to be used for response body and `responder` is a function that
+   * takes care of the logistics.
    */
-  static get FilePath() {
-    return FILE_PATH;
+  static get StaticContent() {
+    return STATIC_CONTENT;
   }
 
   /**
-   * Set the response body to the contents of the file with given path. This
-   * method simply records the path. It only works in the ready stage. The
-   * `respond()` method performs actual I/O. It also sets the content length
-   * and type.
+   * Set the response body to the contents of the file with given path. Use the
+   * given responder function to read the file from disk and write it to the
+   * network. This method simply records the path and responder. It only works
+   * in the ready stage. The `respond()` method then triggers the actual I/O by
+   * invoking the responder.
    */
-  file(path) {
+  file(path, responder) {
     assert(this.#stage === Stage.Ready);
-    assert(typeof path === 'string' && path.length > 0);
-    this.#body = { type: FILE_PATH, path };
+    assert(typeof path === 'string' && isAbsolute(path));
+    assert(typeof responder === 'function');
+
+    this.#body = { type: STATIC_CONTENT, path, responder };
     return this;
   }
 
@@ -594,56 +594,10 @@ export default class Exchange {
       return this.#didRespond;
     }
 
-    // .........................................................................
-
-    // Load the content from a file while also allowing for cool URLs.
-    const { path, type } = this.#body;
-    assert(type === FILE_PATH);
-
-    // eslint-disable-next-line consistent-return
-    const statCheck = (fileStatus, headers) => {
-      if (!this.isModified(fileStatus.mtime)) {
-        // Send minimal response and stop Node.js from sending file.
-        this.send(HTTP_STATUS_NOT_MODIFIED);
-        return false;
-      }
-
-      headers[HTTP2_HEADER_CONTENT_LENGTH] = fileStatus.size;
-      headers[HTTP2_HEADER_LAST_MODIFIED] = fileStatus.mtime.toUTCString();
-      headers[HTTP2_HEADER_STATUS] =
-        headers[HTTP2_HEADER_STATUS] ?? HTTP_STATUS_OK;
-      this.#response = this.prepare(headers);
-    };
-
-    const onError = error => {
-      const headers = this.#response;
-
-      if (this.#stream.headersSent) {
-        // Nothing to do.
-      } else if (error.code === 'ENOENT') {
-        if (this.#stage === Stage.Responding) {
-          this.#stage = Stage.TryingDotHtml;
-          const path2 = path + '.html';
-          headers[HTTP2_HEADER_CONTENT_TYPE] = MediaType.HTML;
-          this.#stream.respondWithFile(path2, headers, { statCheck, onError });
-        } else {
-          this.fail(404, error);
-        }
-      } else if (error.code === 'EISDIR' && this.#stage === Stage.Responding) {
-        this.#stage = Stage.TryingIndexFile;
-        const path2 = join(path, 'index.html');
-        headers[HTTP2_HEADER_CONTENT_TYPE] = MediaType.HTML;
-        this.#stream.respondWithFile(path2, headers, { statCheck, onError });
-      } else {
-        this.fail(500, error);
-      }
-    };
-
-    this.#response[HTTP2_HEADER_CONTENT_TYPE] = mediaTypeForPath(path);
-    this.#stream.respondWithFile(path, this.#response, {
-      statCheck,
-      onError,
-    });
+    // Respond with file content.
+    const { type, responder, path } = this.#body;
+    assert(type === STATIC_CONTENT);
+    responder(this, path);
     return this.#didRespond;
   }
 

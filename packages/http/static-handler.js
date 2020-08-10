@@ -61,8 +61,11 @@ const respondWithStaticContent = (exchange, path) => {
   };
 
   const onError = error => {
+    // For code not to get stuck await-ing an exchange, we must make sure that
+    // the exchange and underlying stream are closed. Trying to send an error
+    // response is one of the better ways of doing so.
     if (exchange.isDone() || exchange.stream.headersSent) {
-      // Nothing to do.
+      // Nothing to do. The exchange and underlying stream are already closed.
     } else if (error.code === 'ENOENT') {
       if (state === InnerState.TryingOriginal) {
         state = InnerState.TryingDotHtml;
@@ -87,6 +90,8 @@ const respondWithStaticContent = (exchange, path) => {
       } else {
         exchange.fail(HTTP_STATUS_INTERNAL_SERVER_ERROR, error);
       }
+    } else {
+      exchange.fail(HTTP_STATUS_INTERNAL_SERVER_ERROR, error);
     }
   };
 

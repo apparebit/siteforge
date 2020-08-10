@@ -104,6 +104,7 @@ harness.test('@grr/walk', async t => {
     '/http/server.js',
     '/http/sse-client.js',
     '/http/sse-handler.js',
+    '/http/static-handler.js',
 
     '/inventory/LICENSE',
     '/inventory/README.md',

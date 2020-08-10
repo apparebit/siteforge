@@ -17,7 +17,7 @@ const configurable = true;
 const { defineProperties } = Object;
 const { isSafeInteger } = Number;
 
-const createServerSentEventsHandler = ({
+const createServerEventHandler = ({
   heartbeat = 10 * 60 * 1000,
   reconnect = 500,
   startTimer = setInterval,
@@ -31,7 +31,7 @@ const createServerSentEventsHandler = ({
   let ongoing = new Set();
 
   // eslint-disable-next-line no-unused-vars
-  const handleServerSentEvents = (exchange, next) => {
+  const handleServerEvents = (exchange, next) => {
     if (exchange.method !== 'GET') {
       return exchange.fail(HTTP_STATUS_METHOD_NOT_ALLOWED);
     } else if (exchange.quality(MediaType.EventStream) === 0) {
@@ -108,11 +108,11 @@ const createServerSentEventsHandler = ({
     }
   };
 
-  defineProperties(handleServerSentEvents, {
+  defineProperties(handleServerEvents, {
     emit: { configurable, value: emit },
     close: { configurable, value: close },
   });
-  return handleServerSentEvents;
+  return handleServerEvents;
 };
 
-export default createServerSentEventsHandler;
+export default createServerEventHandler;

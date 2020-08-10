@@ -27,7 +27,7 @@ const isDotted = s => s.charCodeAt(0) === CODE_DOT;
  *
  * This method signals validation errors as exceptions.
  */
-export function parsePath(value) {
+export const parsePath = value => {
   if (value == null) {
     throw new Error(`No request path (${value})`);
   } else if (typeof value !== 'string') {
@@ -76,4 +76,17 @@ export function parsePath(value) {
     path,
     endsInSlash,
   };
-}
+};
+
+/** Create predicate for checking whether object's path has expected value. */
+export const toFileMatcher = expected => object => object.path === expected;
+
+/** Create predicate for checking whether object's path as directory prefix. */
+export const toTreeMatcher = root => object => {
+  const { length } = root;
+  const { path } = object;
+  return (
+    path.startsWith(root) &&
+    (path.length === length || path.charCodeAt(length) === CODE_SLASH)
+  );
+};

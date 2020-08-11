@@ -7,7 +7,6 @@ import Metrics from '@grr/metrics';
 import Parser from 'tap-parser';
 import { pipeline as doPipeline } from 'stream';
 import { promisify } from 'util';
-import Rollcall from '@grr/rollcall';
 
 const ROOT = join(toDirectory(import.meta.url), '..');
 const COVERAGE_DATA = join(ROOT, '.coverage');
@@ -22,7 +21,7 @@ const metrics = new Metrics();
 const endTest = metrics.timer('main').start();
 
 const parser = new Parser({});
-const rollcall = new Rollcall({ volume: 0 });
+const { rollcall } = harness;
 parser.on('result', result => rollcall.test(result));
 
 const onComment = comment => rollcall.info(comment);

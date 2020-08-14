@@ -34,6 +34,7 @@
     "metric's",
     "netaddr",
     "noout",
+    "noparam",
     "npm's",
     "nullish",
     "objectifiable",
@@ -48,6 +49,7 @@
     "svgz",
     "templatize",
     "transpilation",
+    "unparameterized",
     "unstyled",
     "vcard",
     "wasm"

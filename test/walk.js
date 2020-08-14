@@ -89,6 +89,7 @@ harness.test('@grr/walk', async t => {
     '/http/README.md',
     '/http/certificate.js',
     '/http/client.js',
+    '/http/constants.js',
     '/http/date.js',
     '/http/error.html',
     '/http/exchange.js',

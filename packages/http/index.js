@@ -1,6 +1,7 @@
 /* © 2020 Robert Grimm */
 
 export { certifyLocalhost, readCertDates, refreshen } from './certificate.js';
+export { Header, Method, Status } from './constants.js';
 
 export {
   identifyHttp2Stream,

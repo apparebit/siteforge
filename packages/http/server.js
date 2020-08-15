@@ -28,11 +28,11 @@ export default class Server {
   #logError;
   #stats;
 
-  constructor({ cert, key, host, ip, port, logError }) {
+  constructor({ cert, key, host, ip, port, logError = console.error }) {
     assert(host == null || typeof host === 'string');
     assert(host == null || typeof ip === 'string');
     assert(typeof port === 'number');
-    assert(logError == null || typeof logError === 'function');
+    assert(typeof logError === 'function');
 
     this.#cert = cert;
     this.#key = key;
@@ -41,7 +41,7 @@ export default class Server {
     this.#port = port;
     this.#handlers = [];
     this.#sessions = new Set();
-    this.#logError = logError != null ? logError : console.error;
+    this.#logError = logError;
     this.#stats = {
       sessions: 0,
       openSessions: 0,
@@ -83,7 +83,11 @@ export default class Server {
   // ---------------------------------------------------------------------------
 
   /* async */ listen() {
-    if (this.#server != null) return Promise.resolve();
+    if (this.#server != null) {
+      const endpoint = identifyEndpoint(this.#server.address());
+      const message = `Server is already listening at ${endpoint}`;
+      return Promise.reject(new Error(message));
+    }
 
     const server = (this.#server = createSecureServer({
       cert: this.#cert,

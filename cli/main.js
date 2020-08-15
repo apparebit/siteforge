@@ -5,12 +5,12 @@
 import { buildAll } from '@grr/builder';
 import { configure, validate } from './config.js';
 import createContext from '@grr/builder/context';
+import { createStaticContentHandler, Server } from '@grr/http';
 import { join, resolve } from 'path';
 import { Kind } from '@grr/inventory/kind';
 import launch from '@grr/loader/launch';
 import { readFile, rmdir, toDirectory } from '@grr/fs';
 import run from '@grr/run';
-//import serve from '@grr/simulation';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
 
@@ -181,7 +181,28 @@ async function main() {
 
   if (options.develop) {
     logger.section(3.3, `Serve website in "${options.buildDir}"`, config);
-    //await serve(config);
+
+    let server;
+    try {
+      const server = new Server({
+        logError: (...args) => logger.error(...args),
+      });
+      server.use(createStaticContentHandler({ root: options.buildDir }));
+      // TODO:
+      //  * listen for file system changes in __contentDir__ (not buildDir).
+      //  * rebuild and trigger reload.
+      //  * add controller to trigger reloads via SSE.
+      //  * rewrite HTML to inject client runtime for reloads.
+      await server.start();
+    } catch (x) {
+      logger.error(x);
+      if (server) await server.close();
+    }
+
+    // Skip the rest of main():
+    //  * Validate and deploy are disabled b/c incompatible.
+    //  * Printing summary statistics mid-run is confusing.
+    return;
   }
 
   // ---------------------------------------------------------------------------

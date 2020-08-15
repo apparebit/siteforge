@@ -2,44 +2,64 @@
 
 import { strict as assert } from 'assert';
 
-const {
-  create,
-  defineProperties,
-  defineProperty,
-  entries: entriesOf,
-  freeze,
-  keys: keysOf,
-} = Object;
-
-const enumerable = true;
-
 /* eslint-disable no-control-regex */
 
-const CHARCODE_BACKSLASH = `\\`.charCodeAt(0);
-const CHARCODE_COMMA = `,`.charCodeAt(0);
-const CHARCODE_DQUOTE = `"`.charCodeAt(0);
-const CHARSET_UTF8 = freeze({ charset: 'UTF-8' });
-const DQUOTE_SLASH = /["\\]/gu;
-const END_OF_CLAUSE = /[;]/gu;
-const END_OF_CLAUSE_EXT = /[;,]/gu;
-const PARAM_SEP = /[=;]/gu;
-const PARAM_SEP_EXT = /[=;,]/gu;
-const TYPE_SEP = /[/]/gu;
-const TYPE_SEP_EXT = /[/,]/gu;
+const COMMA = ','.charCodeAt(0);
+const DQUOTE = '"'.charCodeAt(0);
+const SEMICOLON = ';'.charCodeAt(0);
+const ESCAPED_CHAR = /\\(.)/gu;
+const TO_BE_ESCAPED = /["\\]/gu;
+const INSPECT = Symbol.for('nodejs.util.inspect.custom');
 
-// https://tools.ietf.org/html/rfc7231#section-5.3.1
-const QUALITY = /0(\.\d{0,3})?|1(\.0{0,3})?/u;
+// https://mimesniff.spec.whatwg.org/#parsing-a-mime-type
+const PARAMETER = new RegExp(
+  // Semicolon
+  `;` +
+    // Leading space
+    `[\\t\\n\\r ]*` +
+    // Name
+    `([^=;,]*)` +
+    // Optional value
+    `(?:=` +
+    `([^;,\\t\\n\\r ]*)` +
+    `)?` +
+    // Trailing space
+    `[\\t\\n\\r ]*`,
+  `uy`
+);
 
 // https://mimesniff.spec.whatwg.org/#http-quoted-string-token-code-point
-const QUOTED_STRING = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/u;
+const QUOTED_STRING_CHARS = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/u;
+const QUOTED_STRING = /"((?:[^"\\]|\\.)*)(?:"|(\\?)$)/uy;
+
+// https://www.iana.org/assignments/media-type-structured-suffix/media-type-structured-suffix.xml
+const SUFFIX_NAMES = [
+  'ber',
+  'cbor',
+  'cbor-seq',
+  'der',
+  'fastinfoset',
+  'gzip',
+  'json',
+  'json-seq',
+  'jwt',
+  'sqlite3',
+  'tlv',
+  'wbxml',
+  'xml',
+  'zip',
+  'zstd',
+];
 
 // https://mimesniff.spec.whatwg.org/#http-token-code-point
 const TOKEN = /^[-!#$%&'*+.^`|~\w]+$/u;
 
-const TYPE_NAMES = [
+// https://www.iana.org/assignments/media-types/media-types.xhtml
+const TOP_LEVEL_NAMES = [
   '*',
   'application',
   'audio',
+  'example',
   'font',
   'image',
   'message',
@@ -49,614 +69,483 @@ const TYPE_NAMES = [
   'video',
 ];
 
-// https://tools.ietf.org/html/rfc7231#section-3.1.1.2:
-// To specify UTF-8 charset, value of parameter must be `UTF-8` ignoring case;
-// upper case is canonical. Since Node.js accepts dashless version, do so too.
-const UTF_8 = /^utf-?8$/iu;
+// https://mimesniff.spec.whatwg.org/#parsing-a-mime-type
+const TYPE_SUBTYPE_SUFFIX = new RegExp(
+  // Possibly leading space
+  `[\\t\\n\\r ]*` +
+    // Type
+    `([^/]*)` +
+    `\\/` +
+    // Subtype
+    `([^+;,\\t\\n\\r ]*)` +
+    // Optional suffix
+    `(?:` +
+    `\\+` +
+    `([^;,\\t\\n\\r ]+)` +
+    `)?` +
+    // Possibly trailing space
+    `[\\t\\n\\r ]*`,
+  `uy`
+);
+
+const UTF8 = /^utf-?8$/iu;
+
+const configurable = true;
+const {
+  create,
+  defineProperty,
+  entries: entriesOf,
+  freeze,
+  keys: keysOf,
+  prototype,
+} = Object;
+const enumerable = true;
+const { isArray } = Array;
+const { toString: ObjectToString } = prototype;
+
+// The registry of canonical media types.
+const MediaTypeRegistry = create(null);
 
 // =============================================================================
-// The Default Export: Class MediaType
 
-/** The in-memory representation of a media type. */
-export default function MediaType(type, subtype, params) {
-  if (!new.target) {
-    return new MediaType(type, subtype, params);
-  }
+export default class MediaType {
+  /**
+   * Create a new media type. This method handles three distinct kinds of
+   * inputs:
+   *
+   * ```js
+   * // (1) Create from 2+ components after validating components:
+   * MediaType.from('text', 'plain');
+   *
+   * // (2) Parse from string:
+   * MediaType.from('text/plain');
+   *
+   * // (3) Make validated copy from plain old object or another instance:
+   * MediaType.from({ type: 'text', subtype: 'plain' });
+   * MediaType.from(MediaType.PlainText);
+   * ```
+   */
+  static from(...args) {
+    const value = args.length > 1 ? MediaType.collect(...args) : args[0];
 
-  if (typeof type !== 'string') {
-    return undefined;
-  }
-  type = type.toLowerCase();
-  if (!TYPE_NAMES.includes(type) || typeof subtype !== 'string') {
-    return undefined;
-  }
-  subtype = subtype.toLowerCase();
-  if (subtype === '' || (subtype !== '*' && type === '*')) {
-    return undefined;
-  }
+    if (typeof value === 'string') {
+      let type = MediaTypeRegistry[value];
+      if (type) return type;
 
-  let parameters;
-  if (params != null && typeof params === 'object') {
-    parameters = params;
-  }
+      type = MediaType.parse(value).mediaType;
+      if (type) return new MediaType(type);
 
-  defineProperties(this, {
-    type: { enumerable, value: type },
-    subtype: { enumerable, value: subtype },
-    parameters: { enumerable, value: parameters },
-  });
-}
-
-for (const type of TYPE_NAMES) {
-  const name = type === '*' ? 'Any' : type[0].toUpperCase() + type.slice(1);
-  defineProperty(MediaType, name, {
-    value: freeze(MediaType(type, '*')),
-  });
-}
-
-// =============================================================================
-// Helper Functions: String Manipulation
-
-// https://fetch.spec.whatwg.org/#http-whitespace
-const isSpace = c => {
-  switch (c) {
-    case 0x20:
-    case 0x0a:
-    case 0x0d:
-    case 0x09:
-      return true;
-    default:
-      return false;
-  }
-};
-
-const skipLeading = (s, position = 0, length = s.length) => {
-  while (position < length && isSpace(s.charCodeAt(position))) position++;
-  return position;
-};
-
-const skipTrailing = (s, position = s.length) => {
-  while (position > 0 && isSpace(s.charCodeAt(position - 1))) position--;
-  return position;
-};
-
-// -----------------------------------------------------------------------------
-// Helper Functions: Media Type Manipulation
-
-// While these functions certainly work with instances of MediaType, they do not
-// require them but rather work with plain old JavaScript objects as well.
-
-const withoutParameters = type => new MediaType(type.type, type.subtype);
-
-const withParameters = (type, parameters) => {
-  let newParameters;
-
-  const set = (key, value) => {
-    if (value != null) {
-      if (!newParameters) newParameters = create(null);
-      newParameters[key.toLowerCase()] = value;
+      throw new Error(`"${value}" is not a valid media type`);
+    } else {
+      return new MediaType(MediaType.validate(value));
     }
-  };
-
-  for (const [key, value] of entriesOf(Object(type.parameters))) {
-    set(key, value);
   }
-  for (const [key, value] of entriesOf(Object(parameters))) {
-    set(key, value);
+
+  /**
+   * Collect the arguments as media type components. The first two arguments
+   * for the `type` and `subtype` are required. The `suffix` and `parameters`
+   * may each be omitted but not reordered.
+   */
+  static collect(type, subtype, suffix, parameters) {
+    if (
+      suffix != null &&
+      typeof suffix === 'object' &&
+      parameters === undefined
+    ) {
+      parameters = suffix;
+      suffix = undefined;
+    }
+
+    return { type, subtype, suffix, parameters };
   }
-  return new MediaType(type.type, type.subtype, newParameters);
-};
 
-const charsetOf = type => type.parameters?.charset;
-const qualityOf = type => {
-  const q = type.parameters?.q ?? 1;
-  return typeof q === 'number' ? q : Number(q);
-};
-const precedenceOf = type => {
-  if (type.subtype === '*') {
-    return type.type === '*' ? 1 : 2;
-  } else {
-    if (!type.parameters) return 3;
-    const keys = keysOf(type.parameters);
-    return keys.length === 1 && keys[0] === 'q' ? 3 : 4;
-  }
-};
+  /** Validate a plain old object or media type instance. */
+  static validate(value) {
+    if (value == null || typeof value !== 'object') {
+      throw new Error(`Media type "${value}" is not an object`);
+    } else if (typeof value.type !== 'string') {
+      throw new Error(`Top-level type "${value.type}" is not a string`);
+    }
 
-const compare = (type1, type2) => {
-  const p1 = precedenceOf(type1);
-  const p2 = precedenceOf(type2);
-  if (p1 !== p2) return p2 - p1;
+    const type = value.type.toLowerCase();
+    if (!TOP_LEVEL_NAMES.includes(type)) {
+      throw new Error(`Top-level type "${value.type}" is invalid`);
+    } else if (typeof value.subtype !== 'string') {
+      throw new Error(`Subtype "${value.subtype}" is not a string`);
+    }
 
-  const q1 = qualityOf(type1);
-  const q2 = qualityOf(type2);
-  return q2 - q1;
-};
+    const subtype = value.subtype.toLowerCase();
+    if (subtype === '') {
+      throw new Error(`Subtype "${value.subtype}" is empty`);
+    }
 
-const matches = (type, range) => {
-  // No match necessary.
-  if (range.type === '*' && range.subtype === '*') return true;
-
-  // Match on type.
-  if (type.type !== range.type) return false;
-  if (range.subtype === '*') return true;
-
-  // Match on subtype.
-  if (type.subtype !== range.subtype) return false;
-  if (range.type !== 'text') return true;
-
-  // Match on charset for text.
-  const rangeCharset = range.parameters?.charset;
-  if (rangeCharset == null) return true;
-  const typeCharset = type.parameters?.charset;
-  if (typeCharset == null) return true;
-
-  return typeCharset === rangeCharset;
-};
-
-const matchingQuality = (type, ranges) => {
-  for (const range of ranges) {
-    if (matches(type, range)) return qualityOf(range);
-  }
-  return 0;
-};
-
-const render = type => {
-  let s = `${type.type}/${type.subtype}`;
-
-  const { parameters } = type;
-  if (parameters) {
-    for (let [key, value] of entriesOf(parameters)) {
-      value = String(value);
-      if (!TOKEN.test(value)) {
-        value = `"${value.replace(/[\\"]/gu, `\\$&`)}"`;
+    let suffix;
+    if (value.suffix != null) {
+      if (typeof value.suffix !== 'string') {
+        throw new Error(
+          `Suffix "${value.suffix}" is neither undefined nor a string`
+        );
       }
-      s += `; ${key}=${value}`;
+
+      suffix = value.suffix.toLowerCase();
+      if (!SUFFIX_NAMES.includes(suffix)) {
+        throw new Error(`Suffix "${value.suffix}" is invalid`);
+      }
     }
+
+    let parameters;
+    if (value.parameters != null) {
+      if (typeof value.parameters !== 'object') {
+        throw new Error(
+          `Parameters "${value.parameters}" are neither undefined nor an object`
+        );
+      }
+
+      parameters = create(null);
+      for (const [k, v] of entriesOf(value.parameters)) {
+        const key = k.toLowerCase();
+        if (key === '') {
+          throw new Error(`Parameter name "${k}" is empty`);
+        }
+
+        let value;
+        if (key === 'q') {
+          value = Number(v);
+          if (isNaN(value) || value < 0 || 1 < value) {
+            throw new Error(`Quality "${v}" is not a number 0 <= q <= 1`);
+          }
+        } else if (typeof v !== 'string') {
+          throw new Error(`Parameter ${key} "${v}" is not a string`);
+        } else if (key === 'charset') {
+          if (UTF8.test(v)) {
+            value = 'UTF-8';
+          } else {
+            value = v;
+          }
+        } else {
+          value = v;
+        }
+
+        parameters[key] = value;
+      }
+    }
+
+    return { type, subtype, suffix, parameters };
   }
 
-  return s;
-};
+  /**
+   * Parse all media types in the string and return plain old objects with
+   * the data.
+   */
+  static parseAll(s) {
+    if (typeof s !== 'string') return [MediaType.Any];
 
-// =============================================================================
-// Parsing: Quoted Strings, Media Types, and Accept Headers
+    const { length } = s;
+    const patterns = [];
 
-/**
- * Parse a quoted string. The parse starts at the given position, faithfully
- * implements the WhatWG's algorithm from the `fetch` specification, but always
- * extracts the value.
- */
-const parseQuotedString = (s, position = 0) => {
-  // https://fetch.spec.whatwg.org/#collect-an-http-quoted-string
+    let position = 0;
+    while (true) {
+      const { mediaType: pattern, next } = MediaType.parse(s, position);
+      if (pattern) patterns.push(pattern);
 
-  // To collect an HTTP quoted string from a string input,
-  // given a position variable position and optionally an extract-value flag,
-  // run these steps:
-  const { length } = s;
-
-  //  1. Let positionStart be position.
-  //  2. Let value be the empty string.
-  let value = '';
-
-  //  3. Assert: the code point at position within input is U+0022 (").
-  assert(s.charCodeAt(position) === CHARCODE_DQUOTE);
-
-  //  4. Advance position by 1.
-  position++;
-
-  //  5. While true:
-  while (true) {
-    //  5. 1. Append the result of collecting a sequence of code points
-    //        that are not U+0022 (") or U+005C (\) from input,
-    //        given position, to value.
-    const start = position;
-    DQUOTE_SLASH.lastIndex = start;
-    const match = DQUOTE_SLASH.exec(s);
-    const end = match?.index ?? length;
-
-    if (start < end) value += s.slice(start, end);
-    position = end;
-
-    //  5. 2. If position is past the end of input, then break.
-    if (position === length) break;
-
-    //  5. 3. Let quoteOrBackslash be the code point at position within input.
-    const quoteOrBackslash = s.charCodeAt(end);
-
-    //  5. 4. Advance position by 1.
-    position++;
-
-    //  5. 5. If quoteOrBackslash is U+005C (\), then:
-    if (quoteOrBackslash === CHARCODE_BACKSLASH) {
-      //  5. 5. 1. If position is past the end of input,
-      //           then append U+005C (\) to value and break.
-      if (position >= length) {
-        value += '\\';
+      if (position < next && next < length && s.charCodeAt(next) === COMMA) {
+        position = next + 1;
+      } else {
         break;
       }
-
-      //  5. 5. 2. Append the code point at position within input to value.
-      value += s[position];
-
-      //  5. 5. 3  Advance position by 1.
-      position++;
-    } else {
-      //  5. 6. Otherwise:
-      //  5. 6. 1. Assert: quoteOrBackslash is U+0022 (").
-      assert(quoteOrBackslash === CHARCODE_DQUOTE);
-
-      //  5. 6. 2. Break.
-      break;
     }
+
+    return patterns.length === 0 ? [MediaType.Any] : patterns;
   }
 
-  //  6. If the extract-value flag is set, then return value.
-  return { value, next: position };
+  /**
+   * Parse the media type at the given string position. This method returns a
+   * record with the `mediaType` and the `next` index.
+   */
+  static parse(s, position = 0) {
+    // https://mimesniff.spec.whatwg.org/#parsing-a-mime-type
+    const { length } = s;
 
-  // NB. Implementation always extracts value, hence 7 is not implemented.
-  //  7. Return the code points from positionStart to position,
-  //     inclusive, within input.
-};
+    // Match permissive pattern for type, subtype, and suffix.
+    TYPE_SUBTYPE_SUFFIX.lastIndex = position;
+    let [match, type, subtype, suffix] = TYPE_SUBTYPE_SUFFIX.exec(s) ?? [];
 
-// -----------------------------------------------------------------------------
+    // Perform checks specified in algorithm.
+    if (!match) return { next: position };
+    position += match.length;
 
-const parseMediaType = (s, { position = 0, isRepeated = false } = {}) => {
-  // https://mimesniff.spec.whatwg.org/#parsing-a-mime-type
-
-  // To parse a MIME type, given a string input, run these steps:
-  const TypeSep = isRepeated ? TYPE_SEP_EXT : TYPE_SEP;
-  const InParamSep = isRepeated ? PARAM_SEP_EXT : PARAM_SEP;
-  const EndOfClause = isRepeated ? END_OF_CLAUSE_EXT : END_OF_CLAUSE;
-
-  //  1. Remove any leading and trailing HTTP whitespace from input.
-  let { length } = s;
-  let start = skipLeading(s, position, length);
-
-  //  2. Let position be a position variable for input,
-  //     initially pointing at the start of input.
-  //  3. Let type be the result of collecting a sequence of code points
-  //     that are not U+002F (/) from input, given position.
-  TypeSep.lastIndex = start;
-  let match = TypeSep.exec(s);
-  let end = match?.index ?? length;
-
-  //  4. If type is the empty string or does not solely contain
-  //     HTTP token code points, then return failure.
-  //  5. If position is past the end of input, then return failure.
-  // NB. Delay error returns to finish parsing complete media type up to comma.
-  let type = s.slice(start, end);
-  let failed = start === end || !TOKEN.test(type);
-  if (match?.[0] === ',') return { next: end };
-
-  //  6. Advance position by 1. (This skips past U+002F (/).)
-  //  7. Let subtype be the result of collecting a sequence of code points
-  //     that are not U+003B (;) from input, given position.
-  start = end + 1;
-  EndOfClause.lastIndex = start;
-  match = EndOfClause.exec(s);
-  position = end = match?.index ?? length;
-
-  //  8. Remove any trailing HTTP whitespace from subtype.
-  end = skipTrailing(s, end); // May step backwards.
-
-  //  9. If subtype is the empty string or does not solely contain
-  //     HTTP token code points, then return failure.
-  if (start === end) failed = true;
-  let subtype = s.slice(start, end);
-  if (!TOKEN.test(subtype)) failed = true;
-
-  // 10. Let mimeType be a new MIME type record whose type is type,
-  //     in ASCII lowercase, and subtype is subtype, in ASCII lowercase.
-  type = type.toLowerCase();
-  subtype = subtype.toLowerCase();
-
-  // NB. If we reached end of input or a comma in repeated mode,
-  //     there are no parameters to parse and we can return right here.
-  if (end === length || (isRepeated && match?.[0] === ',')) {
-    if (failed) {
-      // We are at a well-defined boundary: It's ok to return failure now.
-      return { next: end };
-    } else if (subtype === '*') {
-      if (type === '*') {
-        return { mediaType: MediaType.Any, next: end };
-      } else {
-        const name = type[0].toUpperCase() + type.slice(1).toLowerCase();
-        return { mediaType: MediaType[name], next: end };
-      }
-    } else {
-      return { mediaType: new MediaType(type, subtype), next: end };
-    }
-  }
-
-  // NB. If type is text, we normalize the charset parameter below.
-  const isText = type === 'text';
-
-  // 11. While position is not past the end of input:
-  let parameters;
-  while (position < length) {
-    //  1. Advance position by 1. (This skips past U+003B (;).)
-    //  2. Collect a sequence of code points that are HTTP whitespace
-    //     from input given position.
-    start = skipLeading(s, position + 1, length);
-
-    //  3. Let parameterName be the result of collecting a sequence of
-    //     code points that are not U+003B (;) or U+003D (=) from input,
-    //     given position.
-    InParamSep.lastIndex = start;
-    const match = InParamSep.exec(s);
-    position = end = match?.index ?? length;
-
-    // NB. Steps 5 and 6 are mutually exclusive and thus can be reversed.
-    //     Step 4 uses variables changed by 5.2 and thus must come before.
-    //  6. If position is past the end of input, then break.
-    if (end === length) break;
-
-    // NB. Comma indicates a new media type.
-    if (isRepeated && match?.[0] === ',') break;
-
-    //  5. If position is not past the end of input, then:
-    //  5. 1. If the code point at position within input is U+003B (;),
-    //        then continue.
-    if (match?.[0] === ';') continue;
-
-    //  4. Set parameterName to parameterName, in ASCII lowercase.
-    const name = s.slice(start, end).toLowerCase();
-
-    //  5. 2. Advance position by 1. (This skips past U+003D (=).)
-    start = end + 1;
-
-    // NB. We record key, value pair at end of loop, need flag to break out.
-    let loopEndBreak = false;
-    //  7. Let parameterValue be null.
-    let value;
-
-    //  8. If the code point at position within input is U+0022 ("), then:
-    if (s.charCodeAt(start) === CHARCODE_DQUOTE) {
-      //  8. 1. Set parameterValue to the result of collecting an HTTP quoted
-      //        string from input, given position and the extract-value flag.
-      ({ value, next: end } = parseQuotedString(s, start));
-
-      //  8. 2. Collect a sequence of code points that are not U+003B (;)
-      //        from input, given position.
-      EndOfClause.lastIndex = end;
-      const match = EndOfClause.exec(s);
-      position = match?.index ?? length;
-
-      if (isRepeated && match?.[0] === ',') {
-        loopEndBreak = true;
-      }
-    } else {
-      //  9. Otherwise:
-      //  9. 1. Set parameterValue to the result of collecting a sequence of
-      //        code points that are not U+003B (;) from input, given position.
-      EndOfClause.lastIndex = start;
-      const match = EndOfClause.exec(s);
-      position = end = match?.index ?? length;
-
-      if (isRepeated && match?.[0] === ',') {
-        loopEndBreak = true;
-      }
-
-      //  9. 2. Remove any trailing HTTP whitespace from parameterValue.
-      end = skipTrailing(s, end); // May step backwards.
-
-      //  9. 3. If parameterValue is the empty string, then continue.
-      if (!loopEndBreak && start === end) continue;
-      value = s.slice(start, end);
-    }
-
-    // 10. If all of the following are true
     if (
-      // * parameterName is not the empty string
-      name !== '' &&
-      // * parameterName solely contains HTTP token code points
-      TOKEN.test(name) &&
-      // * parameterValue solely contains HTTP quoted-string token code points
-      QUOTED_STRING.test(value) &&
-      // * mimeType’s parameters[parameterName] does not exist
-      parameters?.[name] === undefined
+      type === '' ||
+      !TOKEN.test(type) ||
+      subtype === '' ||
+      !TOKEN.test(subtype)
     ) {
-      // then set mimeType’s parameters[parameterName] to parameterValue.
-      if (isText && name === 'charset') {
-        // charset
-        if (!parameters) parameters = create(null);
-        parameters.charset = UTF_8.test(value) ? 'UTF-8' : value.toUpperCase();
-      } else if (name !== 'q') {
-        if (!parameters) parameters = create(null);
-        parameters[name] = value;
-      } else if (QUALITY.test(value)) {
-        if (!parameters) parameters = create(null);
-        parameters[name] = Number(value);
+      return { next: position };
+    }
+
+    // Normalize type, subtype, and suffix values.
+    type = type.toLowerCase();
+    subtype = subtype.toLowerCase();
+    suffix = suffix != null ? suffix.toLowerCase() : undefined;
+
+    // Parse parameters.
+    let parameters;
+    while (position < length && s.charCodeAt(position) === SEMICOLON) {
+      // Match against permissive parameter regex.
+      PARAMETER.lastIndex = position;
+      let [match, name, value] = PARAMETER.exec(s) ?? [];
+      if (!match) break;
+      position += match.length;
+
+      // Perform checks specified in algorithm.
+      if (name === '' || !TOKEN.test(name)) continue;
+      if (value === undefined || value === '') continue;
+      if (value.charCodeAt(0) === DQUOTE) {
+        value = MediaType.unquote(value).value;
+      }
+      if (!QUOTED_STRING_CHARS.test(value)) continue;
+
+      // Normalize parameter name. Treat charset and q as special.
+      name = name.toLocaleLowerCase();
+      if (name === 'charset' && UTF8.test(value)) {
+        value = 'UTF-8';
+      } else if (name === 'q') {
+        value = Number(value);
+      }
+
+      // If the parameter hasn't been declared yet, add it to collection.
+      if (!parameters) parameters = create(null);
+      if (parameters[name] === undefined) parameters[name] = value;
+    }
+
+    // Et voila!
+    const mediaType = { type, subtype, suffix, parameters };
+    return { mediaType, next: position };
+  }
+
+  /** Unquote the quoted string starting at the given position. */
+  static unquote(s, position = 0) {
+    // https://fetch.spec.whatwg.org/#collect-an-http-quoted-string
+    QUOTED_STRING.lastIndex = position;
+    const [match, content, trailer] = QUOTED_STRING.exec(s) ?? [];
+    assert(String(match).startsWith('"'));
+
+    return {
+      value: content.replace(ESCAPED_CHAR, '$1') + (trailer ?? ''),
+      next: position + match.length,
+    };
+  }
+
+  /** Create a new media type from the data. */
+  static create(data) {
+    return new MediaType(data);
+  }
+
+  /** Determine whether the given value is an instance of this class. */
+  static isMediaType(value) {
+    return (
+      value instanceof MediaType ||
+      ObjectToString.call(value) === '[object MediaType]'
+    );
+  }
+
+  /** Compare the two media types. */
+  static compare(type1, type2) {
+    return type1.compareTo(type2);
+  }
+
+  // ===========================================================================
+
+  /** Create a new media type. The constructor does not validate arguments. */
+  constructor({ type, subtype, suffix, parameters }) {
+    this.type = type;
+    this.subtype = subtype;
+    this.suffix = suffix;
+    this.parameters = parameters;
+  }
+
+  /** Create a new media type without the parameters. */
+  unparameterized() {
+    return new MediaType({ ...this, parameters: undefined });
+  }
+
+  /** Create a new media type with the additional parameters. */
+  with(parameters) {
+    parameters = { ...Object(this.parameters), ...Object(parameters) };
+    return new MediaType({ ...this, parameters });
+  }
+
+  /** Get the charset parameter. */
+  get charset() {
+    return this.parameters?.charset;
+  }
+
+  /** Get the quality parameter. This getter defaults to returning 0. */
+  get quality() {
+    return this.parameters?.q ?? 1;
+  }
+
+  /**
+   * Get the precedence. When matching a media type against several others,
+   * e.g., for content negotiation through the `accept` header, more specific
+   * media types have precedence over less specific ones. This property
+   * quantifies that relation. It is `1` for the arbitrary range, `2` for a
+   * subrange, `3` for a bare media type without parameters, and `3 + p` for a
+   * media type with `p` parameters. The quality factor `q` does not count as a
+   * parameter in this computation.
+   */
+  get precedence() {
+    if (this.subtype === '*') {
+      return this.type === '*' ? 1 : 2;
+    } else if (!this.parameters) {
+      return 3;
+    } else {
+      const keys = keysOf(this.parameters);
+      return 3 + keys.length + (keys.includes('q') ? -1 : 0);
+    }
+  }
+
+  /** Compare this media type to the given media type for priority. */
+  compareTo(other) {
+    assert(MediaType.isMediaType(other));
+
+    const p1 = this.precedence;
+    const p2 = other.precedence;
+    if (p1 !== p2) return p2 - p1;
+
+    const q1 = this.quality;
+    const q2 = other.quality;
+    return q2 - q1;
+  }
+
+  /** Match this media type against the pattern. */
+  matchTo(pattern) {
+    // Match wildcard.
+    if (pattern.type === '*' && pattern.subtype === '*') return true;
+
+    // Match type only.
+    if (this.type !== pattern.type) return false;
+    if (pattern.subtype === '*') return true;
+
+    // Match type and subtype.
+    if (this.subtype !== pattern.subtype) return false;
+    if (pattern.type !== 'text') return true;
+
+    // Match charset for text.
+    const patternCharset = pattern.parameters?.charset;
+    if (patternCharset == null) return true;
+    const typeCharset = this.parameters?.charset;
+    if (typeCharset == null) return true;
+
+    return typeCharset === patternCharset;
+  }
+
+  /**
+   * Match this media type against the patterns and return the quality of first
+   * and also highest priority match.
+   */
+  matchForQuality(...patterns) {
+    // Improve method ergonomics
+    if (patterns.length === 1 && isArray(patterns[0])) {
+      [patterns] = patterns;
+    }
+
+    for (const pattern of patterns) {
+      if (this.matchTo(pattern)) return pattern.quality;
+    }
+    return 0;
+  }
+
+  /** Render this media type as a string. */
+  toString() {
+    let s = `${this.type}/${this.subtype}`;
+
+    if (this.suffix) {
+      s = `${s}+${this.suffix}`;
+    }
+
+    if (this.parameters) {
+      for (let [key, value] of entriesOf(this.parameters)) {
+        value = String(value);
+        if (!TOKEN.test(value)) {
+          value = `"${value.replace(TO_BE_ESCAPED, `\\$&`)}"`;
+        }
+
+        s = `${s}; ${key}=${value}`;
       }
     }
 
-    if (loopEndBreak) break;
+    return s;
   }
 
-  // 12. Return mimeType.
-  let mediaType = failed ? undefined : new MediaType(type, subtype, parameters);
-  return { mediaType, next: position };
-};
-
-// -----------------------------------------------------------------------------
-
-const parseMediaRanges = (s, position = 0) => {
-  const { length } = s;
-  const mediaRanges = [];
-
-  while (true) {
-    const { mediaType, next } = parseMediaType(s, {
-      position,
-      isRepeated: true,
-    });
-
-    if (mediaType != null) {
-      mediaRanges.push(mediaType);
-    }
-
-    if (next < length && s.charCodeAt(next) === CHARCODE_COMMA) {
-      position = next + 1;
-    } else {
-      position = next;
-      break;
-    }
+  /** Concisely render this media type during inspection. */
+  [INSPECT](_, options) {
+    return (
+      options.stylize('MediaType', 'name') +
+      ' { ' +
+      options.stylize(`'${this.toString()}'`, 'string') +
+      ' } '
+    );
   }
 
-  return { mediaRanges, next: position };
-};
-
-// =============================================================================
-// Static Media Type Methods (which operate on POJOs as much as on MediaTypes)
-
-defineProperties(MediaType, {
-  /** Parse a quote value and return the equivalent unquoted version. */
-  unquote: {
-    value(s) {
-      return parseQuotedString(s).value;
-    },
-  },
-
-  /** Return a copy of the given media type without parameters. */
-  without: { value: withoutParameters },
-  /** Return a copy of the given media type with the given parameters. */
-  with: { value: withParameters },
-
-  /** Return the charset parameter for the given media type. */
-  charset: { value: charsetOf },
-  /** Return the quality parameter for the given media type. */
-  quality: { value: qualityOf },
-  /** Return the precedence for the given media type. */
-  precedence: { value: precedenceOf },
-
-  /** Compare the given two media types for ordering by precedence. */
-  compare: { value: compare },
-  /** Compare the given media type and range for compatibility. */
-  matches: { value: matches },
-  /** Compute the quality of the given media type for the accept ranges. */
-  matchingQuality: { value: matchingQuality },
-
-  /** Render the given media type as a string. */
-  render: { value: render },
-
-  /** Parse the string as a comma-separated sequence of media types. */
-  accept: {
-    value(s) {
-      if (!s) return [MediaType.Any];
-      s = s.trim();
-      if (s === '*/*') return [MediaType.Any];
-      const { mediaRanges } = parseMediaRanges(s);
-      if (mediaRanges.length === 0) return [MediaType.Any];
-
-      mediaRanges.sort(compare);
-      return mediaRanges;
-    },
-  },
-});
-
-// -----------------------------------------------------------------------------
-// Instance Methods (as alternative API implemented with same static functions).
-
-const MediaTypePrototype = MediaType.prototype;
-defineProperties(MediaTypePrototype, {
-  /** Create a copy of this media type without any parameters. */
-  without: {
-    value() {
-      return withoutParameters(this);
-    },
-  },
-
-  /** Create a copy of this media type with the given parameters. */
-  with: {
-    value(parameters) {
-      return withParameters(this, parameters);
-    },
-  },
-
-  /** Get the `charset` parameter for this media type. */
-  charset: {
-    get() {
-      return charsetOf(this);
-    },
-  },
-
-  /** Get the quality parameter for this media type. */
-  quality: {
-    get() {
-      return qualityOf(this);
-    },
-  },
-
-  /** Get the precedence for this media type. */
-  precedence: {
-    get() {
-      return precedenceOf(this);
-    },
-  },
-
-  /** Compare with another type to determine precedence order. */
-  compareTo: {
-    value(other) {
-      return compare(this, other);
-    },
-  },
-
-  /** Determine whether this media type is acceptable to the given range. */
-  matches: {
-    value(range) {
-      return matches(this, range);
-    },
-  },
-
-  /** Determine the matching quality for this media type. */
-  matchingQuality: {
-    value(ranges) {
-      return matchingQuality(this, ranges);
-    },
-  },
-
-  /** Render this media type to a string. */
-  toString: {
-    value() {
-      return render(this);
-    },
-  },
-});
-
-// =============================================================================
-// Canonical Media Types
-
-const SomeMediaTypes = {
-  Binary: new MediaType('application', 'octet-stream'),
-  CSS: new MediaType('text', 'css', CHARSET_UTF8),
-  EventStream: new MediaType('text', 'event-stream', CHARSET_UTF8),
-  HTML: new MediaType('text', 'html', CHARSET_UTF8),
-  JSON: new MediaType('application', 'json', CHARSET_UTF8),
-  Markdown: new MediaType('text', 'markdown', CHARSET_UTF8),
-  PlainText: new MediaType('text', 'plain', CHARSET_UTF8),
-};
-
-const CanonicalMediaTypes = create(null);
-for (const key of keysOf(SomeMediaTypes)) {
-  const value = SomeMediaTypes[key];
-  defineProperty(MediaType, key, { value });
-  CanonicalMediaTypes[value.without().toString()] = value;
+  /** Brand instances of this class. */
+  get [Symbol.toStringTag]() {
+    return 'MediaType';
+  }
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 
-const toMediaType = value => {
-  if (value instanceof MediaType) {
-    return value;
-  } else if (
-    value != null &&
-    typeof value.type === 'string' &&
-    typeof value.subtype === 'string'
-  ) {
-    return new MediaType(value.type, value.subtype, value.parameters);
-  } else if (typeof value === 'string') {
-    return CanonicalMediaTypes[value.trim()] ?? parseMediaType(value).mediaType;
-  } else {
-    throw new Error(`Cannot convert "${value}" to media type`);
-  }
-};
+for (const name of TOP_LEVEL_NAMES) {
+  const mediaType = freeze(MediaType.from(name, '*'));
+  // Property name `[mediaType]` is automatically coerced to a string.
+  MediaTypeRegistry[mediaType] = mediaType;
 
-defineProperty(MediaType, 'of', { value: toMediaType });
+  const display = name === '*' ? 'Any' : name[0].toUpperCase() + name.slice(1);
+  assert(MediaType[display] === undefined);
+  defineProperty(MediaType, display, {
+    configurable,
+    enumerable,
+    value: mediaType,
+  });
+}
+
+const CHARSET_UTF8 = (() => {
+  const parameters = create(null);
+  parameters.charset = 'UTF-8';
+  return freeze(parameters);
+})();
+
+for (let [display, args] of entriesOf({
+  AudioMP4: ['audio', 'mp4'],
+  Binary: ['application', 'octet-stream'],
+  CSS: ['text', 'css'],
+  EventStream: ['text', 'event-stream'],
+  H264: ['video', 'h264'],
+  H265: ['video', 'h265'],
+  HTML: ['text', 'html'],
+  JavaScript: ['text', 'javascript'],
+  JSON: ['application', 'json'],
+  Markdown: ['text', 'markdown'],
+  PlainText: ['text', 'plain'],
+  PNG: ['image', 'png'],
+  SVG: ['image', 'svg', 'xml'],
+  VideoMP4: ['video', 'mp4'],
+})) {
+  const charset =
+    args[0] === 'text' || (args[0] === 'application' && args[1] === 'json');
+
+  if (charset) args.push(undefined, CHARSET_UTF8);
+  const mediaType = freeze(MediaType.from(...args));
+
+  // Property name `[mediaType]` is automatically coerced to a string.
+  if (charset) MediaTypeRegistry[mediaType.unparameterized()] = mediaType;
+  MediaTypeRegistry[mediaType] = mediaType;
+
+  assert(MediaType[display] === undefined);
+  defineProperty(MediaType, display, {
+    configurable,
+    enumerable,
+    value: mediaType,
+  });
+}

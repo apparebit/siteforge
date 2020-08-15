@@ -49,6 +49,7 @@ const STATIC_CONTENT = Symbol('static-content');
 
 const { byteLength, isBuffer } = Buffer;
 const { create, entries: entriesOf, freeze } = Object;
+const { isMediaType } = MediaType;
 const { isNativeError } = types;
 const { isSafeInteger } = Number;
 const { readFile } = promises;
@@ -72,7 +73,7 @@ const HeaderUpdate = freeze({
     headers[HTTP2_HEADER_CONTENT_LENGTH] = value;
   },
   [HTTP2_HEADER_CONTENT_TYPE](headers, value) {
-    const mediaType = MediaType.of(value);
+    const mediaType = !isMediaType(value) ? MediaType.from(value) : value;
     assert(mediaType != null && typeof mediaType === 'object');
     headers[HTTP2_HEADER_CONTENT_TYPE] = mediaType;
   },
@@ -285,13 +286,15 @@ export default class Exchange {
    */
   quality(type) {
     if (typeof type === 'string') {
-      type = MediaType.of(type);
+      type = MediaType.from(type);
     }
 
     if (!this.#accept) {
-      this.#accept = MediaType.accept(this.#request[HTTP2_HEADER_ACCEPT]);
+      this.#accept = MediaType.parseAll(this.#request[HTTP2_HEADER_ACCEPT])
+        .map(MediaType.create)
+        .sort(MediaType.compare);
     }
-    return MediaType.matchingQuality(type, this.#accept);
+    return type.matchForQuality(...this.#accept);
   }
 
   /**

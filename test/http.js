@@ -28,20 +28,10 @@ const { readFile } = promises;
 const ContentType = constants.HTTP2_HEADER_CONTENT_TYPE;
 const ContentLength = constants.HTTP2_HEADER_CONTENT_LENGTH;
 
-const { Any, Audio, Image, Text, Video } = MediaType;
-const AudioMp4 = MediaType('audio', 'mp4');
-const ImagePng = MediaType('image', 'png');
-const ImageSvg = MediaType('image', 'svg+xml');
-const TextPlain = MediaType('text', 'plain');
-const TextHtml = MediaType('text', 'html');
-const VideoMp4 = MediaType('video', 'mp4');
-const VideoWebm = MediaType('video', 'webm');
-
-const TextPlainUtf8 = TextPlain.with({ charset: 'UTF-8' });
-const TextPlainUtf8FixedFormat = TextPlain.with({
-  charset: 'UTF-8',
-  format: 'fixed',
-});
+const BareType = {
+  HTML: MediaType.HTML.unparameterized(),
+  PlainText: MediaType.PlainText.unparameterized(),
+};
 
 const prepareSecrets = async () => {
   const openssl = '/usr/local/opt/openssl/bin/openssl';
@@ -51,159 +41,271 @@ const prepareSecrets = async () => {
   return secrets;
 };
 
+const logError = (...args) => harness.rollcall.error(...args);
+
 harness.test('@grr/http', t => {
   t.test('@grr/http/MediaType', t => {
     // ----------------------------------------------------- MediaType.unquote()
     t.throws(() => MediaType.unquote('#boo#'));
-    t.is(MediaType.unquote(`""`), ``);
-    t.is(MediaType.unquote(`"boo"`), `boo`);
-    t.is(MediaType.unquote(`"\\"\\\\\\""`), `"\\"`);
+    t.is(MediaType.unquote(`""`).value, ``);
+    t.is(MediaType.unquote(`"boo"`).value, `boo`);
+    t.is(MediaType.unquote(`"\\"\\\\\\""`).value, `"\\"`);
     t.is(
-      MediaType.unquote(`"text\\"text\\\\text\\"text"`),
+      MediaType.unquote(`"text\\"text\\\\text\\"text"`).value,
       `text"text\\text"text`
     );
-    t.is(MediaType.unquote(`"text`), `text`);
-    t.is(MediaType.unquote(`"text\\`), `text\\`);
+    t.is(MediaType.unquote(`"text`).value, `text`);
+    t.is(MediaType.unquote(`"text\\`).value, `text\\`);
 
-    // ---------------------------------------------------------- MediaType.of()
-    t.is(MediaType.of(``), undefined);
-    t.is(MediaType.of(`boo`), undefined);
-    t.is(MediaType.of(`boo/`), undefined);
-    t.is(MediaType.of(`/boo`), undefined);
-    t.is(MediaType.of(`boo/`), undefined);
-    t.is(MediaType.of(`b(o)o/boo`), undefined);
-    t.is(MediaType.of(`boo/b(o)o`), undefined);
-
-    t.same(MediaType.of('audio/mp4'), AudioMp4);
-    t.same(MediaType.of('audio/mp4   '), AudioMp4);
-    t.same(MediaType.of('text/plain ; charset'), TextPlain);
-
-    t.same(MediaType.of('text/plain; charset; charset=utf-8'), TextPlainUtf8);
-    t.same(MediaType.of('text/plain; charset=; charset=uTF-8'), TextPlainUtf8);
-    t.same(MediaType.of('text/plain; CHARset="UTF-8"'), TextPlainUtf8);
+    // -------------------------------------------------------- MediaType.from()
+    t.throws(() => MediaType.from(``));
+    t.throws(() => MediaType.from(`boo`));
+    t.throws(() => MediaType.from(`boo/`));
+    t.throws(() => MediaType.from(`/boo`));
+    t.throws(() => MediaType.from(`boo/`));
+    t.throws(() => MediaType.from(`b(o)o/boo`));
+    t.throws(() => MediaType.from(`boo/b(o)o`));
+    t.same(MediaType.from('audio/mp4'), MediaType.AudioMP4);
+    t.same(MediaType.from('audio/mp4   '), MediaType.AudioMP4);
+    t.same(MediaType.from('text/plain ; charset'), BareType.PlainText);
 
     t.same(
-      MediaType.of('text/PLAIN; charset="utf-8"; format=fixed'),
-      TextPlainUtf8FixedFormat
+      MediaType.from('text/plain; charset; charset=utf-8'),
+      MediaType.PlainText
     );
     t.same(
-      MediaType.of('TEXT/plain; CHARSET="utf-8"; FORMAT=FIXED'),
-      TextPlain.with({ charset: 'UTF-8', format: 'FIXED' })
+      MediaType.from('text/plain; charset=; charset=uTF-8'),
+      MediaType.PlainText
+    );
+    t.same(MediaType.from('text/plain; CHARset="UTF-8"'), MediaType.PlainText);
+
+    t.same(
+      MediaType.from('text/PLAIN; charset="utf-8"; format=fixed'),
+      MediaType.PlainText.with({ format: 'fixed' })
+    );
+    t.same(
+      MediaType.from('TEXT/plain; CHARSET="utf-8"; FORMAT=FIXED'),
+      MediaType.PlainText.with({ format: 'FIXED' })
     );
 
-    const css = MediaType.of('text/css');
-    t.is(MediaType.of('text/css'), css);
+    const css = MediaType.from('text/css');
+    t.is(css, MediaType.CSS);
     t.is(css.parameters.charset, 'UTF-8');
+    t.is(MediaType.from('text/css'), MediaType.CSS);
 
-    // ----------------------------------------------------- MediaType.compare()
-    const cmt = MediaType.compare;
+    // ------------------------------------------- MediaType.prototype.compare()
 
-    t.is(cmt(VideoMp4, AudioMp4.with({ q: 0.5 })), -0.5);
-    t.is(cmt(Any.with({ q: 0.2 }), Audio.with({ q: 0.4 })), 1);
-    t.is(cmt(Audio.with({ q: 0.4 }), Any.with({ q: 0.2 })), -1);
-    t.is(cmt(Any.with({ q: 0.2 }), AudioMp4.with({ q: 0.4 })), 2);
-    t.is(cmt(AudioMp4.with({ q: 0.4 }), Any.with({ q: 0.2 })), -2);
-    t.is(cmt(Any.with({ q: 0.2 }), TextPlainUtf8.with({ q: 0.4 })), 3);
-    t.is(cmt(TextPlainUtf8.with({ q: 0.4 }), Any.with({ q: 0.2 })), -3);
-    t.is(cmt(TextPlain.with({ q: 0.2 }), TextHtml.with({ q: 0.4 })), 0.2);
-    t.is(cmt(TextHtml.with({ q: 0.4 }), TextPlain.with({ q: 0.2 })), -0.2);
-    t.is(cmt(AudioMp4, VideoMp4), 0);
-    t.is(cmt(VideoMp4, AudioMp4), 0);
-    t.is(cmt(Any, Any), 0);
-    t.is(cmt(Any, Video), 1);
-    t.is(cmt(Video, Any), -1);
-    t.is(cmt(Video, VideoMp4), 1);
-    t.is(cmt(VideoMp4, Video), -1);
-    t.is(cmt(VideoMp4, VideoWebm), 0);
-    t.is(cmt(VideoWebm, VideoMp4), 0);
-    t.is(cmt(ImagePng, ImageSvg), 0);
-    t.is(cmt(ImageSvg, ImagePng), 0);
-    t.is(cmt(Image, Image), 0);
-    t.is(cmt(TextPlainUtf8, TextPlainUtf8), 0);
-    t.is(cmt(TextPlainUtf8FixedFormat, TextPlain), -1);
-    t.is(cmt(TextPlainUtf8FixedFormat, TextPlainUtf8), 0);
-    t.is(cmt(TextPlain, TextPlainUtf8), 1);
-    t.is(cmt(TextPlain, TextPlainUtf8FixedFormat), 1);
-
-    // ------------------------------------------------------ MediaType.ranges()
-    t.same(
-      MediaType.accept('text/html, text/plain; q=0.7, text/*, */*;q=0.1'),
-      [TextHtml, TextPlain.with({ q: 0.7 }), Text, Any.with({ q: 0.1 })]
+    t.is(
+      MediaType.VideoMP4.compareTo(MediaType.AudioMP4.with({ q: 0.5 })),
+      -0.5
     );
-
-    t.same(
-      MediaType.accept(
-        'text/*, text/plain; q=0.7,/plain, */*;   q=0.1, text/html'
+    t.is(
+      MediaType.Any.with({ q: 0.2 }).compareTo(
+        MediaType.Audio.with({ q: 0.4 })
       ),
-      [TextHtml, TextPlain.with({ q: 0.7 }), Text, Any.with({ q: 0.1 })]
+      1
     );
+    t.is(
+      MediaType.Audio.with({ q: 0.4 }).compareTo(
+        MediaType.Any.with({ q: 0.2 })
+      ),
+      -1
+    );
+    t.is(
+      MediaType.Any.with({ q: 0.2 }).compareTo(
+        MediaType.AudioMP4.with({ q: 0.4 })
+      ),
+      2
+    );
+    t.is(
+      MediaType.AudioMP4.with({ q: 0.4 }).compareTo(
+        MediaType.Any.with({ q: 0.2 })
+      ),
+      -2
+    );
+    t.is(
+      MediaType.Any.with({ q: 0.2 }).compareTo(
+        MediaType.PlainText.with({ q: 0.4 })
+      ),
+      3
+    );
+    t.is(
+      MediaType.PlainText.with({ q: 0.4 }).compareTo(
+        MediaType.Any.with({ q: 0.2 })
+      ),
+      -3
+    );
+    t.is(
+      MediaType.PlainText.with({ q: 0.2 }).compareTo(
+        MediaType.HTML.with({ q: 0.4 })
+      ),
+      0.2
+    );
+    t.is(
+      MediaType.HTML.with({ q: 0.4 }).compareTo(
+        MediaType.PlainText.with({ q: 0.2 })
+      ),
+      -0.2
+    );
+    t.is(MediaType.AudioMP4.compareTo(MediaType.VideoMP4), 0);
+    t.is(MediaType.VideoMP4.compareTo(MediaType.AudioMP4), 0);
+    t.is(MediaType.Any.compareTo(MediaType.Any), 0);
+    t.is(MediaType.Any.compareTo(MediaType.Video), 1);
+    t.is(MediaType.Video.compareTo(MediaType.Any), -1);
+    t.is(MediaType.Video.compareTo(MediaType.VideoMP4), 1);
+    t.is(MediaType.VideoMP4.compareTo(MediaType.Video), -1);
+    t.is(MediaType.VideoMP4.compareTo(MediaType.H264), 0);
+    t.is(MediaType.H264.compareTo(MediaType.VideoMP4), 0);
+    t.is(MediaType.PNG.compareTo(MediaType.SVG), 0);
+    t.is(MediaType.SVG.compareTo(MediaType.PNG), 0);
+    t.is(MediaType.Image.compareTo(MediaType.Image), 0);
+    t.is(MediaType.PlainText.compareTo(MediaType.PlainText), 0);
+    t.is(
+      MediaType.PlainText.with({ formed: 'fixed' }).compareTo(
+        MediaType.PlainText
+      ),
+      -1
+    );
+    t.is(
+      MediaType.PlainText.with({ formed: 'fixed' }).compareTo(
+        BareType.PlainText
+      ),
+      -2
+    );
+    t.is(BareType.PlainText.compareTo(MediaType.PlainText), 1);
+    t.is(MediaType.PlainText.compareTo(BareType.PlainText), -1);
 
-    t.same(
-      MediaType.accept(
+    // ---------------------------------------------------- MediaType.parseAll()
+    let lotsOfParsedTypes = [
+      MediaType.parseAll('text/html, text/plain; q=0.7, text/*, */*;q=0.1').map(
+        MediaType.create
+      ),
+      MediaType.parseAll(
+        'text/*, text/plain; q=0.7,/plain, */*;   q=0.1, text/html'
+      ).map(MediaType.create),
+      MediaType.parseAll(
         `*/*, ` +
           `text/plain, ` +
           `text/plain; charset=UTF-8; format=fixed, ` +
           `text/plain; charset=utf8, ` +
           `text/*`
-      ),
-      [TextPlainUtf8FixedFormat, TextPlainUtf8, TextPlain, Text, Any]
-    );
-
-    t.same(
-      MediaType.accept(
+      ).map(MediaType.create),
+      MediaType.parseAll(
         `*/*; q=0.1, ` +
           `text/plain; q=0.5, ` +
           `text/plain; charset=UTF-8; format=fixed; q=0.8, ` +
           `text/plain; charset=utf8, ` +
           `text/*; q=0.2`
-      ),
+      ).map(MediaType.create),
+    ];
+
+    const lotsOfConstructedTypes = [
       [
-        TextPlainUtf8,
-        TextPlainUtf8FixedFormat.with({ q: 0.8 }),
-        TextPlain.with({ q: 0.5 }),
-        Text.with({ q: 0.2 }),
-        Any.with({ q: 0.1 }),
-      ]
-    );
+        BareType.HTML,
+        BareType.PlainText.with({ q: 0.7 }),
+        MediaType.Text,
+        MediaType.Any.with({ q: 0.1 }),
+      ],
+      [
+        MediaType.Text,
+        BareType.PlainText.with({ q: 0.7 }),
+        MediaType.Any.with({ q: 0.1 }),
+        BareType.HTML,
+      ],
+      [
+        MediaType.Any,
+        BareType.PlainText,
+        MediaType.PlainText.with({ format: 'fixed' }),
+        MediaType.PlainText,
+        MediaType.Text,
+      ],
+      [
+        MediaType.Any.with({ q: 0.1 }),
+        BareType.PlainText.with({ q: 0.5 }),
+        MediaType.PlainText.with({ format: 'fixed', q: 0.8 }),
+        MediaType.PlainText,
+        MediaType.Text.with({ q: 0.2 }),
+      ],
+    ];
 
-    // --------------------------------------------------------------- matches()
-    t.ok(TextPlain.matches(Any));
-    t.notOk(TextPlain.matches(Video));
-    t.ok(VideoMp4.matches(Video));
-    t.notOk(TextPlain.matches(VideoMp4));
-    t.ok(VideoMp4.matches(VideoMp4));
-    t.ok(MediaType.matches({ type: 'video', subtype: 'mp4' }, VideoMp4));
-    t.ok(VideoMp4.matches({ type: 'video', subtype: 'mp4' }));
-    t.ok(TextPlain.matches(TextPlain));
-    t.ok(TextPlain.matches(TextPlainUtf8));
-    t.ok(TextPlainUtf8.matches(TextPlainUtf8));
-    t.ok(MediaType.of('text/plain;CHARSET=utf8').matches(TextPlainUtf8));
-    t.ok(MediaType.of('text/plain;CHARSET="utf8"').matches(TextPlainUtf8));
-    t.ok(TextPlain.with({ charset: 'UTF-8' }).matches(TextPlainUtf8));
-    t.notOk(TextPlain.with({ charset: 'US-ASCII' }).matches(TextPlainUtf8));
-    t.ok(TextPlainUtf8.matches(TextPlain));
-    t.ok(TextPlainUtf8.matches(Text));
-    t.notOk(VideoMp4.matches(TextPlainUtf8));
-    t.notOk(VideoMp4.matches(TextPlain));
-    t.notOk(VideoMp4.matches(Text));
-    t.ok(VideoMp4.matches(Any));
+    t.same(lotsOfParsedTypes, lotsOfConstructedTypes);
 
-    // ------------------------------------------------------ MediaType.render()
-    t.is(Any.toString(), '*/*');
-    t.is(Text.toString(), 'text/*');
-    t.is(TextPlain.toString(), 'text/plain');
-    t.is(TextPlainUtf8.toString(), 'text/plain; charset=UTF-8');
-    t.is(MediaType.render({ type: '*', subtype: '*' }), '*/*');
-    t.is(MediaType.render({ type: 'text', subtype: '*' }), 'text/*');
-    t.is(MediaType.render({ type: 'text', subtype: 'plain' }), 'text/plain');
-    t.is(
-      MediaType.render({
-        type: 'text',
-        subtype: 'plain',
-        parameters: { charset: 'UTF-8' },
-      }),
-      'text/plain; charset=UTF-8'
+    lotsOfParsedTypes.forEach(list => list.sort(MediaType.compare));
+    t.same(lotsOfParsedTypes, [
+      [
+        BareType.HTML,
+        BareType.PlainText.with({ q: 0.7 }),
+        MediaType.Text,
+        MediaType.Any.with({ q: 0.1 }),
+      ],
+      [
+        BareType.HTML,
+        BareType.PlainText.with({ q: 0.7 }),
+        MediaType.Text,
+        MediaType.Any.with({ q: 0.1 }),
+      ],
+      [
+        MediaType.PlainText.with({ format: 'fixed' }),
+        MediaType.PlainText,
+        BareType.PlainText,
+        MediaType.Text,
+        MediaType.Any,
+      ],
+      [
+        MediaType.PlainText.with({ format: 'fixed', q: 0.8 }),
+        MediaType.PlainText,
+        BareType.PlainText.with({ q: 0.5 }),
+        MediaType.Text.with({ q: 0.2 }),
+        MediaType.Any.with({ q: 0.1 }),
+      ],
+    ]);
+
+    // ------------------------------------------- MediaType.prototype.matchTo()
+    t.ok(MediaType.PlainText.matchTo(MediaType.Any));
+    t.notOk(MediaType.PlainText.matchTo(MediaType.Video));
+    t.ok(MediaType.VideoMP4.matchTo(MediaType.Video));
+    t.notOk(MediaType.PlainText.matchTo(MediaType.VideoMP4));
+    t.ok(MediaType.VideoMP4.matchTo(MediaType.VideoMP4));
+    t.ok(
+      MediaType.from({ type: 'video', subtype: 'mp4' }).matchTo(
+        MediaType.VideoMP4
+      )
     );
+    t.ok(MediaType.VideoMP4.matchTo({ type: 'video', subtype: 'mp4' }));
+    t.ok(MediaType.PlainText.matchTo(MediaType.PlainText));
+    t.ok(BareType.PlainText.matchTo(MediaType.PlainText));
+    t.ok(MediaType.PlainText.matchTo(BareType.PlainText));
+    t.ok(
+      MediaType.from('text/plain;CHARSET=utf8').matchTo(MediaType.PlainText)
+    );
+    t.ok(
+      MediaType.from('text/plain;CHARSET="utf8"').matchTo(MediaType.PlainText)
+    );
+    t.ok(
+      MediaType.PlainText.with({ charset: 'UTF-8' }).matchTo(
+        MediaType.PlainText
+      )
+    );
+    t.ok(
+      BareType.PlainText.with({ charset: 'UTF-8' }).matchTo(MediaType.PlainText)
+    );
+    t.notOk(
+      BareType.PlainText.with({ charset: 'US-ASCII' }).matchTo(
+        MediaType.PlainText
+      )
+    );
+    t.ok(MediaType.PlainText.matchTo(BareType.PlainText));
+    t.ok(MediaType.PlainText.matchTo(MediaType.Text));
+    t.notOk(MediaType.VideoMP4.matchTo(BareType.PlainText));
+    t.notOk(MediaType.VideoMP4.matchTo(MediaType.PlainText));
+    t.notOk(MediaType.VideoMP4.matchTo(MediaType.Text));
+    t.ok(MediaType.VideoMP4.matchTo(MediaType.Any));
+
+    // ------------------------------------------ MediaType.prototype.toString()
+    t.is(MediaType.Any.toString(), '*/*');
+    t.is(MediaType.Text.toString(), 'text/*');
+    t.is(BareType.PlainText.toString(), 'text/plain');
+    t.is(MediaType.PlainText.toString(), 'text/plain; charset=UTF-8');
 
     t.end();
   });

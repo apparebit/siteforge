@@ -4,11 +4,18 @@ import { constants } from 'http2';
 import MediaType from './media-type.js';
 import readline from 'readline';
 import { settleable } from '@grr/async/promise';
+import { STATUS_CODES } from 'http';
 
 const { HTTP2_HEADER_CONTENT_TYPE, HTTP2_HEADER_STATUS } = constants;
 
-const Not200 = status =>
-  new Error(`Status code is "${status}" instead of expected "200"`);
+const Not200 = status => {
+  let code = STATUS_CODES[status];
+  code = code ? ` (${code})` : ``;
+  return new Error(
+    `Status code is "${status}"${code} instead of expected "200"`
+  );
+};
+
 const isEventStream = type =>
   type != null && type.type === 'text' && type.subtype === 'event-stream';
 const NotEventStream = type =>

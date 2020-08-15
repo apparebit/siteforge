@@ -1,7 +1,7 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import { close, settleable } from '@grr/async/promise';
+import { settleable } from '@grr/async/promise';
 import { connect as doConnect, constants } from 'http2';
 import { once } from 'events';
 
@@ -111,13 +111,14 @@ class Client {
 
   /** Disconnect this session. */
   disconnect() {
-    if (this.#session) {
+    return new Promise(resolve => {
       const session = this.#session;
-      this.#session = undefined;
-      return close(session);
-    } else {
-      return Promise.resolve();
-    }
+      if (session && !session.closed && !session.destroyed) {
+        session.close(resolve);
+      } else {
+        resolve();
+      }
+    });
   }
 }
 

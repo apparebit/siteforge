@@ -1,7 +1,6 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import { close } from '@grr/async/promise';
 import { constants, createSecureServer } from 'http2';
 import Exchange from './exchange.js';
 import { identifyEndpoint, identifyRemote } from './identity.js';
@@ -188,7 +187,13 @@ export default class Server {
     // Close server so that it stops accepting new connections.
     const server = this.#server;
     this.#server = undefined;
-    const done = close(server);
+    const done = new Promise(resolve => {
+      if (server.listening) {
+        server.close(resolve);
+      } else {
+        resolve();
+      }
+    });
 
     // Close handlers, which may also hold resources including connections.
     for (const handler of this.#handlers) {

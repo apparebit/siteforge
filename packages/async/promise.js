@@ -31,15 +31,3 @@ export const settleable = (container = {}) => {
   });
   return container;
 };
-
-/**
- * Close the resource. This helper function initiates the asynchronous closing
- * of the resource and returns a promise that settles once closing is complete.
- * To this end, it simply invokes the resource's `close()` method with a
- * callback that settles the returned promise.
- */
-export const close = closeable => {
-  const { promise, resolve } = settleable();
-  closeable.close(resolve);
-  return promise;
-};

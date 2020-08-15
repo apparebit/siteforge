@@ -5,7 +5,6 @@
 import { buildAll } from '@grr/builder';
 import { configure, validate } from './config.js';
 import createContext from '@grr/builder/context';
-import { EOL } from 'os';
 import { join, resolve } from 'path';
 import { Kind } from '@grr/inventory/kind';
 import launch from '@grr/loader/launch';
@@ -119,7 +118,7 @@ async function main() {
   // Handle Display of Version and Help
 
   if (options.version) {
-    logger.notice(`site:forge ${config.forge.version}${EOL}`);
+    logger.note(`site:forge ${config.forge.version}`);
   }
   if (options.help) {
     const help = await readFile(join(__directory, 'usage.txt'), 'utf8');
@@ -215,7 +214,7 @@ async function main() {
   // Summarize Run
 
   if (options.dryRun) {
-    logger.notice(
+    logger.note(
       `Since option "dry-run" was enabled, no changes were persisted.`
     );
   }

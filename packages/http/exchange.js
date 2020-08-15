@@ -3,10 +3,9 @@
 import { strict as assert } from 'assert';
 import { constants } from 'http2';
 import { escapeText } from '@grr/html/syntax';
-import { isAbsolute } from 'path';
+import { isAbsolute, posix } from 'path';
 import MediaType from './media-type.js';
 import parseDate from './date.js';
-import { parsePath } from './path-util.js';
 import pickle from '@grr/oddjob/pickle';
 import { promises } from 'fs';
 import { readOnlyView } from '@grr/oddjob/object';
@@ -45,6 +44,7 @@ const HTTP2_HEADER_X_PERMITTED_CROSS_DOMAIN_POLICIES =
   'x-permitted-cross-domain-policies';
 const HTTP2_HEADER_X_POWERED_BY = 'x-powered-by';
 const PRODUCTION = process.env.NODE_ENV === 'production';
+const SLASH_CODE = '/'.charCodeAt(0);
 const STATIC_CONTENT = Symbol('static-content');
 
 const { byteLength, isBuffer } = Buffer;
@@ -52,6 +52,7 @@ const { create, entries: entriesOf, freeze } = Object;
 const { isMediaType } = MediaType;
 const { isNativeError } = types;
 const { isSafeInteger } = Number;
+const { normalize: normalizePosix } = posix;
 const { readFile } = promises;
 
 const Stage = freeze({
@@ -179,13 +180,29 @@ export default class Exchange {
     });
     this.#didRespond = promise;
 
-    try {
-      const { path, endsInSlash } = parsePath(this.#request[HTTP2_HEADER_PATH]);
-      this.#path = path;
-      this.#endsInSlash = endsInSlash;
-    } catch (x) {
+    const rawPath = this.#request[HTTP2_HEADER_PATH];
+    let path = normalizePosix(rawPath);
+
+    if (
+      path.charCodeAt(0) !== SLASH_CODE ||
+      (path.startsWith('/.well-known/') && path.slice(13).includes('/.')) ||
+      (!path.startsWith('/.well-known/') && path.includes('/.'))
+    ) {
       this.#path = '/.well-known/bad-path';
-      this.fail(HTTP_STATUS_BAD_REQUEST, x);
+      this.#endsInSlash = false;
+      this.fail(
+        HTTP_STATUS_BAD_REQUEST,
+        new Error(`Bad request path "${rawPath}"`)
+      );
+    } else if (
+      path !== '/' &&
+      path.charCodeAt(path.length - 1) === SLASH_CODE
+    ) {
+      this.#path = path.slice(0, -1);
+      this.#endsInSlash = true;
+    } else {
+      this.#path = path;
+      this.#endsInSlash = false;
     }
   }
 

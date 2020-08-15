@@ -67,6 +67,7 @@ export default class Client {
         session.removeListener('error', onError);
         session.removeListener('frameError', onFrameError);
 
+        // Install error handlers that return any error via the next request().
         session
           .on('error', error => {
             session.destroy(error);
@@ -161,9 +162,11 @@ export default class Client {
         .once('error', onError)
         .once('frameError', onFrameError)
         .once('response', onResponse);
+
       if (request[Header.Body] != null) {
         stream.write(request[Header.Body]);
       }
+
       stream.end();
     });
   }

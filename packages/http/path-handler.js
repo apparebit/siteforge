@@ -1,7 +1,7 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import { toFileMatcher, toTreeMatcher, parsePath } from './path-util.js';
+import { toFileMatcher, toTreeMatcher, parsePath } from './util.js';
 
 const {
   defineProperty,

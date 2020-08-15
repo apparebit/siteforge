@@ -2,9 +2,8 @@
 
 import { strict as assert } from 'assert';
 import { constants } from 'http2';
-import { isAbsolute, join, normalize } from 'path';
-import { default as MediaType } from './media-type.js';
-import { default as mediaTypeForPath } from './file-type.js';
+import { isAbsolute, join, normalize, posix } from 'path';
+import MediaType from './media-type.js';
 
 const {
   HTTP_STATUS_INTERNAL_SERVER_ERROR,
@@ -95,7 +94,8 @@ const respondWithStaticContent = (exchange, path) => {
     }
   };
 
-  exchange.type = mediaTypeForPath(path);
+  const t = MediaType.fromExtension(posix.extname(path));
+  if (t) exchange.type = t;
   exchange.stream.respondWithFile(path, exchange.response, {
     statCheck,
     onError,

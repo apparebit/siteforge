@@ -105,6 +105,7 @@ const { toString: ObjectToString } = prototype;
 
 // The registry of canonical media types.
 const MediaTypeRegistry = create(null);
+const ExtensionRegistry = create(null);
 
 // =============================================================================
 
@@ -139,6 +140,11 @@ export default class MediaType {
     } else {
       return new MediaType(MediaType.validate(value));
     }
+  }
+
+  /** Determine the media type for the given file extension. */
+  static fromExtension(extension) {
+    return ExtensionRegistry[extension];
   }
 
   /**
@@ -548,4 +554,54 @@ for (let [display, args] of entriesOf({
     enumerable,
     value: mediaType,
   });
+}
+
+// -----------------------------------------------------------------------------
+
+const ExtensionsForType = {
+  'application/atom+xml': 'atom',
+  'application/geo+json': 'geojson',
+  'application/json': 'json',
+  'application/ld+json': 'jsonld',
+  'application/manifest+json': 'webmanifest',
+  'application/pdf': 'pdf',
+  'application/rdf+xml': 'rdf',
+  'application/rss+xml': 'rss',
+  'application/wasm': 'wasm',
+  'application/zip': 'zip',
+  'audio/flac': 'flac',
+  'audio/mp4': ['f4a', 'f4b', 'm4a'],
+  'audio/mpeg': 'mp3',
+  'audio/wave': ['wav', 'wave'],
+  'font/otf': 'otf',
+  'font/ttf': 'ttf',
+  'font/woff': 'woff',
+  'font/woff2': 'woff2',
+  'image/bmp': 'bmp',
+  'image/gif': 'gif',
+  'image/jpeg': ['jfif', 'jpg', 'jpeg'],
+  'image/png': 'png',
+  'image/svg+xml': ['svg'], // svgz?
+  'image/tiff': ['tif', 'tiff'],
+  'image/webp': 'webp',
+  'image/x-icon': ['cur', 'ico'],
+  'text/calendar': 'ics',
+  'text/css': 'css',
+  'text/html': ['htm', 'html'],
+  'text/javascript': ['cjs', 'js', 'mjs'], // Per WhatWG
+  'text/markdown': ['markdown', 'md'],
+  'text/plain': 'txt',
+  'text/vcard': ['vcard', 'vcf'],
+  'video/mp4': ['f4v', 'f4p', 'm4v', 'mp4'],
+  'video/quicktime': ['mov', 'qt'],
+  'video/webm': 'webm',
+};
+
+for (let [type, extensions] of entriesOf(ExtensionsForType)) {
+  const mediaType = MediaType.from(type);
+
+  if (!isArray(extensions)) extensions = [extensions];
+  for (const extension of extensions) {
+    ExtensionRegistry[`.${extension}`] = mediaType;
+  }
 }

@@ -3,7 +3,7 @@
 import { strict as assert } from 'assert';
 import { constants, createSecureServer } from 'http2';
 import Exchange from './exchange.js';
-import { identifyEndpoint, identifyRemote } from './identity.js';
+import { identifyEndpoint, identifyRemote } from './util.js';
 import { once } from 'events';
 
 const {

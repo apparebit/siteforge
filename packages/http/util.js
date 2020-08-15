@@ -2,6 +2,80 @@
 
 import { strict as assert } from 'assert';
 
+/**
+ * Identify an HTTP/2 stream. To uniquely identify a resource without making
+ * the result too verbose, this function includes the stream ID as well as the
+ * remote endpoint.
+ */
+export const identifyHttp2Stream = stream =>
+  `https://${identifyRemote(stream.session.socket)}/#${stream.id}`;
+
+/** Identify the local end of a socket. */
+export const identifyLocal = ({ localAddress, localFamily, localPort }) =>
+  identifyEndpoint({
+    address: localAddress,
+    family: localFamily,
+    port: localPort,
+  });
+
+/** Identify the remote end of a socket. */
+export const identifyRemote = ({ remoteAddress, remoteFamily, remotePort }) =>
+  identifyEndpoint({
+    address: remoteAddress,
+    family: remoteFamily,
+    port: remotePort,
+  });
+
+/**
+ * Identify an endpoint. This helper function provides its services directly to
+ * server objects and indirectly through adapters.
+ */
+export const identifyEndpoint = ({ address, family, port }) =>
+  family === 'IPv6' ? `[${address}]:${port}` : `${address}:${port}`;
+
+/** Create an error object representing the frame error parameters. */
+export const createFrameError = (type, code, id, session) =>
+  new Error(
+    `Error ${code} sending frame ${type} on stream ${id} for ${identifyRemote(
+      session
+    )}`
+  );
+
+const DATE_FORMAT = new RegExp(
+  `^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([0-3]\\d) ` +
+    `(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ` +
+    `(2\\d[2-9]\\d) ([0-2]\\d):([0-6]\\d):([0-6]\\d) GMT$`,
+  'u'
+);
+
+const MONTH_INDEX = {
+  Jan: 0,
+  Feb: 1,
+  Mar: 2,
+  Apr: 3,
+  May: 4,
+  Jun: 5,
+  Jul: 6,
+  Aug: 7,
+  Sep: 8,
+  Oct: 9,
+  Nov: 10,
+  Dec: 11,
+};
+
+/** Parse the given string as a date suitable for HTTP headers. */
+export function parseDate(value) {
+  if (!value) return undefined;
+
+  const components = value.match(DATE_FORMAT);
+  if (components == null) return undefined;
+
+  const [, , day, month, year, hours, minutes, seconds] = components;
+  return new Date(
+    Date.UTC(year, MONTH_INDEX[month], day, hours, minutes, seconds)
+  );
+}
+
 const CODE_DOT = '.'.charCodeAt(0);
 const CODE_SLASH = '/'.charCodeAt(0);
 const PATH_AND_QUERY = /^([^?#]*)([^#]*)/u;

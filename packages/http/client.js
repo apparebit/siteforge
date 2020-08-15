@@ -13,12 +13,19 @@ class Client {
   #authority;
   #session;
   #didConnect;
+  #didDisconnect;
   #logError;
 
-  constructor({ authority, session, didError, didFrameError, logError }) {
+  constructor({
+    authority,
+    session,
+    didError,
+    didFrameError,
+    logError = console.error,
+  }) {
     assert(typeof authority === 'string');
 
-    // Increase likelihood that we got a session object.
+    // Check a few distinguishing characteristics of session object.
     assert(typeof session.goaway === 'function');
     assert(typeof session.ping === 'function');
 
@@ -31,19 +38,17 @@ class Client {
       assert(typeof didFrameError === 'function');
       this.didFrameError = didFrameError;
     }
-    if (logError != null) {
-      assert(typeof logError === 'function');
-      this.#logError = logError;
-    } else {
-      this.#logError = console.error;
-    }
+    assert(typeof logError === 'function');
 
     // Set up internal state.
     this.#authority = authority;
     this.#session = session;
+    this.#logError = logError;
+
     session
       .on('error', this.didError.bind(this))
       .on('frameError', this.didFrameError.bind(this));
+
     this.#didConnect = once(session, 'connect');
   }
 
@@ -54,7 +59,7 @@ class Client {
 
   /** Handle the error. */
   didError(error) {
-    this.#logError(`HTTP/2 session with ${this.#authority} failed`, error);
+    this.#logError(`HTTP/2 connection to ${this.#authority} failed`, error);
   }
 
   /** Handle the frame error. */
@@ -124,10 +129,10 @@ class Client {
 
 /**
  * Establish a session with an HTTP/2 server. The options must include an
- * `authority` for the endpoint. They may include the `didError` and
+ * `authority` for the endpoint. They may include select `didError` and
  * `didFrameError` overrides for error handling as well as any option accepted
- * by the `http2` module's `connect()` function, which include HTTP/2 settings,
- * TLS options, and socket options.
+ * by the `http2` module's `connect()` function, including HTTP/2 settings, TLS
+ * options, and socket options.
  */
 export default function connect(options) {
   const { authority } = options;

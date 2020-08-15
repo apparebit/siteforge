@@ -34,7 +34,7 @@ export default async function* events(session, path) {
 
   stream.on('response', headers => {
     const status = headers[HTTP2_HEADER_STATUS];
-    const type = MediaType.of(headers[HTTP2_HEADER_CONTENT_TYPE]);
+    const type = MediaType.from(headers[HTTP2_HEADER_CONTENT_TYPE]);
 
     if (status !== 200) {
       reject(Not200(status));

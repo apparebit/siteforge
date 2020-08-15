@@ -565,13 +565,13 @@ harness.test('@grr/http', t => {
     let client, server;
     try {
       const { authority, cert, key } = await prepareSecrets();
-      server = new Server({ cert, key, port: 6651 });
+      server = new Server({ cert, key, port: 6651, logError });
 
       let index = -1;
       server.use((exchange, next) => testcases[++index].server(exchange, next));
       await server.listen();
 
-      client = connect({ authority, ca: cert });
+      client = connect({ authority, ca: cert, logError });
       await client.didConnect();
 
       for (const testcase of testcases) {
@@ -603,7 +603,7 @@ harness.test('@grr/http', t => {
 
       // Set up server hosting middleware.
       const { authority, cert, key } = await prepareSecrets();
-      server = new Server({ cert, key, port: 6651 });
+      server = new Server({ cert, key, port: 6651, logError });
       server.use(handleEvents);
       await server.listen();
 
@@ -613,7 +613,7 @@ harness.test('@grr/http', t => {
       setTimeout(() => handleSSE.close(), 100);
 
       // Set up client and consume events.
-      client = connect({ authority, ca: cert });
+      client = connect({ authority, ca: cert, logError });
       await client.didConnect();
 
       let count = 0;
@@ -652,51 +652,51 @@ harness.test('@grr/http', t => {
   // ===========================================================================
 
   t.test('@grr/http/createStaticContentHandler', async t => {
+    // Set up tests
+    // ------------
+
+    const root = fileURLToPath(new URL('fixtures/content', import.meta.url));
+    const tests = [
+      {
+        path: '/amanda-gris.css',
+        type: MediaType.CSS,
+        length: 0,
+        content: '/amanda-gris.css',
+      },
+      {
+        path: '/la-flor',
+        type: MediaType.HTML,
+        length: 0,
+        content: '/la-flor.html',
+      },
+      {
+        path: '/mujeres',
+        type: MediaType.HTML,
+        length: 0,
+        content: '/mujeres/index.html',
+      },
+    ];
+
+    for (const test of tests) {
+      test.content = await readFile(root + test.content, 'utf8');
+      test.length = byteLength(test.content);
+    }
+
+    // Run tests
+    // ---------
+
     let client, server;
     try {
       // Set up server with static content middleware.
-      const root = fileURLToPath(new URL('fixtures/content', import.meta.url));
       const handleStaticContent = createStaticContentHandler({ root });
       const { authority, cert, key } = await prepareSecrets();
-      server = new Server({ cert, key, port: 6651 });
+      server = new Server({ cert, key, port: 6651, logError });
       server.use(handleStaticContent);
       await server.listen();
 
       // Set up client and initiate tests.
-      client = connect({ authority, ca: cert });
+      client = connect({ authority, ca: cert, logError });
       await client.didConnect();
-
-      // Set up tests
-      // ============
-
-      const tests = [
-        {
-          path: '/amanda-gris.css',
-          type: MediaType.CSS,
-          length: 0,
-          content: '/amanda-gris.css',
-        },
-        {
-          path: '/la-flor',
-          type: MediaType.HTML,
-          length: 0,
-          content: '/la-flor.html',
-        },
-        {
-          path: '/mujeres',
-          type: MediaType.HTML,
-          length: 0,
-          content: '/mujeres/index.html',
-        },
-      ];
-
-      for (const test of tests) {
-        test.content = await readFile(root + test.content, 'utf8');
-        test.length = byteLength(test.content);
-      }
-
-      // Run tests
-      // =========
 
       for (const test of tests) {
         const response = await client.request({

@@ -7,7 +7,7 @@ import harness from './harness.js';
 import { promises } from 'fs';
 
 import {
-  connect,
+  Client,
   createPathHandler,
   createServerEventHandler,
   createStaticContentHandler,
@@ -571,7 +571,7 @@ harness.test('@grr/http', t => {
       server.use((exchange, next) => testcases[++index].server(exchange, next));
       await server.listen();
 
-      client = connect({ authority, ca: cert, logError });
+      client = Client.connect({ authority, ca: cert, logError });
       await client.didConnect();
 
       for (const testcase of testcases) {
@@ -613,7 +613,7 @@ harness.test('@grr/http', t => {
       setTimeout(() => handleSSE.close(), 100);
 
       // Set up client and consume events.
-      client = connect({ authority, ca: cert, logError });
+      client = Client.connect({ authority, ca: cert, logError });
       await client.didConnect();
 
       let count = 0;
@@ -695,7 +695,7 @@ harness.test('@grr/http', t => {
       await server.listen();
 
       // Set up client and initiate tests.
-      client = connect({ authority, ca: cert, logError });
+      client = Client.connect({ authority, ca: cert, logError });
       await client.didConnect();
 
       for (const test of tests) {

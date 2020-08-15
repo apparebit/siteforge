@@ -1,143 +1,192 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import { settleable } from '@grr/async/promise';
-import { connect as doConnect, constants } from 'http2';
-import { once } from 'events';
+import { connect as doConnect } from 'http2';
+import { createFrameError } from './util.js';
+import { Header, Method } from './constants.js';
+import MediaType from './media-type.js';
 
-const { create } = Object;
-const HTTP2_HEADER_BODY = ':body';
-const { HTTP2_HEADER_CONTENT_LENGTH } = constants;
-
-class Client {
+export default class Client {
   #authority;
   #session;
-  #didConnect;
-  #didDisconnect;
-  #logError;
+  #streams;
+  #pending;
+  #connected;
+  #disconnected;
 
-  constructor({
-    authority,
-    session,
-    didError,
-    didFrameError,
-    logError = console.error,
-  }) {
+  constructor(authority) {
     assert(typeof authority === 'string');
 
-    // Check a few distinguishing characteristics of session object.
-    assert(typeof session.goaway === 'function');
-    assert(typeof session.ping === 'function');
-
-    // Install any of the handlers if specified.
-    if (didError != null) {
-      assert(typeof didError === 'function');
-      this.didError = didError;
-    }
-    if (didFrameError != null) {
-      assert(typeof didFrameError === 'function');
-      this.didFrameError = didFrameError;
-    }
-    assert(typeof logError === 'function');
-
-    // Set up internal state.
     this.#authority = authority;
-    this.#session = session;
-    this.#logError = logError;
-
-    session
-      .on('error', this.didError.bind(this))
-      .on('frameError', this.didFrameError.bind(this));
-
-    this.#didConnect = once(session, 'connect');
+    this.#session = undefined;
+    this.#streams = new Set();
+    this.#pending = undefined;
+    this.#disconnected = undefined;
   }
 
-  /** Get the HTTP/2 session object. */
   get session() {
     return this.#session;
   }
 
-  /** Handle the error. */
-  didError(error) {
-    this.#logError(`HTTP/2 connection to ${this.#authority} failed`, error);
-  }
-
-  /** Handle the frame error. */
-  didFrameError(type, code, id) {
-    this.#logError(
-      `HTTP/2 session with ${this.#authority}, stream ${id}, frame ${type} ` +
-        `failed with ${code}`
+  get active() {
+    const session = this.#session;
+    return (
+      session && !session.connecting && !session.closed && !session.destroyed
     );
   }
 
-  /** Return a promise that resolves once this client is fully connected. */
-  didConnect() {
-    return this.#didConnect;
+  // ---------------------------------------------------------------------------
+  // Connect
+
+  static connect(options) {
+    const { authority } = options;
+    const client = new Client(authority);
+    client.connect(options);
+    return client;
   }
 
-  /**
-   * Process a request/response interaction. This method sends the given request
-   * to the server and returns a promise for the corresponding response. Each
-   * message is represented by a prototype-less object that captures data,
-   * metadata, and protocol data. In other words, metadata, i.e., headers, use
-   * the familiar names. Protocol data as well as data, i.e., the body, use
-   * names that are otherwise illegal for headers. They include `:protocol`,
-   * `:path`, `:status`, and also `:body`.
-   */
-  request(request = create(null)) {
-    if (this.#session == null) {
-      throw new Error(`Client has been disconnected already`);
-    }
+  connect(options) {
+    assert(this.#session == null);
+    return (this.#connected = new Promise((resolve, reject) => {
+      const session = (this.#session = doConnect(this.#authority, options));
 
-    const { promise, resolve } = settleable();
-    const stream = this.#session.request(request);
+      const onError = error => {
+        session.removeListener('connect', onConnect);
+        session.removeListener('frameError', onFrameError);
+        session.destroy(error);
+        reject(error);
+      };
 
-    let response;
-    stream.on('response', headers => {
-      response = headers;
+      const onFrameError = (type, code, id) => {
+        session.removeListener('connect', onConnect);
+        session.removeListener('error', onError);
+        reject(createFrameError(type, code, id));
+      };
 
-      const length = response[HTTP2_HEADER_CONTENT_LENGTH];
-      if (length != null) {
-        response[HTTP2_HEADER_CONTENT_LENGTH] = Number(length);
-      }
-      response[HTTP2_HEADER_BODY] = '';
-    });
+      const onConnect = () => {
+        session.removeListener('error', onError);
+        session.removeListener('frameError', onFrameError);
 
-    stream.setEncoding('utf8');
-    stream.on('data', data => (response[HTTP2_HEADER_BODY] += data));
-    stream.on('end', () => resolve(response));
+        session
+          .on('error', error => {
+            session.destroy(error);
+            this.#pending = error;
+          })
+          .on('frameError', (type, code, id) => {
+            this.#pending = createFrameError(type, code, id, session);
+          });
 
-    if (request[HTTP2_HEADER_BODY] != null) {
-      stream.write(request[HTTP2_HEADER_BODY]);
-    }
-    stream.end();
-    return promise;
-  }
-
-  /** Disconnect this session. */
-  disconnect() {
-    return new Promise(resolve => {
-      const session = this.#session;
-      if (session && !session.closed && !session.destroyed) {
-        session.close(resolve);
-      } else {
         resolve();
+      };
+
+      session
+        .once('error', onError)
+        .once('frameError', onFrameError)
+        .once('connect', onConnect);
+    }));
+  }
+
+  didConnect() {
+    return this.#connected;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Process Request and Response
+
+  get(request) {
+    return this.request({ ...request, [Header.Method]: Method.GET });
+  }
+
+  head(request) {
+    return this.request({ ...request, [Header.Method]: Method.HEAD });
+  }
+
+  request(request = {}) {
+    if (this.#pending) {
+      const pending = this.#pending;
+      this.#pending = undefined;
+      return Promise.reject(pending);
+    }
+
+    return new Promise((resolve, reject) => {
+      const stream = this.#session.request(request);
+      this.#streams.add(stream);
+
+      const onError = error => {
+        stream.removeListener('response', onResponse);
+        stream.removeListener('frameError', onFrameError);
+
+        stream.destroy(error);
+        this.#streams.delete(stream);
+        reject(error);
+      };
+
+      const onFrameError = (type, code, id) => {
+        stream.removeListener('response', onResponse);
+        stream.removeListener('error', onError);
+
+        this.#streams.delete(stream);
+        reject(createFrameError(type, code, id, stream.session));
+      };
+
+      const onResponse = response => {
+        stream.removeListener('error', onError);
+        stream.removeListener('frameError', onFrameError);
+
+        // Make sure content-length is a number, not string.
+        const length = response[Header.ContentLength];
+        if (length != null) response[Header.ContentLength] = Number(length);
+
+        // Read response body.
+        const type = MediaType.from(response[Header.ContentType]);
+        if (
+          type.type === 'text' ||
+          (type.type === 'application' && type.subtype === 'json') ||
+          type.suffix === 'json' ||
+          type.suffix === 'xml'
+        ) {
+          response[Header.Body] = '';
+          stream.setEncoding('utf8');
+          stream.on('data', data => (response[Header.Body] += data));
+        } else {
+          response[Header.Body] = [];
+          stream.on('data', buffer => response[Header.Body].push(buffer));
+        }
+
+        stream.on('end', () => resolve(response));
+      };
+
+      // Prepare for receiving response and finish sending request.
+      stream
+        .once('error', onError)
+        .once('frameError', onFrameError)
+        .once('response', onResponse);
+      if (request[Header.Body] != null) {
+        stream.write(request[Header.Body]);
       }
+      stream.end();
     });
   }
-}
 
-/**
- * Establish a session with an HTTP/2 server. The options must include an
- * `authority` for the endpoint. They may include select `didError` and
- * `didFrameError` overrides for error handling as well as any option accepted
- * by the `http2` module's `connect()` function, including HTTP/2 settings, TLS
- * options, and socket options.
- */
-export default function connect(options) {
-  const { authority } = options;
-  assert(typeof authority === 'string');
+  disconnect() {
+    if (this.#pending) {
+      const pending = this.#pending;
+      this.#pending = undefined;
+      return Promise.reject(pending);
+    } else if (!this.#disconnected) {
+      this.#disconnected = new Promise(resolve => {
+        const session = this.#session;
 
-  const session = doConnect(authority, options);
-  return new Client({ ...options, session });
+        if (session.destroyed) {
+          resolve();
+        } else if (session.closed) {
+          session.on('close', resolve);
+        } else {
+          session.close(resolve);
+        }
+      });
+    }
+
+    return this.#disconnected;
+  }
 }

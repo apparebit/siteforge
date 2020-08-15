@@ -13,7 +13,7 @@ export {
 } from './util.js';
 
 export { certifyLocalhost, readCertDates, refreshen } from './certificate.js';
-export { default as connect } from './client.js';
+export { default as Client } from './client.js';
 export { default as createPathHandler } from './path-handler.js';
 export { default as createServerEventHandler } from './sse-handler.js';
 export { default as createStaticContentHandler } from './static-handler.js';

@@ -10,7 +10,6 @@
     "@grr/async": "0.1.0",
     "@grr/html": "0.1.0",
     "@grr/oddjob": "0.1.0",
-    "@grr/run": "0.1.0",
     "@grr/temple": "0.1.0",
     "chokidar": "3.4.1"
   },

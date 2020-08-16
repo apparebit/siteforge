@@ -97,7 +97,6 @@ harness.test('@grr/walk', async t => {
     '/http/media-type.js',
     '/http/package.json',
     '/http/path-handler.js',
-    '/http/redirect.html',
     '/http/server.js',
     '/http/sse-client.js',
     '/http/sse-handler.js',

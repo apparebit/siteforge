@@ -1,12 +1,11 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
+import { checkStatus, parseDateHTTP } from './util.js';
 import { constants } from 'http2';
 import { escapeText } from '@grr/html/syntax';
 import { isAbsolute, posix } from 'path';
 import MediaType from './media-type.js';
-import { parseDate } from './util.js';
-import pickle from '@grr/oddjob/pickle';
 import { promises } from 'fs';
 import { readOnlyView } from '@grr/oddjob/object';
 import { settleable } from '@grr/async/promise';
@@ -65,9 +64,6 @@ const Stage = freeze({
 // Helper Functions
 // =============================================================================
 
-const checkStatus = (min, status, max) =>
-  assert(isSafeInteger(status) && min <= status && status <= max);
-
 const HeaderUpdate = freeze({
   [HTTP2_HEADER_CONTENT_LENGTH](headers, value) {
     assert(isSafeInteger(value) && value >= 0);
@@ -92,27 +88,15 @@ const HeaderUpdate = freeze({
 
 // -----------------------------------------------------------------------------
 
-let doFormatRedirect;
-const formatRedirect = async data => {
-  if (!doFormatRedirect) {
-    const url = new URL('redirect.html', import.meta.url);
-    doFormatRedirect = templatize({
-      bindings: ['status', 'statusMessage', 'location'],
-      source: await readFile(url, 'utf-8'),
-      name: 'generate(redirect.html)',
-    });
-  }
-  return doFormatRedirect(data);
-};
-
 let doFormatError;
 const formatError = async data => {
   if (!doFormatError) {
     const url = new URL('error.html', import.meta.url);
     doFormatError = templatize({
-      bindings: ['status', 'statusMessage', 'error', 'requestHeaders'],
+      name: 'formatError',
+      library: { escape: escapeText },
+      data: ['status', 'statusMessage', 'error', 'requestHeaders'],
       source: await readFile(url, 'utf-8'),
-      name: 'generate(error.html)',
     });
   }
   if (data.requestHeaders && typeof data.requestHeaders === 'object') {
@@ -320,12 +304,14 @@ export default class Exchange {
    * `if-unmodified-since` headers.
    */
   isModified(lastModified) {
-    let validator = parseDate(this.#request[HTTP2_HEADER_IF_MODIFIED_SINCE]);
+    let validator = parseDateHTTP(
+      this.#request[HTTP2_HEADER_IF_MODIFIED_SINCE]
+    );
     if (validator) {
       return lastModified > validator;
     }
 
-    validator = parseDate(this.#request[HTTP2_HEADER_IF_UNMODIFIED_SINCE]);
+    validator = parseDateHTTP(this.#request[HTTP2_HEADER_IF_UNMODIFIED_SINCE]);
     if (validator) {
       return lastModified <= validator;
     }
@@ -500,7 +486,7 @@ export default class Exchange {
    * This method also sets the content length and type. It only works in the
    * ready stage.
    */
-  json(value, { stringify = pickle } = {}) {
+  json(value, { stringify = JSON.stringify } = {}) {
     assert(this.#stage === Stage.Ready);
 
     this.#body = stringify(value);
@@ -531,7 +517,7 @@ export default class Exchange {
     // The body.
     this.#body = await formatError({
       status,
-      statusMessage: STATUS_CODES[status] ?? '',
+      statusMessage: STATUS_CODES[status] ?? 'Error',
       error: !PRODUCTION ? error : undefined,
       requestHeaders: !PRODUCTION ? this.#request : undefined,
     });
@@ -554,27 +540,24 @@ export default class Exchange {
    * Redirect the exchange. This method transitions from the ready to the
    * responding stage.
    */
-  async redirect(status, location) {
+  /* async */ redirect(status, location) {
     assert(this.#stage === Stage.Ready);
     this.#stage = Stage.Responding;
-
     checkStatus(300, status, 399);
-    // Make sure location is well-formed and escape for response header.
-    const sanitizedLocation = new URL(location).href;
 
     // The body.
-    this.#body = await formatRedirect({
-      status,
-      statusMessage: STATUS_CODES[status] ?? '',
-      // Escape the original location string for embedding in HTML.
-      location: escapeText(location),
-    });
+    const { href } = new URL(location);
+    const display = escapeText(location);
+    this.#body = `<!DOCTYPE html><html lang=en><meta charset=utf-8>
+<title>${status} ${STATUS_CODES[status] ?? 'Redirect'}</title>
+The resource has moved to <a href="${href}">${display}</a>.
+`;
 
     // The headers.
     const headers = this.#response;
     headers[HTTP2_HEADER_CONTENT_LENGTH] = byteLength(this.#body);
     headers[HTTP2_HEADER_CONTENT_TYPE] = MediaType.HTML;
-    headers[HTTP2_HEADER_LOCATION] = sanitizedLocation;
+    headers[HTTP2_HEADER_LOCATION] = href;
     headers[HTTP2_HEADER_STATUS] = status;
 
     // Prepare and send.

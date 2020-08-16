@@ -35,9 +35,8 @@ const BareType = {
 };
 
 const prepareSecrets = async () => {
-  const openssl = '/usr/local/opt/openssl/bin/openssl';
   const path = fileURLToPath(new URL('../tls', import.meta.url));
-  const secrets = await refreshen({ openssl, path });
+  const secrets = await refreshen({ path });
   secrets.authority = 'https://localhost:6651';
   return secrets;
 };

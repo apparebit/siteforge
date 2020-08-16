@@ -33,7 +33,7 @@ export const isValidComment = text =>
 
 const AttributeNeedsQuoting = /[\t\n\f\r "&'=<>`]/gu;
 const AttributeToBeEscaped = /["&'<>`]/gu;
-const TextToBeEscaped = /["&'<>]/gu;
+const TextToBeEscaped = /[&<>]/gu;
 const Escapes = {
   '"': '&#34;',
   '&': '&amp;',

@@ -151,7 +151,7 @@ harness.test('@grr/proact', t => {
     t.equal(escapeAttribute(`totally & fine`), `"totally &amp; fine"`);
 
     t.equal(escapeText(`Nothing to see here!`), `Nothing to see here!`);
-    t.equal(escapeText(`"'&'"`), `&#34;&#39;&amp;&#39;&#34;`);
+    t.equal(escapeText(`"'<&>'"`), `"'&lt;&amp;&gt;'"`);
 
     t.ok(isValidComment('This is a comment.'));
 

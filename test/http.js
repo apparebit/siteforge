@@ -15,7 +15,8 @@ import {
   identifyHttp2Stream,
   identifyLocal,
   MediaType,
-  parseDate,
+  parseDateHTTP,
+  parseDateOpenSSL,
   parsePath,
   refreshen,
   Server,
@@ -312,7 +313,7 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/parse-util', t => {
+  t.test('@grr/http/util', t => {
     t.throws(() => parsePath('?query'));
     t.throws(() => parsePath('/a%2fb'));
     t.throws(() => parsePath('a/b.html'));
@@ -338,12 +339,8 @@ harness.test('@grr/http', t => {
       endsInSlash: true,
     });
 
-    t.end();
-  });
+    // -------------------------------------------------------------------------
 
-  // ===========================================================================
-
-  t.test('@grr/http/identify', t => {
     t.is(
       identifyLocal({
         localAddress: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
@@ -367,16 +364,28 @@ harness.test('@grr/http', t => {
       'https://127.0.0.1:13/#665'
     );
 
-    t.end();
-  });
+    // -------------------------------------------------------------------------
+    // Nothing to parse.
+    t.is(parseDateHTTP(), undefined);
+    t.is(parseDateOpenSSL(), undefined);
 
-  // ===========================================================================
+    // Timezone other than GMT.
+    t.is(parseDateHTTP('Sat, 08 Aug 2020 16:08:24 EST'), undefined);
+    t.is(parseDateOpenSSL('Aug 14 17:13:12 2020 EST'), undefined);
 
-  t.test('@grr/http/parseDate', t => {
-    t.is(parseDate(), undefined);
-    t.is(parseDate('Sat, 08 Aug 2020 16:08:24 EST'), undefined);
+    // Perfectly valid time and date.
     t.is(
-      parseDate('Sat, 08 Aug 2020 16:08:24 GMT').toISOString(),
+      new Date(parseDateHTTP('Sat, 08 Aug 2020 16:08:24 GMT')).toISOString(),
+      '2020-08-08T16:08:24.000Z'
+    );
+    t.is(
+      new Date(parseDateOpenSSL('Aug 14 17:13:12 2020 GMT')).toISOString(),
+      '2020-08-14T17:13:12.000Z'
+    );
+
+    // Wrong day of the week, which is ignored.
+    t.is(
+      new Date(parseDateHTTP('Tue, 08 Aug 2020 16:08:24 GMT')).toISOString(),
       '2020-08-08T16:08:24.000Z'
     );
 

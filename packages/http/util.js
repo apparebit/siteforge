@@ -2,6 +2,8 @@
 
 import { strict as assert } from 'assert';
 
+const { isSafeInteger } = Number;
+
 /**
  * Identify an HTTP/2 stream. To uniquely identify a resource without making
  * the result too verbose, this function includes the stream ID as well as the
@@ -41,10 +43,16 @@ export const createFrameError = (type, code, id, session) =>
     )}`
   );
 
-const DATE_FORMAT = new RegExp(
-  `^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([0-3]\\d) ` +
+const HTTP_DATE_FORMAT = new RegExp(
+  `^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([0-3]\\d) ` +
     `(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ` +
     `(2\\d[2-9]\\d) ([0-2]\\d):([0-6]\\d):([0-6]\\d) GMT$`,
+  'u'
+);
+
+const OPENSSL_DATE_FORMAT = new RegExp(
+  `(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ` +
+    `([0-3]\\d) ([0-2]\\d):([0-6]\\d):([0-6]\\d) (2\\d[2-9]\\d) GMT$`,
   'u'
 );
 
@@ -63,17 +71,22 @@ const MONTH_INDEX = {
   Dec: 11,
 };
 
-/** Parse the given string as a date suitable for HTTP headers. */
-export function parseDate(value) {
-  if (!value) return undefined;
-
-  const components = value.match(DATE_FORMAT);
+/** Parse the HTTP header date/time into a timestamp for the current epoch. */
+export function parseDateHTTP(value) {
+  const components = String(value).match(HTTP_DATE_FORMAT);
   if (components == null) return undefined;
 
-  const [, , day, month, year, hours, minutes, seconds] = components;
-  return new Date(
-    Date.UTC(year, MONTH_INDEX[month], day, hours, minutes, seconds)
-  );
+  const [, day, month, year, hours, minutes, seconds] = components;
+  return Date.UTC(year, MONTH_INDEX[month], day, hours, minutes, seconds);
+}
+
+/** Parse the OpenSSL date/time into a timestamp for the current epoch. */
+export function parseDateOpenSSL(value) {
+  const components = String(value).match(OPENSSL_DATE_FORMAT);
+  if (components == null) return undefined;
+
+  const [, month, day, hours, minutes, seconds, year] = components;
+  return Date.UTC(year, MONTH_INDEX[month], day, hours, minutes, seconds);
 }
 
 const CODE_DOT = '.'.charCodeAt(0);
@@ -163,4 +176,9 @@ export const toTreeMatcher = root => object => {
     path.startsWith(root) &&
     (path.length === length || path.charCodeAt(length) === CODE_SLASH)
   );
+};
+
+export const checkStatus = (min, status, max) => {
+  assert(isSafeInteger(status) && min <= status && status <= max);
+  return status;
 };

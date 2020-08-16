@@ -8,7 +8,8 @@ export {
   identifyLocal,
   identifyRemote,
   identifyEndpoint,
-  parseDate,
+  parseDateHTTP,
+  parseDateOpenSSL,
   parsePath,
 } from './util.js';
 

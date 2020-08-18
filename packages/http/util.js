@@ -178,7 +178,17 @@ export const toTreeMatcher = root => object => {
   );
 };
 
+/** Check that the status code is within the given bounds. */
 export const checkStatus = (min, status, max) => {
   assert(isSafeInteger(status) && min <= status && status <= max);
   return status;
 };
+
+const ESCAPABLE = /[&<>]/gu;
+const ESCAPES = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+};
+
+export const escapeText = s => s.replace(ESCAPABLE, c => ESCAPES[c]);

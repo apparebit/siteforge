@@ -97,49 +97,80 @@ const {
   entries: entriesOf,
   freeze,
   keys: keysOf,
-  prototype,
 } = Object;
 const enumerable = true;
 const { isArray } = Array;
-const { toString: ObjectToString } = prototype;
 
 // The registry of canonical media types.
-const MediaTypeRegistry = create(null);
+const ComponentRegistry = create(null);
+const StringRegistry = create(null);
 const ExtensionRegistry = create(null);
+
+const lookUpByComponent = ({ type, subtype, suffix, parameters }) => {
+  if (type === '*') return MediaType.Any;
+  const bySubtype = ComponentRegistry[type];
+  if (bySubtype == null) return undefined;
+  const candidate = bySubtype[subtype];
+  if (candidate == null || candidate.suffix !== suffix) return undefined;
+  if (parameters == null) return candidate;
+  const paramNames = keysOf(parameters);
+  return paramNames.length > 1 ||
+    paramNames[0] !== 'charset' ||
+    candidate.parameters?.charset !== parameters.charset
+    ? undefined
+    : candidate;
+};
 
 // =============================================================================
 
 export default class MediaType {
   /**
-   * Create a new media type. This method handles three distinct kinds of
-   * inputs:
+   * Instantiate a media type. This method handles the following kind of inputs:
    *
    * ```js
-   * // (1) Create from 2+ components after validating components:
+   * // Create from two or more components. Either the suffix or the parameters
+   * // or both may be omitted.
    * MediaType.from('text', 'plain');
    *
-   * // (2) Parse from string:
+   * // Parse from string:
    * MediaType.from('text/plain');
    *
-   * // (3) Make validated copy from plain old object or another instance:
+   * // Extract and validate the components from a plain old object.
    * MediaType.from({ type: 'text', subtype: 'plain' });
+   *
+   * // Just return a media type argument.
    * MediaType.from(MediaType.PlainText);
    * ```
+   *
+   * In all cases, this method tries to return one of the preallocated,
+   * canonical media type instances.
    */
   static from(...args) {
-    const value = args.length > 1 ? MediaType.collect(...args) : args[0];
-
-    if (typeof value === 'string') {
-      let type = MediaTypeRegistry[value];
-      if (type) return type;
-
-      type = MediaType.parse(value).mediaType;
-      if (type) return new MediaType(type);
-
-      throw new Error(`"${value}" is not a valid media type`);
+    let value;
+    if (args.length > 1) {
+      value = MediaType.collect(args);
+      let mediaType = lookUpByComponent(value);
+      if (mediaType) return mediaType;
     } else {
+      value = args[0];
+    }
+
+    if (MediaType.isMediaType(value)) {
+      return value;
+    }
+
+    const type = typeof value;
+    if (type === 'string') {
+      let mediaType = StringRegistry[value];
+      if (mediaType) return mediaType;
+
+      mediaType = MediaType.parse(value).mediaType;
+      if (mediaType) return new MediaType(mediaType);
+    } else if (value != null && type === 'object') {
       return new MediaType(MediaType.validate(value));
     }
+
+    throw new Error(`"${value}" is not a valid media type`);
   }
 
   /** Determine the media type for the given file extension. */
@@ -152,7 +183,10 @@ export default class MediaType {
    * for the `type` and `subtype` are required. The `suffix` and `parameters`
    * may each be omitted but not reordered.
    */
-  static collect(type, subtype, suffix, parameters) {
+  static collect(...args) {
+    if (args.length === 1 && isArray(args[0])) args = args[0];
+    let [type, subtype, suffix, parameters] = args;
+
     if (
       suffix != null &&
       typeof suffix === 'object' &&
@@ -169,22 +203,27 @@ export default class MediaType {
   static validate(value) {
     if (value == null || typeof value !== 'object') {
       throw new Error(`Media type "${value}" is not an object`);
-    } else if (typeof value.type !== 'string') {
-      throw new Error(`Top-level type "${value.type}" is not a string`);
     }
 
+    // Type
+    if (typeof value.type !== 'string') {
+      throw new Error(`Top-level type "${value.type}" is not a string`);
+    }
     const type = value.type.toLowerCase();
     if (!TOP_LEVEL_NAMES.includes(type)) {
       throw new Error(`Top-level type "${value.type}" is invalid`);
-    } else if (typeof value.subtype !== 'string') {
-      throw new Error(`Subtype "${value.subtype}" is not a string`);
     }
 
+    // Subtype
+    if (typeof value.subtype !== 'string') {
+      throw new Error(`Subtype "${value.subtype}" is not a string`);
+    }
     const subtype = value.subtype.toLowerCase();
     if (subtype === '') {
       throw new Error(`Subtype "${value.subtype}" is empty`);
     }
 
+    // Suffix
     let suffix;
     if (value.suffix != null) {
       if (typeof value.suffix !== 'string') {
@@ -192,13 +231,13 @@ export default class MediaType {
           `Suffix "${value.suffix}" is neither undefined nor a string`
         );
       }
-
       suffix = value.suffix.toLowerCase();
       if (!SUFFIX_NAMES.includes(suffix)) {
         throw new Error(`Suffix "${value.suffix}" is invalid`);
       }
     }
 
+    // Parameters
     let parameters;
     if (value.parameters != null) {
       if (typeof value.parameters !== 'object') {
@@ -236,6 +275,27 @@ export default class MediaType {
       }
     }
 
+    // Wildcards
+    if (type === '*' || subtype === '*') {
+      if (type === '*' && subtype !== '*') {
+        throw new Error(
+          `Top-level wildcard "*" with non-wildcard subtype "${subtype}"`
+        );
+      } else if (suffix != null) {
+        throw new Error(
+          `Wildcard "${type}/${subtype}" with suffix "${suffix}"`
+        );
+      } else if (parameters != null) {
+        const keys = keysOf(parameters);
+        if (keys.length > 1 || parameters[0] !== 'q') {
+          throw new Error(
+            `Wildcard "${type}/${subtype} with parameter(s) other than "q"`
+          );
+        }
+      }
+    }
+
+    // Done
     return { type, subtype, suffix, parameters };
   }
 
@@ -349,10 +409,7 @@ export default class MediaType {
 
   /** Determine whether the given value is an instance of this class. */
   static isMediaType(value) {
-    return (
-      value instanceof MediaType ||
-      ObjectToString.call(value) === '[object MediaType]'
-    );
+    return value instanceof MediaType;
   }
 
   /** Compare the two media types. */
@@ -362,7 +419,10 @@ export default class MediaType {
 
   // ===========================================================================
 
-  /** Create a new media type. The constructor does not validate arguments. */
+  /**
+   * Create a new media type. The constructor does not validate arguments and
+   * should thus not be invoked directly. Instead use `MediaType.from()`
+   */
   constructor({ type, subtype, suffix, parameters }) {
     this.type = type;
     this.subtype = subtype;
@@ -409,6 +469,11 @@ export default class MediaType {
       const keys = keysOf(this.parameters);
       return 3 + keys.length + (keys.includes('q') ? -1 : 0);
     }
+  }
+
+  /** Determine whether the media type contains wildcards. */
+  hasWildcard() {
+    return this.type === '*' || this.subtype === '*';
   }
 
   /** Compare this media type to the given media type for priority. */
@@ -503,9 +568,15 @@ export default class MediaType {
 // =============================================================================
 
 for (const name of TOP_LEVEL_NAMES) {
-  const mediaType = freeze(MediaType.from(name, '*'));
-  // Property name `[mediaType]` is automatically coerced to a string.
-  MediaTypeRegistry[mediaType] = mediaType;
+  const mediaType = freeze(new MediaType(MediaType.collect(name, '*')));
+  // When using media type as a key, it is automatically coerced to a string.
+  StringRegistry[mediaType] = mediaType;
+  if (name === '*') {
+    ComponentRegistry['*'] = mediaType;
+  } else {
+    if (!ComponentRegistry[name]) ComponentRegistry[name] = create(null);
+    ComponentRegistry[name]['*'] = mediaType;
+  }
 
   const display = name === '*' ? 'Any' : name[0].toUpperCase() + name.slice(1);
   assert(MediaType[display] === undefined);
@@ -538,15 +609,17 @@ for (let [display, args] of entriesOf({
   SVG: ['image', 'svg', 'xml'],
   VideoMP4: ['video', 'mp4'],
 })) {
-  const charset =
-    args[0] === 'text' || (args[0] === 'application' && args[1] === 'json');
+  const [type, subtype] = args;
+  const hasCharset =
+    type === 'text' || (type === 'application' && subtype === 'json');
+  if (hasCharset) args.push(undefined, CHARSET_UTF8);
+  const mediaType = freeze(new MediaType(MediaType.collect(args)));
 
-  if (charset) args.push(undefined, CHARSET_UTF8);
-  const mediaType = freeze(MediaType.from(...args));
-
-  // Property name `[mediaType]` is automatically coerced to a string.
-  if (charset) MediaTypeRegistry[mediaType.unparameterized()] = mediaType;
-  MediaTypeRegistry[mediaType] = mediaType;
+  // When using media type as a key, it is automatically coerced to a string.
+  if (hasCharset) StringRegistry[mediaType.unparameterized()] = mediaType;
+  StringRegistry[mediaType] = mediaType;
+  if (!ComponentRegistry[type]) ComponentRegistry[type] = create(null);
+  ComponentRegistry[type][subtype] = mediaType;
 
   assert(MediaType[display] === undefined);
   defineProperty(MediaType, display, {

@@ -1,14 +1,12 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
-import { checkStatus, parseDateHTTP } from './util.js';
+import { checkStatus, escapeText, parseDateHTTP } from './util.js';
 import { constants } from 'http2';
-import { escapeText } from '@grr/html/syntax';
 import { isAbsolute, posix } from 'path';
 import MediaType from './media-type.js';
 import { promises } from 'fs';
 import { readOnlyView } from '@grr/oddjob/object';
-import { settleable } from '@grr/async/promise';
 import { STATUS_CODES } from 'http';
 import templatize from '@grr/temple';
 import { types } from 'util';
@@ -35,8 +33,7 @@ const {
   HTTP2_METHOD_HEAD,
 } = constants;
 
-// Yet for us there is but one markup language, HTML née HTML5,
-// from which all text came and for which text exists.
+// Thou shalt not have other markup languages before HTML5.
 const HTML_DOCUMENT = /^<!DOCTYPE html>/iu;
 const HTTP2_HEADER_REFERRER_POLICY = 'referrer-policy';
 const HTTP2_HEADER_X_PERMITTED_CROSS_DOMAIN_POLICIES =
@@ -157,12 +154,12 @@ export default class Exchange {
     this.#request = headers;
     this.#method = this.#request[HTTP2_HEADER_METHOD];
 
-    const { promise, resolve } = settleable();
-    stream.on('close', () => {
-      this.#stage = Stage.Done;
-      resolve();
+    this.#didRespond = new Promise(resolve => {
+      stream.on('close', () => {
+        this.#stage = Stage.Done;
+        resolve();
+      });
     });
-    this.#didRespond = promise;
 
     const rawPath = this.#request[HTTP2_HEADER_PATH];
     let path = normalizePosix(rawPath);

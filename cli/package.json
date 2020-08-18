@@ -15,11 +15,11 @@
     "not dead"
   ],
   "dependencies": {
-    "@grr/async": "0.1.0",
     "@grr/builder": "0.1.0",
     "@grr/fs": "0.1.0",
     "@grr/glob": "0.1.0",
     "@grr/html": "0.1.0",
+    "@grr/http": "0.1.0",
     "@grr/inventory": "0.1.0",
     "@grr/loader": "0.1.0",
     "@grr/metrics": "0.1.0",

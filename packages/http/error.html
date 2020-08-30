@@ -21,18 +21,21 @@
 body {
   margin: 1.5em;
 }
-h1, h2 {
-  font-weight: bold;
-  margin-bottom: 1em;
+h1 {
+  font-size: 2.25rem;
 }
 h2 {
   font-size: 1.5rem;
 }
-h1 {
-  font-size: 2.25rem;
+h1, h2 {
+  font-weight: bold;
+  margin-bottom: 1em;
 }
 dd {
   margin-bottom: 1em;
+}
+.stack {
+  white-space: pre;
 }
 </style>
 </head>
@@ -52,6 +55,7 @@ ${requestHeaders
 ` : ''}${error ? `
 <h2>Error Stack</h2>
 
-<p>${escape(error.stack).replace(/\r?\n/gu, '<br>$&')}</p>
+<p class=stack>${escape(error.stack).replace(/\r?\n/gu, '<br>$&')}<br>
+</p>
 ` : ''}
 </body>

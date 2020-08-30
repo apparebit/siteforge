@@ -2,9 +2,14 @@
 
 import { strict as assert } from 'assert';
 import { connect as doConnect } from 'http2';
-import { createFrameError } from './util.js';
-import { Header, Method } from './constants.js';
+import Context from './context.js';
+import { Header, MethodName } from './constants.js';
 import MediaType from './media-type.js';
+import { once } from 'events';
+
+const { concat } = Buffer;
+const FrameError = (type, code, id) =>
+  new Error(`Error ${code} sending frame ${type} on stream ${id}`);
 
 export default class Client {
   #authority;
@@ -47,44 +52,22 @@ export default class Client {
 
   connect(options) {
     assert(this.#session == null);
-    return (this.#connected = new Promise((resolve, reject) => {
-      const session = (this.#session = doConnect(this.#authority, options));
+    const session = (this.#session = doConnect(this.#authority, options));
 
-      const onError = error => {
-        session.removeListener('connect', onConnect);
-        session.removeListener('frameError', onFrameError);
-        session.destroy(error);
-        reject(error);
-      };
+    const onError = error => {
+      session.destroy(error);
+      this.#pending = error;
+    };
 
-      const onFrameError = (type, code, id) => {
-        session.removeListener('connect', onConnect);
-        session.removeListener('error', onError);
-        reject(createFrameError(type, code, id));
-      };
+    const onFrameError = (type, code, id) => {
+      this.#pending = FrameError(type, code, id);
+    };
 
-      const onConnect = () => {
-        session.removeListener('error', onError);
-        session.removeListener('frameError', onFrameError);
-
-        // Install error handlers that return any error via the next request().
-        session
-          .on('error', error => {
-            session.destroy(error);
-            this.#pending = error;
-          })
-          .on('frameError', (type, code, id) => {
-            this.#pending = createFrameError(type, code, id, session);
-          });
-
-        resolve();
-      };
-
-      session
-        .once('error', onError)
-        .once('frameError', onFrameError)
-        .once('connect', onConnect);
-    }));
+    return once(session, 'connect').then(() => {
+      session.on('error', onError);
+      session.on('frameError', onFrameError);
+      return this;
+    });
   }
 
   didConnect() {
@@ -95,14 +78,14 @@ export default class Client {
   // Process Request and Response
 
   get(request) {
-    return this.request({ ...request, [Header.Method]: Method.GET });
+    return this.request({ ...request, [Header.Method]: MethodName.GET });
   }
 
   head(request) {
-    return this.request({ ...request, [Header.Method]: Method.HEAD });
+    return this.request({ ...request, [Header.Method]: MethodName.HEAD });
   }
 
-  request(request = {}) {
+  request(headers, body) {
     if (this.#pending) {
       const pending = this.#pending;
       this.#pending = undefined;
@@ -110,82 +93,85 @@ export default class Client {
     }
 
     return new Promise((resolve, reject) => {
-      const stream = this.#session.request(request);
+      const stream = this.#session.request(headers);
       this.#streams.add(stream);
 
       const onError = error => {
-        stream.removeListener('response', onResponse);
-        stream.removeListener('frameError', onFrameError);
-
         stream.destroy(error);
-        this.#streams.delete(stream);
         reject(error);
       };
 
       const onFrameError = (type, code, id) => {
-        stream.removeListener('response', onResponse);
-        stream.removeListener('error', onError);
-
-        this.#streams.delete(stream);
-        reject(createFrameError(type, code, id, stream.session));
+        reject(FrameError(type, code, id));
       };
 
       const onResponse = response => {
-        stream.removeListener('error', onError);
-        stream.removeListener('frameError', onFrameError);
+        // Wrap in response object.
+        response = new Context.Response(response);
 
-        // Make sure content-length is a number, not string.
-        const length = response[Header.ContentLength];
-        if (length != null) response[Header.ContentLength] = Number(length);
+        // Try content length.
+        const length = Number(response.length);
+        if (!isNaN(length)) response.length = length;
 
-        // Read response body.
-        const type = MediaType.from(response[Header.ContentType]);
-        if (
-          type.type === 'text' ||
-          (type.type === 'application' && type.subtype === 'json') ||
-          type.suffix === 'json' ||
-          type.suffix === 'xml'
-        ) {
-          response[Header.Body] = '';
-          stream.setEncoding('utf8');
-          stream.on('data', data => (response[Header.Body] += data));
-        } else {
-          response[Header.Body] = [];
-          stream.on('data', buffer => response[Header.Body].push(buffer));
+        // Try content type.
+        let type;
+        try {
+          type = MediaType.from(response.type);
+        } catch {
+          // Nothing to do.
         }
+        if (type) response.type = type;
 
-        stream.on('end', () => resolve(response));
+        if (
+          type?.type === 'text' ||
+          (type?.type === 'application' && type?.subtype === 'json') ||
+          type?.suffix === 'json' ||
+          type?.suffix === 'xml'
+        ) {
+          response.body = '';
+          stream.setEncoding('utf8');
+          stream.on('data', data => (response.body += data));
+          stream.on('end', () => resolve(response));
+        } else {
+          response.body = [];
+          stream.on('data', buffer => response.body.push(buffer));
+          stream.on('end', () => {
+            response.body = concat(response.body);
+            resolve(response);
+          });
+        }
       };
 
-      // Prepare for receiving response and finish sending request.
-      stream
-        .once('error', onError)
-        .once('frameError', onFrameError)
-        .once('response', onResponse);
+      stream.on('error', onError);
+      stream.on('frameError', onFrameError);
+      stream.on('response', onResponse);
 
-      if (request[Header.Body] != null) {
-        stream.write(request[Header.Body]);
+      if (body != null) {
+        stream.end(body);
+      } else {
+        stream.end();
       }
-
-      stream.end();
     });
   }
 
   disconnect() {
-    if (this.#pending) {
-      const pending = this.#pending;
-      this.#pending = undefined;
-      return Promise.reject(pending);
-    } else if (!this.#disconnected) {
-      this.#disconnected = new Promise(resolve => {
-        const session = this.#session;
+    if (!this.#disconnected) {
+      this.#disconnected = new Promise((resolve, reject) => {
+        const finish = () => {
+          if (this.#pending) {
+            reject(this.#pending);
+          } else {
+            resolve();
+          }
+        };
 
+        const session = this.#session;
         if (session.destroyed) {
-          resolve();
+          finish();
         } else if (session.closed) {
-          session.on('close', resolve);
+          session.on('close', finish);
         } else {
-          session.close(resolve);
+          session.close(finish);
         }
       });
     }

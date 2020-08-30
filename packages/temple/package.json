@@ -1,6 +1,6 @@
 {
   "name": "@grr/temple",
-  "description": "A minimal template engine powered by JavaScript template literals",
+  "description": "The featherweight template engine powered by JavaScript template literals",
   "version": "0.1.0",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",

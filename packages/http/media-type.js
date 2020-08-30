@@ -602,7 +602,8 @@ for (let [display, args] of entriesOf({
   H265: ['video', 'h265'],
   HTML: ['text', 'html'],
   JavaScript: ['text', 'javascript'],
-  JSON: ['application', 'json'],
+  // Not named JSON, which conflicts with standard library.
+  Jason: ['application', 'json'],
   Markdown: ['text', 'markdown'],
   PlainText: ['text', 'plain'],
   PNG: ['image', 'png'],

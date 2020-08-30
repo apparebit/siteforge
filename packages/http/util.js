@@ -1,47 +1,19 @@
 /* © 2020 Robert Grimm */
 
-import { strict as assert } from 'assert';
+import Context from './context.js';
+import { StatusCode } from './constants.js';
 
-const { isSafeInteger } = Number;
+// Endpoints
+// ~~~~~~~~~
 
-/**
- * Identify an HTTP/2 stream. To uniquely identify a resource without making
- * the result too verbose, this function includes the stream ID as well as the
- * remote endpoint.
- */
-export const identifyHttp2Stream = stream =>
-  `https://${identifyRemote(stream.session.socket)}/#${stream.id}`;
-
-/** Identify the local end of a socket. */
-export const identifyLocal = ({ localAddress, localFamily, localPort }) =>
-  identifyEndpoint({
-    address: localAddress,
-    family: localFamily,
-    port: localPort,
-  });
-
-/** Identify the remote end of a socket. */
-export const identifyRemote = ({ remoteAddress, remoteFamily, remotePort }) =>
-  identifyEndpoint({
-    address: remoteAddress,
-    family: remoteFamily,
-    port: remotePort,
-  });
-
-/**
- * Identify an endpoint. This helper function provides its services directly to
- * server objects and indirectly through adapters.
- */
+/** Identify an endpoint. */
 export const identifyEndpoint = ({ address, family, port }) =>
   family === 'IPv6' ? `[${address}]:${port}` : `${address}:${port}`;
 
-/** Create an error object representing the frame error parameters. */
-export const createFrameError = (type, code, id, session) =>
-  new Error(
-    `Error ${code} sending frame ${type} on stream ${id} for ${identifyRemote(
-      session
-    )}`
-  );
+// =============================================================================
+
+// Dates
+// ~~~~~
 
 const HTTP_DATE_FORMAT = new RegExp(
   `^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([0-3]\\d) ` +
@@ -89,100 +61,148 @@ export function parseDateOpenSSL(value) {
   return Date.UTC(year, MONTH_INDEX[month], day, hours, minutes, seconds);
 }
 
-const CODE_DOT = '.'.charCodeAt(0);
-const CODE_SLASH = '/'.charCodeAt(0);
-const PATH_AND_QUERY = /^([^?#]*)([^#]*)/u;
-const PERCENT_TWO_EFF = /%2f/iu;
+// =============================================================================
 
-const isDotted = s => s.charCodeAt(0) === CODE_DOT;
+// Paths
+// ~~~~~
 
-/**
- * Parse the given value.
- *
- * This function ensures that the given value is a string, decodes any
- * percent-coded characters, and then splits the string into raw path and query
- * components.
- *
- * It further parses the raw path to produce a sanitized version: Notably, it
- * ensures that the path contains no remaining percent-coded characters and is
- * an absolute path. It removes empty, single-dotted, and double-dotted path
- * segments and checks that no remaining path segment starts with a dot — with
- * exception of `/.well-known`. Finally, it removes any trailing slash.
- *
- * The result is an object with the raw path, raw query, path, and flag for
- * trailing slash in raw original.
- *
- * This method signals validation errors as exceptions.
- */
-export const parsePath = value => {
-  if (value == null) {
-    throw new Error(`No request path (${value})`);
-  } else if (typeof value !== 'string') {
-    throw new Error(`Request path "${value}" is not a string`);
+const { BadRequest } = StatusCode;
+const DOT = '.'.charCodeAt(0);
+const SLASH = '/'.charCodeAt(0);
+
+export const checkString = value => {
+  if (typeof value !== 'string') {
+    throw Context.Error(BadRequest, `Path "${value}" is not a string`);
+  }
+  return value;
+};
+
+export const checkPath = value => {
+  if (value.length === 0) {
+    throw Context.Error(BadRequest, `Path is empty`);
+  } else if (value.charCodeAt(0) !== SLASH) {
+    throw Context.Error(BadRequest, `Path "${value}" is not absolute`);
+  }
+  return value;
+};
+
+const decompose = value => {
+  let cut = value.lastIndexOf('#');
+  if (cut >= 0) value = value.slice(0, cut);
+
+  let path = value;
+  let query = '';
+
+  cut = value.indexOf('?');
+  if (cut >= 0) {
+    query = path.slice(cut);
+    path = path.slice(0, cut);
   }
 
-  // Split `:path` into raw path and raw query.
-  const [, rawPath, rawQuery] = value.match(PATH_AND_QUERY);
+  return { path, query };
+};
 
-  if (rawPath === '') {
-    throw new Error(`Request path is empty`);
-  } else if (PERCENT_TWO_EFF.test(rawPath)) {
-    throw new Error(`Request path "${value}" contains percent-coded slashes`);
-  } else if (rawPath.charCodeAt(0) !== CODE_SLASH) {
-    throw new Error(`Request path "${value}" is relative`);
+const decode = (value, label) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw Context.Error(`${label} "${value}" is incorrectly encoded`);
   }
+};
 
-  // Decode raw path and normalize segments.
-  const rawSegments = decodeURIComponent(rawPath).split('/');
-  assert(rawSegments.length >= 2 && rawSegments[0] === '');
+// Control characters and character illegal in Windows path segments.
+const INVALID_CHAR = /[\u{00}-\u{1f}<>:"/\\|?*]/u;
 
-  const segments = [];
-  for (const segment of rawSegments) {
+const normalize = (path, { checkDotted = true, checkChars = true } = {}) => {
+  const segmented = path.split('/');
+  const cleaned = [];
+
+  for (const segment of segmented) {
     if (segment === '' || segment === '.') {
-      // Ignore empty or single-dot segment.
+      // Nothing to do.
     } else if (segment === '..') {
-      segments.pop();
+      cleaned.pop();
     } else if (
-      isDotted(segment) &&
-      (segment !== '.well-known' || segments.length === 1)
+      checkDotted &&
+      segment.charCodeAt(0) === DOT &&
+      (segment !== '.well-known' || cleaned.length !== 0)
     ) {
-      // Reject dotted segment unless it is `/.well-known`
-      throw new Error(`Request path "${value}" contains dotted path segment`);
+      throw new Context.Error(
+        `Path "${path} contains segment starting with '.'`
+      );
+    } else if (checkChars && INVALID_CHAR.test(segment)) {
+      throw new Context.Error(
+        BadRequest,
+        `Path "${path}" contains invalid characters`
+      );
     } else {
-      segments.push(segment);
+      cleaned.push(segment);
     }
   }
 
-  // Et voila!
-  const path = `/${segments.join('/')}`;
-  const endsInSlash = path !== '/' && rawPath.endsWith('/');
-
-  return {
-    rawPath,
-    rawQuery,
-    path,
-    endsInSlash,
-  };
+  const normalized = `/${cleaned.join('/')}`;
+  return cleaned.length > 0 && path.charCodeAt(path.length - 1) === SLASH
+    ? `${normalized}/`
+    : normalized;
 };
 
-/** Create predicate for checking whether object's path has expected value. */
-export const toFileMatcher = expected => object => object.path === expected;
+/** Validate the request path. */
+export const validateRequestPath = value => {
+  checkString(value);
+  let { path, query } = decompose(value);
 
-/** Create predicate for checking whether object's path as directory prefix. */
-export const toTreeMatcher = root => object => {
-  const { length } = root;
-  const { path } = object;
-  return (
-    path.startsWith(root) &&
-    (path.length === length || path.charCodeAt(length) === CODE_SLASH)
-  );
+  checkPath(path);
+  path = decode(path, 'Path');
+  path = normalize(path);
+
+  query = decode(query, 'Query');
+  return { path, query };
 };
 
-/** Check that the status code is within the given bounds. */
-export const checkStatus = (min, status, max) => {
-  assert(isSafeInteger(status) && min <= status && status <= max);
-  return status;
+/** Validate routing path. */
+export const validateRoutePath = value => {
+  let path = checkPath(checkString(value));
+  path = unslash(normalize(path));
+  return path;
 };
+
+/** Add trailing slash to the path. */
+export const slash = path => {
+  const { length } = path;
+  return path.charCodeAt(length - 1) !== SLASH ? `${path}/` : path;
+};
+
+/** Remove any trailing slash from the path. */
+export const unslash = path => {
+  const { length } = path;
+  return length > 1 && path.charCodeAt(length - 1) === SLASH
+    ? path.slice(0, length - 1)
+    : path;
+};
+
+const EXTENSION = new RegExp(
+  `\\.(atom|cjs|css|cur|f4[abpv]|flac|geojson|gif|html?|` +
+    `ico|ics|jfif|jpe?g|js|json|jsonld|` +
+    `m4[av]|markdown|md|mov|mp[34]|mjs|otf|pdf|png|` +
+    `qt|rdf|rss|svg|tiff?|ttf|txt|` +
+    `vcard|vcf|wasm|wave?|web[mp]|webmanifest|woff2?|zip)$`,
+  'iu'
+);
+
+/** Determine whether the path has a well known file extension. */
+export const hasExtension = path => EXTENSION.test(path);
+
+/**
+ * Determine whether the path is mounted at given root (without trailing slash).
+ */
+export const isMountedAt = (path, root) =>
+  path.startsWith(root) &&
+  (path.length === root.length || path.charCodeAt(root.length) === SLASH);
+
+// =============================================================================
+
+// HTML
+// ~~~~
 
 const ESCAPABLE = /[&<>]/gu;
 const ESCAPES = {
@@ -191,4 +211,5 @@ const ESCAPES = {
   '>': '&gt;',
 };
 
+/** Escape the HTML body text. */
 export const escapeText = s => s.replace(ESCAPABLE, c => ESCAPES[c]);

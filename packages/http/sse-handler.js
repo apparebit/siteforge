@@ -31,48 +31,48 @@ const createServerEventHandler = ({
   let ongoing = new Set();
 
   // eslint-disable-next-line no-unused-vars
-  const handleServerEvents = (exchange, next) => {
-    if (exchange.method !== 'GET') {
-      return exchange.fail(HTTP_STATUS_METHOD_NOT_ALLOWED);
-    } else if (exchange.quality(MediaType.EventStream) === 0) {
-      return exchange.fail(HTTP_STATUS_NOT_ACCEPTABLE);
+  const handleServerEvents = (context, next) => {
+    if (context.method !== 'GET') {
+      return context.fail(HTTP_STATUS_METHOD_NOT_ALLOWED);
+    } else if (context.quality(MediaType.EventStream) === 0) {
+      return context.fail(HTTP_STATUS_NOT_ACCEPTABLE);
     }
 
     // Set up event stream.
-    exchange.stream.respond({
+    context.stream.respond({
       [HTTP2_HEADER_STATUS]: HTTP_STATUS_OK,
       [HTTP2_HEADER_CACHE_CONTROL]: 'no-cache, no-transform',
       [HTTP2_HEADER_CONTENT_TYPE]: MediaType.EventStream,
     });
 
     const cleanup = () => {
-      if (ongoing) ongoing.delete(exchange);
+      if (ongoing) ongoing.delete(context);
     };
-    exchange.didRespond().then(cleanup);
-    ongoing.add(exchange);
+    context.didRespond().then(cleanup);
+    ongoing.add(context);
 
-    exchange.stream.setEncoding('utf8');
+    context.stream.setEncoding('utf8');
     if (reconnect > 0) {
-      exchange.stream.write(`retry: ${reconnect}\n\n`);
+      context.stream.write(`retry: ${reconnect}\n\n`);
     } else {
-      exchange.stream.write(`:start\n\n`);
+      context.stream.write(`:start\n\n`);
     }
-    return exchange.didRespond();
+    return context.didRespond();
   };
 
   const each = fn => {
-    for (const exchange of ongoing) {
-      if (exchange.isDone()) {
-        ongoing.delete(exchange);
+    for (const context of ongoing) {
+      if (context.isDone()) {
+        ongoing.delete(context);
       } else {
-        fn(exchange);
+        fn(context);
       }
     }
   };
 
   const ping = () => {
     if (ongoing) {
-      each(exchange => exchange.stream.write(`:lub-DUB\n\n`));
+      each(context => context.stream.write(`:lub-DUB\n\n`));
     }
   };
 
@@ -85,7 +85,7 @@ const createServerEventHandler = ({
       if (!message) return;
       message += `\n`;
 
-      each(exchange => exchange.stream.write(message));
+      each(context => context.stream.write(message));
     }
   };
 
@@ -100,9 +100,9 @@ const createServerEventHandler = ({
       }
 
       // Stop streams.
-      each(exchange => {
-        exchange.stream.end();
-        ongoing.delete(exchange);
+      each(context => {
+        context.stream.end();
+        ongoing.delete(context);
       });
       ongoing = null;
     }

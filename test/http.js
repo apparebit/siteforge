@@ -1,33 +1,52 @@
 /* © 2020 Robert Grimm */
 
-import { constants } from 'http2';
 import { EOL } from 'os';
 import { fileURLToPath } from 'url';
 import harness from './harness.js';
+import { join } from 'path';
 import { promises } from 'fs';
 
 import {
   Client,
-  createPathHandler,
-  createServerEventHandler,
-  createStaticContentHandler,
-  events,
-  identifyHttp2Stream,
-  identifyLocal,
+  Context,
+  //createServerEventHandler,
+  //events,
+  Header,
+  identifyEndpoint,
   MediaType,
+  MethodName,
   parseDateHTTP,
   parseDateOpenSSL,
-  parsePath,
   refreshen,
   Server,
+  StatusCode,
+  validateRequestPath,
 } from '@grr/http';
+
+const {
+  ContentLength,
+  ContentType,
+  ContentTypeOptions,
+  FrameOptions,
+  Location,
+  Method,
+  Path,
+  PermittedCrossDomainPolicies,
+  PoweredBy,
+  ReferrerPolicy,
+  Status,
+  StrictTransportSecurity,
+  XssProtection,
+} = Header;
+
+const { MovedPermanently, NotFound, Ok, Teapot } = StatusCode;
+const { GET, HEAD } = MethodName;
 
 const { byteLength } = Buffer;
 const { keys: keysOf } = Object;
+const logger = harness.rollcall;
+const port = 6651;
 const { readFile } = promises;
-
-const ContentType = constants.HTTP2_HEADER_CONTENT_TYPE;
-const ContentLength = constants.HTTP2_HEADER_CONTENT_LENGTH;
 
 const BareType = {
   HTML: MediaType.HTML.unparameterized(),
@@ -41,7 +60,23 @@ const prepareSecrets = async () => {
   return secrets;
 };
 
-const logError = (...args) => harness.rollcall.error(...args);
+const cleanupEndpoints = async (client, server) => {
+  if (client) {
+    try {
+      await client.disconnect();
+    } catch (x) {
+      harness.rollcall.error('Error disconnecting client', x);
+    }
+  }
+
+  if (server) {
+    try {
+      await server.shutDown();
+    } catch (x) {
+      harness.rollcall.error('Error shutting down server', x);
+    }
+  }
+};
 
 harness.test('@grr/http', t => {
   t.test('@grr/http/MediaType', t => {
@@ -313,54 +348,59 @@ harness.test('@grr/http', t => {
   // ===========================================================================
 
   t.test('@grr/http/util', t => {
-    t.throws(() => parsePath('?query'));
-    t.throws(() => parsePath('/a%2fb'));
-    t.throws(() => parsePath('a/b.html'));
+    t.throws(() => validateRequestPath('?query'));
+    t.throws(() => validateRequestPath('/*'));
+    t.throws(() => validateRequestPath('a/b.html'));
 
-    t.same(parsePath('/'), {
-      rawPath: '/',
-      rawQuery: '',
+    t.same(validateRequestPath('/a%2Fb'), {
+      path: '/a/b',
+      query: '',
+    });
+
+    t.same(validateRequestPath('/'), {
       path: '/',
-      endsInSlash: false,
+      query: '',
     });
 
-    t.same(parsePath('/a////b/./../../././../a/b/c.html?some-query'), {
-      rawPath: '/a////b/./../../././../a/b/c.html',
-      rawQuery: '?some-query',
-      path: '/a/b/c.html',
-      endsInSlash: false,
-    });
+    t.same(
+      validateRequestPath('/a////b/./../../././../a/b/c.html?some-query'),
+      {
+        path: '/a/b/c.html',
+        query: '?some-query',
+      }
+    );
 
-    t.same(parsePath('/a/%2e/b/%2e%2e/file.json/#anchor'), {
-      rawPath: '/a/%2e/b/%2e%2e/file.json/',
-      rawQuery: '',
-      path: '/a/file.json',
-      endsInSlash: true,
+    t.same(
+      validateRequestPath('/a////b/./../../././../a/b/c.html/?some-query'),
+      {
+        path: '/a/b/c.html/',
+        query: '?some-query',
+      }
+    );
+
+    t.same(validateRequestPath('/a/%2e/b/%2e%2e/file.json/#anchor'), {
+      path: '/a/file.json/',
+      query: '',
     });
 
     // -------------------------------------------------------------------------
 
     t.is(
-      identifyLocal({
-        localAddress: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
-        localFamily: 'IPv6',
-        localPort: 42,
+      identifyEndpoint({
+        address: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
+        family: 'IPv6',
+        port: 42,
       }),
       '[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:42'
     );
 
     t.is(
-      identifyHttp2Stream({
-        id: 665,
-        session: {
-          socket: {
-            remoteAddress: '127.0.0.1',
-            remoteFamily: 'IPv4',
-            remotePort: 13,
-          },
-        },
+      identifyEndpoint({
+        address: '127.0.0.1',
+        family: 'IPv4',
+        port: 13,
       }),
-      'https://127.0.0.1:13/#665'
+      '127.0.0.1:13'
     );
 
     // -------------------------------------------------------------------------
@@ -395,177 +435,172 @@ harness.test('@grr/http', t => {
 
   t.test('@grr/http/Server', async t => {
     const checkSecurityHeaders = response => {
-      t.is(response['referrer-policy'], 'origin-when-cross-origin');
-      t.is(response['strict-transport-security'], 'max-age=86400');
-      t.is(response['x-content-type-options'], 'nosniff');
-      t.is(response['x-frame-options'], 'DENY');
-      t.is(response['x-permitted-cross-domain-policies'], 'none');
-      t.is(response['x-xss-protection'], '1; mode-block');
+      t.is(response.get(ReferrerPolicy), 'origin-when-cross-origin');
+      t.is(response.get(StrictTransportSecurity), 'max-age=86400');
+      t.is(response.get(ContentTypeOptions), 'nosniff');
+      t.is(response.get(FrameOptions), 'DENY');
+      t.is(response.get(PermittedCrossDomainPolicies), 'none');
+      t.is(response.get(XssProtection), '1; mode-block');
     };
 
     const testcases = [
       // -----------------------------------------------------------------------
-      // An implicit GET /
+      // (#1) An implicit GET /
       {
         async client(session) {
           const response = await session.request();
 
-          t.is(response[':status'], 200);
-          t.is(response[ContentType], 'text/plain; charset=UTF-8');
-          t.is(response[ContentLength], 5);
-          t.is(response[':body'], 'first');
+          t.is(response.status, Ok);
+          t.is(response.get(Status), Ok);
+          t.is(response.type, MediaType.PlainText);
+          t.is(response.get(ContentType), MediaType.PlainText);
+          t.is(response.length, 5);
+          t.is(response.get(ContentLength), 5);
+          t.is(response.body, 'first');
         },
 
-        async server(exchange, next) {
-          t.ok(exchange.isReady());
-          t.notOk(exchange.isResponding());
-          t.notOk(exchange.isDone());
-          t.is(exchange.method, 'GET');
-          t.is(exchange.path, '/');
-          t.notOk(exchange.endsInSlash);
+        async server(context, next) {
+          t.notOk(context.hasSentHeaders);
+          t.notOk(context.isTerminated);
+          t.notOk(context.isDisconnected);
 
-          exchange.body('first', MediaType.PlainText);
-          t.is(exchange.getBody(), 'first');
+          t.is(context.request.method, GET);
+          t.is(context.request.path, '/');
 
-          const done = next();
-          t.notOk(exchange.isReady());
-          t.ok(exchange.isResponding());
-          t.notOk(exchange.isDone());
+          context.prepare('first');
+          t.is(context.response.body, 'first');
 
-          await done;
-          t.notOk(exchange.isReady());
-          t.notOk(exchange.isResponding());
-          t.ok(exchange.isDone());
+          await next();
         },
       },
 
       // -----------------------------------------------------------------------
-      // HEAD for a JSON response
+      // (#2) HEAD for a JSON response
       {
         async client(session) {
           const response = await session.request({
-            ':method': 'HEAD',
-            ':path': '/answer',
+            [Method]: HEAD,
+            [Path]: '/answer',
           });
 
-          t.is(response[':status'], 200);
-          t.is(response[ContentType], 'application/json; charset=UTF-8');
-          t.is(response[ContentLength], 13);
-          t.is(response[':body'], '');
+          t.is(response.status, Ok);
+          t.is(response.type, MediaType.Jason);
+          t.is(response.length, 13);
+          t.is(response.body, '');
         },
 
-        server(exchange, next) {
-          t.is(exchange.method, 'HEAD');
-          t.is(exchange.path, '/answer');
+        async server(context, next) {
+          t.is(context.request.method, HEAD);
+          t.is(context.request.path, '/answer');
+          context.prepare({ answer: 42 });
 
-          exchange.json({ answer: 42 });
-          return next();
-        },
-      },
-
-      // -----------------------------------------------------------------------
-      // GET for the same JSON response
-      {
-        async client(session) {
-          const response = await session.request({ ':path': '/answer' });
-
-          t.is(response[':status'], 200);
-          t.is(response[ContentType], 'application/json; charset=UTF-8');
-          t.is(response[ContentLength], 13);
-          t.is(response[':body'], '{"answer":42}');
-        },
-
-        server(exchange, next) {
-          t.is(exchange.method, 'GET');
-          t.is(exchange.path, '/answer');
-
-          exchange.json({ answer: 42 });
-          return next();
+          await next();
         },
       },
 
       // -----------------------------------------------------------------------
-      // A permanent redirect
+      // (#3) GET for the same JSON response
       {
         async client(session) {
-          const response = await session.request({ ':path': '/some/page/' });
+          const response = await session.request({ [Path]: '/answer' });
 
-          t.is(response[':status'], 301);
-          t.is(response['content-type'], 'text/html; charset=UTF-8');
-          t.is(response['x-powered-by'], '12 Monkeys');
+          t.is(response.status, Ok);
+          t.is(response.type, MediaType.Jason);
+          t.is(response.length, 13);
+          t.is(response.body, '{"answer":42}');
+        },
 
-          const location = response['location'];
+        async server(context, next) {
+          t.is(context.request.method, GET);
+          t.is(context.request.path, '/answer');
+          context.prepare({ answer: 42 });
+
+          await next();
+        },
+      },
+
+      // -----------------------------------------------------------------------
+      // (#4) A permanent redirect
+      {
+        async client(session) {
+          const response = await session.request({ [Path]: '/some/page/' });
+
+          t.ok(response instanceof Context.Response);
+          t.is(response.status, 301);
+          t.is(response.type, MediaType.HTML);
+          t.is(response.get(PoweredBy), '12 Monkeys');
+
+          const location = response.get(Location);
           t.ok(
             location === 'https://127.0.0.1:6651/some/page' ||
               location === 'https://[::ffff:7f00:1]:6651/some/page' ||
               location === 'https://localhost:6651/some/page'
           );
           const contentLength = 130 + 2 * location.length;
-          t.is(Number(response['content-length']), contentLength);
-          t.is(response[':body'].length, contentLength);
+          t.is(response.length, contentLength);
+          t.is(response.body.length, contentLength);
 
           checkSecurityHeaders(response);
         },
 
-        server(exchange, next) {
-          t.is(exchange.path, '/some/page');
-          t.ok(exchange.endsInSlash);
+        async server(context, next) {
+          const { request, response } = context;
 
-          t.is(typeof exchange.request, 'object');
-          t.is(exchange.request[':path'], '/some/page/');
+          t.is(typeof request, 'object');
+          t.ok(request instanceof Context.Request);
+          t.is(request.path, '/some/page/');
 
-          t.is(typeof exchange.response, 'object');
-          t.is(keysOf(exchange.response).join(','), '');
+          t.is(typeof response, 'object');
+          t.ok(response instanceof Context.Response);
+          // Thanks to the trailing slash, the request triggers the
+          // redirectOnTrailingSlash() middleware.
+          t.same(keysOf(response.headers), [
+            Status,
+            Location,
+            ContentType,
+            ContentLength,
+          ]);
 
-          t.is(exchange.status, undefined);
-          exchange.status = 418;
-          t.is(exchange.status, 418);
+          t.is(response.status, MovedPermanently);
+          t.is(response.type, MediaType.HTML);
+          const location = response.get(Location);
+          t.ok(location.endsWith('/some/page'));
+          t.is(response.length, 130 + 2 * location.length);
 
-          t.is(exchange.type, undefined);
-          exchange.type = MediaType.Binary;
-          t.is(exchange.type, MediaType.Binary);
+          response.status = Teapot;
+          t.is(response.status, Teapot);
+          response.status = MovedPermanently;
+          t.is(response.status, MovedPermanently);
 
-          t.is(exchange.length, undefined);
-          exchange.length = 665;
-          t.is(exchange.length, 665);
-          exchange.setResponseHeader('content-length', 42);
-          t.is(exchange.length, 42);
-          exchange.deleteResponseHeader('content-length');
-          t.is(exchange.length, undefined);
+          t.is(response.get(PoweredBy), undefined);
+          response.set('x-powered-by', '12 Monkeys');
+          t.is(response.get(PoweredBy), '12 Monkeys');
 
-          t.is(exchange.getResponseHeader('x-powered-by'), undefined);
-          exchange.ooh();
-          t.is(exchange.getResponseHeader('x-powered-by'), 'George Soros');
-          exchange.setResponseHeader('x-powered-by', '12 Monkeys');
-
-          // redirect() is async and thus should be await'ed for. Without that,
-          // control flows into next() and then respond(). In other words, this
-          // does test whether respond() tolerates repeated invocation.
-          exchange.redirect(301, exchange.origin + exchange.path);
-          return next();
+          const promise = next();
+          t.type(promise, Promise);
+          await promise;
         },
       },
 
       // -----------------------------------------------------------------------
-      // An Error
+      // (#5) A Thrown Error
       {
         async client(session) {
           const response = await session.request({ ':path': '/boo' });
 
-          t.is(response[':status'], 418);
-          t.is(response['content-type'], 'text/html; charset=UTF-8');
+          t.is(response.status, Teapot);
+          t.is(response.type, MediaType.HTML);
 
-          const body = response[':body'];
+          const { body } = response;
           t.ok(body.includes(`<h1>418 I'm a Teapot</h1>`));
           t.ok(body.includes(`<dt>:path</dt>${EOL}<dd>/boo</dd>`));
-          t.ok(body.includes(`<p>Error: boo!<br>`));
+          t.ok(body.includes(`<p class=stack>Error: boo!<br>`));
 
           checkSecurityHeaders(response);
         },
 
-        async server(exchange, next) {
-          await exchange.fail(418, new Error('boo!'));
-          await next();
+        server() {
+          throw Context.Error(Teapot, 'boo!');
         },
       },
     ];
@@ -573,21 +608,33 @@ harness.test('@grr/http', t => {
     let client, server;
     try {
       const { authority, cert, key } = await prepareSecrets();
-      server = new Server({ cert, key, port: 6651, logError });
+      const options = { authority, port, cert, key, ca: cert, logger };
 
-      let index = -1;
-      server.use((exchange, next) => testcases[++index].server(exchange, next));
+      let serverIndex = -1;
+      server = new Server(options)
+        .route(Server.scaffold)
+        .route(Server.redirectOnTrailingSlash)
+        .route((context, next) => {
+          const current = ++serverIndex;
+          logger.debug(`Did receive request #${current + 1}`);
+          testcases[current].server(context, next);
+          logger.debug(`About to send response #${current + 1}`);
+        });
       await server.listen();
 
-      client = Client.connect({ authority, ca: cert, logError });
-      await client.didConnect();
-
+      let clientIndex = -1;
+      client = await Client.connect(options);
       for (const testcase of testcases) {
+        const current = ++clientIndex;
+        logger.debug(`About to send request #${current + 1}`);
         await testcase.client(client);
+        logger.debug(`Did receive response #${current + 1}`);
+        logger.debug(
+          `-------------------------------------------------------------`
+        );
       }
     } finally {
-      if (client) await client.disconnect();
-      if (server) await server.stop();
+      cleanupEndpoints(client, server);
     }
 
     t.end();
@@ -595,6 +642,7 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
+  /*
   t.test('@grr/http/createServerEventHandler', async t => {
     let client, server;
     try {
@@ -611,7 +659,7 @@ harness.test('@grr/http', t => {
 
       // Set up server hosting middleware.
       const { authority, cert, key } = await prepareSecrets();
-      server = new Server({ cert, key, port: 6651, logError });
+      server = Server.create({ cert, key, port: 6651, logger: harness.rollcall });
       server.use(handleEvents);
       await server.listen();
 
@@ -621,8 +669,7 @@ harness.test('@grr/http', t => {
       setTimeout(() => handleSSE.close(), 100);
 
       // Set up client and consume events.
-      client = Client.connect({ authority, ca: cert, logError });
-      await client.didConnect();
+      client = await Client.connect({ authority, ca: cert });
 
       let count = 0;
       for await (const event of events(client.session, '/.well-known/alerts')) {
@@ -650,16 +697,16 @@ harness.test('@grr/http', t => {
         }
       }
     } finally {
-      if (client) await client.disconnect();
-      if (server) await server.stop();
+      cleanupEndpoints(client, server);
     }
 
     t.end();
   });
+  */
 
   // ===========================================================================
 
-  t.test('@grr/http/createStaticContentHandler', async t => {
+  t.test('@grr/http/Server.makeServeStaticAsset', async t => {
     // Set up tests
     // ------------
 
@@ -669,25 +716,32 @@ harness.test('@grr/http', t => {
         path: '/amanda-gris.css',
         type: MediaType.CSS,
         length: 0,
-        content: '/amanda-gris.css',
+        content: 'amanda-gris.css',
       },
       {
         path: '/la-flor',
         type: MediaType.HTML,
         length: 0,
-        content: '/la-flor.html',
+        content: 'la-flor.html',
       },
       {
         path: '/mujeres',
         type: MediaType.HTML,
         length: 0,
-        content: '/mujeres/index.html',
+        content: 'mujeres/index.html',
+      },
+      {
+        path: '/almodovar.js',
+        status: NotFound,
+        type: MediaType.HTML,
       },
     ];
 
     for (const test of tests) {
-      test.content = await readFile(root + test.content, 'utf8');
-      test.length = byteLength(test.content);
+      if (test.content) {
+        test.content = await readFile(join(root, test.content), 'utf8');
+        test.length = byteLength(test.content);
+      }
     }
 
     // Run tests
@@ -695,31 +749,37 @@ harness.test('@grr/http', t => {
 
     let client, server;
     try {
-      // Set up server with static content middleware.
-      const handleStaticContent = createStaticContentHandler({ root });
       const { authority, cert, key } = await prepareSecrets();
-      server = new Server({ cert, key, port: 6651, logError });
-      server.use(handleStaticContent);
+      const options = { authority, port, cert, key, ca: cert, logger };
+
+      server = new Server(options)
+        .route(Server.scaffold)
+        .route(Server.redirectOnTrailingSlash)
+        .route(Server.makeServeStaticAsset({ root }));
       await server.listen();
 
-      // Set up client and initiate tests.
-      client = Client.connect({ authority, ca: cert, logError });
-      await client.didConnect();
+      client = await Client.connect(options);
 
+      let index = 0;
       for (const test of tests) {
+        const current = ++index;
+        logger.debug(`About to send request #${current}`);
         const response = await client.request({
-          ':method': 'GET',
-          ':path': test.path,
+          [Method]: GET,
+          [Path]: test.path,
         });
+        logger.debug(`Did receive response #${current}`);
+        logger.debug(
+          `-------------------------------------------------------------`
+        );
 
-        t.is(response[':status'], 200);
-        t.is(response['content-type'], test.type.toString());
-        t.is(response['content-length'], test.length);
-        t.ok(response[':body'], test.content);
+        t.is(response.status, test.status ?? Ok);
+        t.is(response.type, test.type);
+        if (test.length) t.is(response.length, test.length);
+        if (test.content) t.ok(response.body, test.content);
       }
     } finally {
-      if (client) await client.disconnect();
-      if (server) await server.stop();
+      cleanupEndpoints(client, server);
     }
 
     t.end();

@@ -9,6 +9,13 @@ import { posix } from 'path';
 
 const { defineProperty } = Object;
 const { isAbsolute, normalize } = posix;
+const returnPromise = (fn, ...args) => {
+  try {
+    return Promise.resolve(fn(...args));
+  } catch (x) {
+    return Promise.reject(x);
+  }
+};
 
 // =============================================================================
 
@@ -79,25 +86,12 @@ class Router {
           (match === 'tree' && isMountedAt(request.path, path)) ||
           (match === 'path' && request.path === path)
         ) {
-          // Route Match: Execute Handler.
-          try {
-            return Promise.resolve(
-              handler(context, dispatch.bind(null, step + 1))
-            );
-          } catch (x) {
-            return Promise.reject(x);
-          }
+          return returnPromise(handler, context, dispatch.bind(null, step + 1));
         } else {
-          // Route Mismatch: Skip Handler.
           return dispatch(step + 1);
         }
       } else {
-        // Done. Execute next to preserve composability.
-        try {
-          return Promise.resolve(next());
-        } catch (x) {
-          return Promise.reject(x);
-        }
+        return returnPromise(next);
       }
     };
 

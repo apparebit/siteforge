@@ -1,24 +1,38 @@
 /* © 2020 Robert Grimm */
 
-export { Header, Method, Status } from './constants.js';
+// Shared features, from constants to low-level utilities to media types.
+export {
+  Header,
+  MethodName,
+  StatusCode,
+  StatusWithoutBody,
+} from './constants.js';
 
 export {
-  createFrameError,
-  identifyHttp2Stream,
-  identifyLocal,
-  identifyRemote,
+  // ---------- Making endpoints human-readable.
   identifyEndpoint,
+  // ---------- Wrangling paths.
+  hasExtension,
+  isMountedAt,
+  slash,
+  unslash,
+  validateRequestPath,
+  validateRoutePath,
+  // ---------- Parsing dates.
   parseDateHTTP,
   parseDateOpenSSL,
-  parsePath,
+  // ---------- Escaping HTML body text.
+  escapeText,
 } from './util.js';
 
 export { certifyLocalhost, readCertDates, refreshen } from './certificate.js';
-export { default as Client } from './client.js';
-export { default as createPathHandler } from './path-handler.js';
-export { default as createServerEventHandler } from './sse-handler.js';
-export { default as createStaticContentHandler } from './static-handler.js';
-export { default as Exchange } from './exchange.js';
-export { default as events } from './sse-client.js';
 export { default as MediaType } from './media-type.js';
+
+// Client.
+export { default as Client } from './client.js';
+export { default as events } from './sse-client.js';
+
+// Server including middleware.
 export { default as Server } from './server.js';
+export { default as Context } from './context.js';
+export { default as createServerEventHandler } from './sse-handler.js';

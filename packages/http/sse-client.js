@@ -1,12 +1,12 @@
 /* © 2020 Robert Grimm */
 
-import { constants } from 'http2';
+import { Header, MethodName } from './constants.js';
 import MediaType from './media-type.js';
 import readline from 'readline';
-import { settleable } from '@grr/async/promise';
 import { STATUS_CODES } from 'http';
 
-const { HTTP2_HEADER_CONTENT_TYPE, HTTP2_HEADER_STATUS } = constants;
+const { ContentType, Status } = Header;
+const { GET } = MethodName;
 
 const Not200 = status => {
   let code = STATUS_CODES[status];
@@ -25,30 +25,30 @@ const NotEventStream = type =>
 
 export default async function* events(session, path) {
   const stream = session.request({
-    ':method': 'GET',
+    ':method': GET,
     ':path': path,
-    accept: 'text/event-stream',
+    accept: MediaType.EventStream,
   });
 
-  const { promise, resolve, reject } = settleable();
+  const linesOfBody = new Promise((resolve, reject) => {
+    stream.on('response', headers => {
+      const status = headers[Status];
+      const type = MediaType.from(headers[ContentType]);
 
-  stream.on('response', headers => {
-    const status = headers[HTTP2_HEADER_STATUS];
-    const type = MediaType.from(headers[HTTP2_HEADER_CONTENT_TYPE]);
-
-    if (status !== 200) {
-      reject(Not200(status));
-    } else if (!isEventStream(type)) {
-      reject(NotEventStream(type));
-    } else {
-      stream.setEncoding('utf8');
-      resolve(readline.createInterface({ input: stream }));
-    }
+      if (status !== 200) {
+        reject(Not200(status));
+      } else if (!isEventStream(type)) {
+        reject(NotEventStream(type));
+      } else {
+        stream.setEncoding('utf8');
+        resolve(readline.createInterface({ input: stream }));
+      }
+    });
   });
 
   try {
     let event;
-    for await (const line of await promise) {
+    for await (const line of await linesOfBody) {
       if (line === '') {
         // Empty line completes event.
         yield event;

@@ -1,16 +1,13 @@
 {
   "name": "@grr/http",
-  "description": "a toolbox for building standards-compliant and secure web services",
+  "description": "The HTTP/2 web framework",
   "version": "0.1.0",
   "repository": "https://github.com/apparebit/siteforge",
   "author": "Robert Grimm (https://apparebit.com)",
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "@grr/async": "0.1.0",
-    "@grr/oddjob": "0.1.0",
-    "@grr/temple": "0.1.0",
-    "chokidar": "3.4.1"
+    "@grr/temple": "0.1.0"
   },
   "exports": {
     ".": "./index.js"

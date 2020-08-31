@@ -143,7 +143,8 @@ export default class MediaType {
    * ```
    *
    * In all cases, this method tries to return one of the preallocated,
-   * canonical media type instances.
+   * canonical media type instances. If this method cannot convert the arguments
+   * into a valid media type, it throws an error.
    */
   static from(...args) {
     let value;
@@ -171,6 +172,15 @@ export default class MediaType {
     }
 
     throw new Error(`"${value}" is not a valid media type`);
+  }
+
+  /** Instantiate a media type or return `undefined` on error. */
+  static fromOrUndefined(...args) {
+    try {
+      return MediaType.from(...args);
+    } catch {
+      return undefined;
+    }
   }
 
   /** Determine the media type for the given file extension. */
@@ -474,6 +484,21 @@ export default class MediaType {
   /** Determine whether the media type contains wildcards. */
   hasWildcard() {
     return this.type === '*' || this.subtype === '*';
+  }
+
+  /**
+   * Determine whether the media type has a textual representation. This method
+   * considers all media types with type `text`, the media type for JSON
+   * `application/json`, and any media type with suffix `+json` or `+xml` as
+   * textual.
+   */
+  isTextual() {
+    return (
+      this.matchTo(MediaType.Text) ||
+      this.matchTo(MediaType.Jason) ||
+      this.suffix === 'json' ||
+      this.suffix === 'xml'
+    );
   }
 
   /** Compare this media type to the given media type for priority. */

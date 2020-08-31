@@ -295,6 +295,17 @@ harness.test('@grr/http', t => {
       ],
     ]);
 
+    // ----------------------------------------- MediaType.prototype.isTextual()
+
+    t.ok(MediaType.PlainText.isTextual());
+    t.ok(MediaType.HTML.isTextual());
+    t.ok(MediaType.Jason.isTextual());
+    t.ok(MediaType.SVG.isTextual());
+    t.ok(MediaType.from('application/ld+json').isTextual());
+    t.notOk(MediaType.Binary.isTextual());
+    t.notOk(MediaType.H265.isTextual());
+    t.notOk(MediaType.PNG.isTextual());
+
     // ------------------------------------------- MediaType.prototype.matchTo()
     t.ok(MediaType.PlainText.matchTo(MediaType.Any));
     t.notOk(MediaType.PlainText.matchTo(MediaType.Video));

@@ -29,6 +29,7 @@ const prepare = () => {
     }
   }
 
+  Header.LastEventId = 'last-event-id';
   Header.ReferrerPolicy = 'referrer-policy';
   Header.PermittedCrossDomainPolicies = 'x-permitted-cross-domain-policies';
   Header.PoweredBy = 'x-powered-by';

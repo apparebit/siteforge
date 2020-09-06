@@ -30,9 +30,7 @@ export { default as MediaType } from './media-type.js';
 
 // Client.
 export { default as Client } from './client.js';
-export { default as events } from './sse-client.js';
 
 // Server including middleware.
 export { default as Server } from './server.js';
 export { default as Context } from './context.js';
-export { default as createServerEventHandler } from './sse-handler.js';

@@ -47,6 +47,7 @@ const {
   Accept,
   AccessControlAllowOrigin,
   Authority,
+  CacheControl,
   ContentLength,
   ContentType,
   ContentTypeOptions,
@@ -59,6 +60,7 @@ const {
   Path,
   PermittedCrossDomainPolicies,
   Query,
+  Referer,
   ReferrerPolicy,
   Scheme,
   Status,
@@ -84,8 +86,9 @@ class Message {
   #body;
 
   /** Create a new message, optionally with the headers. */
-  constructor(headers = create(null)) {
+  constructor(headers = create(null), body = undefined) {
     this.#headers = headers;
+    this.#body = body;
   }
 
   // ---------------------------------------------------------------------------
@@ -346,6 +349,19 @@ class Request extends Message {
  * valid pseudo-header.
  */
 class Response extends Message {
+  // Regular Headers
+  // ~~~~~~~~~~~~~~~
+
+  /** Get cache control. */
+  get cache() {
+    return this.get(CacheControl);
+  }
+
+  /** Set cache control. */
+  set cache(value) {
+    this.set(CacheControl, value);
+  }
+
   // Pseudo-Headers
   // ~~~~~~~~~~~~~~
 
@@ -435,9 +451,11 @@ export default class Context {
   #logger;
   #stringify;
   #origin;
+  #client;
   #stream;
   #request;
   #response;
+  #responded;
 
   /** Create a new context. */
   constructor({
@@ -450,6 +468,7 @@ export default class Context {
     this.#logger = logger;
     this.#stringify = stringify;
     this.#origin = origin;
+    this.#client = stream.session.socket.remoteAddress;
     this.#stream = stream;
     this.#request = new Request(request);
     this.#response = new Response();
@@ -477,6 +496,11 @@ export default class Context {
     return this.#origin;
   }
 
+  /** The client. */
+  get client() {
+    return this.#client;
+  }
+
   /** The underlying connection. */
   get connection() {
     return this.#stream.session;
@@ -498,6 +522,16 @@ export default class Context {
   }
 
   // ---------------------------------------------------------------------------
+
+  /** Determine whether the response has been sent. */
+  get hasResponded() {
+    return this.#responded;
+  }
+
+  /** Mark the response as having been sent. */
+  markResponded() {
+    this.#responded = true;
+  }
 
   /** Flag for whether the out-going headers have been sent. */
   get hasSentHeaders() {
@@ -535,6 +569,19 @@ export default class Context {
   get isDisconnected() {
     const { session } = this.#stream;
     return session.closed || session.destroyed;
+  }
+
+  // ===========================================================================
+
+  /** Summarize this request, response exchange in common log format. */
+  summary({ time = Date.now() } = {}) {
+    const { request, response } = this;
+
+    let message = `${this.client} - - [${new Date(time).toISOString()}]`;
+    message += ` "${request.method} ${request.path} HTTP2"`;
+    message += ` ${response.status} ${response.length ?? '-'}`;
+    message += ` "${request.get(Referer) ?? '-'}"`;
+    return message;
   }
 
   // ===========================================================================
@@ -596,9 +643,13 @@ export default class Context {
 
   // ---------------------------------------------------------------------------
 
-  /** Send the response. */
+  /**
+   * Send the response. This method returns immediately if this context is
+   * marked as `responded` via `markResponded()`.
+   */
   respond() {
-    if (this.isTerminated) return;
+    if (this.hasResponded || this.isTerminated) return;
+    this.markResponded();
 
     let { request, response, stream } = this;
     let { body } = response;

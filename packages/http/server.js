@@ -3,12 +3,20 @@
 import Context from './context.js';
 import { createSecureServer } from 'http2';
 import { finished } from 'stream';
+import { MethodName, StatusCode } from './constants.js';
 import { identifyEndpoint, isMountedAt, validateRoutePath } from './util.js';
+import MediaType from './media-type.js';
 import { once } from 'events';
 import { posix } from 'path';
 
-const { defineProperty } = Object;
+const configurable = true;
+const { defineProperty, defineProperties } = Object;
+const { EventStream } = MediaType;
+const { GET, HEAD } = MethodName;
 const { isAbsolute, normalize } = posix;
+const { isArray } = Array;
+const { isSafeInteger } = Number;
+const { MethodNotAllowed, NotAcceptable, Ok } = StatusCode;
 const returnPromise = (fn, ...args) => {
   try {
     return Promise.resolve(fn(...args));
@@ -106,6 +114,13 @@ export default class Server {
   // Essential and Almost Essential Middleware
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+  /** Log the request, response interaction. */
+  static async log(context, next) {
+    const time = Date.now();
+    await next();
+    context.logger.info(context.summary({ time }));
+  }
+
   /** Send the response. */
   static async respond(context, next) {
     await next();
@@ -158,6 +173,9 @@ export default class Server {
    * with this method as first middleware handler.
    */
   static async scaffold(context, next) {
+    // Record start time.
+    const time = Date.now();
+
     try {
       // Run middleware on context with validated path.
       context.validateRequestPath();
@@ -174,6 +192,9 @@ export default class Server {
     // Harden response and actually send it.
     context.hardenResponse();
     context.respond();
+
+    // Log request and response.
+    context.logger.info(context.summary({ time }));
   }
 
   /** Redirect requests with path ending with slash to the unslashed version. */
@@ -194,6 +215,116 @@ export default class Server {
       await context.serveStaticAsset({ root });
       await next();
     };
+  }
+
+  static makeEventSource({
+    heartbeat = 10 * 60 * 1000,
+    reconnect = 2000,
+    startTimer = setInterval,
+    stopTimer = clearInterval,
+  } = {}) {
+    if (!isSafeInteger(heartbeat)) {
+      throw new TypeError(`Heartbeat interval "${heartbeat}" isn't an integer`);
+    } else if (!isSafeInteger(reconnect)) {
+      throw new TypeError(`Reconnect delay "${reconnect}" isn't an integer`);
+    } else if (typeof startTimer !== 'function') {
+      throw new TypeError(`Start timer "${startTimer}" isn't a function`);
+    } else if (typeof stopTimer !== 'function') {
+      throw new TypeError(`Stop timer "${stopTimer}" isn't a function`);
+    }
+
+    const listening = new Set();
+
+    const acceptReceiver = (context, next) => {
+      if (context.hasResponded) return next();
+
+      const { request, response, stream } = context;
+      if (request.method !== GET && request.method !== HEAD) {
+        throw Context.Error(
+          MethodNotAllowed,
+          `Use GET not ${request.method} for subscribing to event source "${request.path}"`
+        );
+      } else if (EventStream.matchForQuality(...request.accept) === 0) {
+        throw Context.Error(
+          NotAcceptable,
+          `Event source "${request.path}" supports "text/event-stream" format only`
+        );
+      }
+
+      context.markResponded();
+      listening.add(context);
+      context.onDidTerminate(() => listening.delete(context));
+
+      response.status = Ok;
+      response.cache = 'no-store, no-transform';
+      response.type = EventStream;
+
+      stream.respond(response.headers);
+      stream.setEncoding('utf8');
+      if (reconnect >= 0) {
+        stream.write(`retry: ${reconnect}\n\n`);
+      } else {
+        stream.write(`:start\n\n`);
+      }
+      return Promise.resolve();
+    };
+
+    let finished = false;
+
+    const each = fn => {
+      if (!finished) {
+        for (const context of listening) {
+          if (context.isTerminated) {
+            listening.delete(context);
+          } else {
+            fn(context);
+          }
+        }
+      }
+    };
+
+    const emit = ({ id, event, data }) => {
+      if (!finished) {
+        let message = '';
+        if (id) message += `id: ${id}\n`;
+        if (event) message += `event: ${event}\n`;
+        if (data) {
+          if (isArray(data)) {
+            message += data.map(data => `data: ${data}\n`).join('');
+          } else {
+            message += `data: ${data}\n`;
+          }
+        }
+        if (!message) return;
+        message += '\n';
+        each(context => context.stream.write(message));
+      }
+    };
+
+    const ping = () => each(context => context.stream.write(`:lub-dub\n\n`));
+    let timer = heartbeat > 0 ? startTimer(ping, heartbeat) : null;
+
+    const close = () => {
+      if (timer) {
+        stopTimer(timer);
+        timer = null;
+      }
+
+      if (!finished) {
+        each(context => {
+          context.stream.end();
+          listening.delete(context);
+        });
+        finished = true;
+      }
+    };
+
+    defineProperties(acceptReceiver, {
+      emit: { configurable, value: emit },
+      ping: { configurable, value: ping },
+      close: { configurable, value: close },
+    });
+    return acceptReceiver;
   }
 
   // ===========================================================================

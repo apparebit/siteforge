@@ -653,67 +653,71 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  /*
-  t.test('@grr/http/createServerEventHandler', async t => {
+  t.test('@grr/http/makeEventSource', async t => {
+    const EVENT_SOURCE_ORIGIN = 'https://localhost:6651';
+    const EVENT_SOURCE_PATH = '/.well-known/server-events';
+
     let client, server;
     try {
-      // Set up SSE middleware.
-      const handleSSE = createServerEventHandler();
-      const handleEvents = createPathHandler('/.well-known/alerts', handleSSE, {
-        exact: true,
-      });
+      const eventSource = Server.makeEventSource();
+      t.is(typeof eventSource, 'function');
+      t.is(typeof eventSource.ping, 'function');
+      t.is(typeof eventSource.emit, 'function');
+      t.is(typeof eventSource.close, 'function');
 
-      t.is(handleEvents.name, 'handleServerEvents');
-      t.is(handleEvents.name, handleSSE.name);
-      t.is(handleEvents.emit, handleSSE.emit);
-      t.is(handleEvents.close, handleSSE.close);
-
-      // Set up server hosting middleware.
       const { authority, cert, key } = await prepareSecrets();
-      server = Server.create({ cert, key, port: 6651, logger: harness.rollcall });
-      server.use(handleEvents);
+      const options = { authority, port, cert, key, ca: cert, logger };
+      server = new Server(options)
+        .route(Server.scaffold)
+        .route(EVENT_SOURCE_PATH, eventSource);
       await server.listen();
+      client = await Client.connect(options);
 
-      // Schedule events to be sent.
-      setTimeout(() => handleSSE.emit({ id: 665, data: 'yo!' }), 50);
-      setTimeout(() => handleEvents.emit({ event: 'yell', data: 'damn!' }), 50);
-      setTimeout(() => handleSSE.close(), 100);
-
-      // Set up client and consume events.
-      client = await Client.connect({ authority, ca: cert });
+      setTimeout(() => {
+        eventSource.emit({ event: 'greeting', id: 'boo' });
+        eventSource.emit({ event: 'greeting', id: 'one', data: 'hello' });
+        eventSource.emit({ id: 'two', data: ['', ''] });
+        eventSource.close();
+      }, 10);
 
       let count = 0;
-      for await (const event of events(client.session, '/.well-known/alerts')) {
-        switch (++count) {
+      logger.debug(`About to subscribe to ${EVENT_SOURCE_PATH}`);
+      for await (const event of client.subscribe(EVENT_SOURCE_PATH)) {
+        logger.debug(
+          `Received event #${++count} with type "${event.type}"` +
+            ` and ID "${event.lastEventId}"`
+        );
+
+        switch (count) {
           case 1:
-            t.is(event.data, undefined);
-            t.is(event.event, undefined);
-            t.is(event.id, undefined);
-            t.is(event.retry, '500');
+            t.is(event.origin, EVENT_SOURCE_ORIGIN);
+            t.is(event.type, 'greeting');
+            t.is(event.lastEventId, 'one');
+            t.is(event.data, 'hello');
             break;
           case 2:
-            t.is(event.data, 'yo!');
-            t.is(event.event, undefined);
-            t.is(event.id, '665');
-            t.is(event.retry, undefined);
-            break;
-          case 3:
-            t.is(event.data, 'damn!');
-            t.is(event.event, 'yell');
-            t.is(event.id, undefined);
-            t.is(event.retry, undefined);
+            t.is(event.origin, EVENT_SOURCE_ORIGIN);
+            t.is(event.type, 'message');
+            t.is(event.lastEventId, 'two');
+            t.is(event.data, '\n');
             break;
           default:
             t.fail();
         }
+
+        if (count === 2) break;
       }
+
+      eventSource.close();
+      logger.debug(
+        `-------------------------------------------------------------`
+      );
     } finally {
       cleanupEndpoints(client, server);
     }
 
     t.end();
   });
-  */
 
   // ===========================================================================
 

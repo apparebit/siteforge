@@ -20,6 +20,19 @@
       "env": {
         "NODE_ENV": "test"
       }
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Run Tests 🔎",
+      "program": "${workspaceFolder}/test/index.js",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "outputCapture": "std",
+      "runtimeArgs": ["--detailed-error-stack-trace"],
+      "env": {
+        "NODE_ENV": "test"
+      }
     }
   ]
 }

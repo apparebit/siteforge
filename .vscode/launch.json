@@ -5,16 +5,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "node",
+      "type": "pwa-node",
       "request": "launch",
       "name": "Run Tests",
       "program": "${workspaceFolder}/test/index.js",
       "cwd": "${workspaceFolder}",
       "skipFiles": [
-        "<node_internals>/**"
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
       ],
       "console": "internalConsole",
-      "runtimeArgs": ["--async-stack-traces", "--detailed-error-stack-trace"],
+      "outputCapture": "std",
+      "runtimeArgs": ["--detailed-error-stack-trace"],
       "env": {
         "NODE_ENV": "test"
       }

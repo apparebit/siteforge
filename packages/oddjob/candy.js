@@ -1,155 +1,105 @@
 /* © 2020 Robert Grimm */
 
-import { strict as assert } from 'assert';
-
 const { assign, create, freeze, keys: keysOf } = Object;
-const { has } = Reflect;
+const identity = s => s;
 
-const STYLISH_CI = ['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI'];
-
-// -----------------------------------------------------------------------------
-
-/** Constants representing the different color modes. */
-export const COLOR = freeze({
-  /** Monochrome output. */
-  NONE: 2,
-  /** Output in 8 base colors each in dark and light variations. */
-  BASIC: 16,
-  /** Output in 256 indexed colors. */
-  INDEXED: 256,
-  /** Output in all 16,777,216 colors. */
-  FULL: 16_777_216,
+// Freeze color depth constants but not the four style lookup tables.
+export const COLOR_DEPTH = freeze({
+  /** Monochrome output (at 1 bit per pixel). */
+  MONO: 1,
+  /** Eight base colors in dark and light varieties (at 4 bits per pixel). */
+  BASIC: 4,
+  /** 256 indexed colors (at 8 bits per pixel). */
+  INDEXED: 8,
+  /** The full spectrum of 16,777,216 colors (at 24 bits per pixel). */
+  FULL: 24,
 });
 
-/**
- * Determine the number of colors supported by the given stream in the given
- * environment. You probably want to use this module's default export instead.
- * See below.
- */
-export const countColors = ({
-  env = process.env,
-  stream = process.stderr,
-} = {}) => {
-  const term = env.TERM;
-
-  if (
-    has(env, 'NODE_DISABLE_COLORS') ||
-    has(env, 'NO_COLOR') ||
-    !stream.isTTY ||
-    term === 'dumb'
-  ) {
-    return COLOR.NONE;
-  }
-
-  if (has(env, 'CI')) {
-    return STYLISH_CI.some(key => has(env, key)) ? COLOR.BASIC : COLOR.NONE;
-  }
-
-  const program = env.TERM_PROGRAM;
-  if (
-    program === 'iTerm.app' ||
-    program === 'Apple_Terminal' ||
-    /^xterm-256/u.test(term)
-  ) {
-    return COLOR.INDEXED;
-  }
-
-  if (program === 'MacTerm') {
-    return COLOR.FULL;
-  }
-
-  if (/^screen|^xterm|^vt100|color|ansi|cygwin|linux/u.test(term)) {
-    return COLOR.BASIC;
-  }
-
-  return COLOR.NONE;
-};
-
-// -----------------------------------------------------------------------------
-
-const [SGR16, SGR256] = (function () {
-  // Initialize both bindings simultaneously: We both freeze sgr16 and use it as
-  // prototype for sgr256. But if we freeze sgr16 before completing sgr256, then
-  // we can't complete sgr256.
-  const sgr16 = assign(create(null), {
-    bold: freeze(['1', '22']),
-    italic: freeze(['3', '23']),
-    underline: freeze(['4', '24']),
-
-    faint: freeze(['90', '39']),
-    fainter: freeze(['37', '39']),
-
-    boldGreen: freeze(['32;1', '39;22']),
-    green: freeze(['32', '39']),
-    overGreen: freeze(['102;1', '49;22']),
-
-    magenta: freeze(['35;1', '39;22']),
-
-    boldOrange: freeze(['33;1', '39;22']),
-
-    boldRed: freeze(['31;1', '39;22']),
-    red: freeze(['31', '39']),
-    overRed: freeze(['97;41;1', '39;49;22']),
-
-    plain: null,
+const [PLAIN, SGR4, SGR8, SGR24] = (() => {
+  // Provide skeleton style definitions for the four color depths.
+  const PLAIN = assign(create(null), {
+    colorDepth: COLOR_DEPTH.MONO,
   });
 
-  const sgr256 = assign(create(sgr16), {
-    overGreen: freeze(['48;5;119;1', '49;22']),
-    boldOrange: freeze(['38;5;208;1', '39;22']),
-    overRed: freeze(['38;5;15;41;1', '39;49;22']),
+  const SGR4 = assign(create(null), {
+    colorDepth: COLOR_DEPTH.BASIC,
+
+    bold: ['1', '22'],
+    italic: ['3', '23'],
+    underline: ['4', '24'],
+
+    faint: ['90', '39'],
+    fainter: ['37', '39'],
+
+    boldGreen: ['32;1', '39;22'],
+    green: ['32', '39'],
+    overGreen: ['102;1', '49;22'],
+
+    magenta: ['35;1', '39;22'],
+
+    boldOrange: ['33;1', '39;22'],
+
+    boldRed: ['31;1', '39;22'],
+    red: ['31', '39'],
+    overRed: ['97;41;1', '39;49;22'],
+
+    plain: identity,
   });
 
-  return [freeze(sgr16), freeze(sgr256)];
+  const SGR8 = assign(create(null), {
+    colorDepth: COLOR_DEPTH.INDEXED,
+
+    overGreen: ['48;5;119;1', '49;22'],
+    boldOrange: ['38;5;208;1', '39;22'],
+    overRed: ['38;5;15;41;1', '39;49;22'],
+  });
+
+  const SGR24 = assign(create(null), {
+    colorDepth: COLOR_DEPTH.FULL,
+  });
+
+  // Automatically flesh out style definitions to make them usable.
+  for (const key of keysOf(SGR8)) {
+    if (key === 'colorDepth') continue;
+
+    const [on, off] = SGR8[key];
+    const format = s => `\x1b[${on}m${s}\x1b[${off}m`;
+
+    SGR8[key] = format;
+    if (SGR24[key] === undefined) SGR24[key] = format;
+  }
+
+  for (const key of keysOf(SGR4)) {
+    if (key === 'colorDepth') continue;
+    PLAIN[key] = identity;
+    if (key === 'plain') continue;
+
+    const [on, off] = SGR4[key];
+    const format = s => `\x1b[${on}m${s}\x1b[${off}m`;
+
+    SGR4[key] = format;
+    if (SGR8[key] === undefined) SGR8[key] = format;
+    if (SGR24[key] === undefined) SGR24[key] = format;
+  }
+
+  return [PLAIN, SGR4, SGR8, SGR24];
 })();
 
-const identity = freeze(s => s);
-const createFormatFunction = (on, off) => {
-  return freeze(
-    // eslint-disable-next-line no-new-func
-    new Function('s', `return '\x1b[${on}m' + s + '\x1b[${off}m';`)
-  );
-};
-
-const candyColorStash = {};
-/**
- * Create a set of candy-colored formatting functions for the given color mode.
- * You probably want to use this module's default export instead. See below.
- */
-export const candyColorStyles = colors => {
-  if (!candyColorStash[colors]) {
-    let formatForKey;
-    switch (colors) {
-      case COLOR.NONE:
-        formatForKey = () => identity;
-        break;
-      case COLOR.BASIC:
-        formatForKey = key =>
-          key === 'plain' ? identity : createFormatFunction(...SGR16[key]);
-        break;
-      case COLOR.INDEXED:
-      case COLOR.FULL:
-        formatForKey = key =>
-          key === 'plain' ? identity : createFormatFunction(...SGR256[key]);
-        break;
-      default:
-        assert.fail(`invalid color token "${String(colors)}"`);
-    }
-
-    const styles = { colors };
-    for (const key of keysOf(SGR16)) {
-      styles[key] = formatForKey(key);
-    }
-    candyColorStash[colors] = freeze(styles);
-  }
-
-  return candyColorStash[colors];
-};
+export function countColors({ env = process.env, stream = process.stderr }) {
+  return stream?.getColorDepth?.(env) ?? COLOR_DEPTH.MONO;
+}
 
 /**
  * Create a set of candy-colored formatting functions for the given stream and
  * environment.
  */
-export default ({ env = process.env, stream = process.stderr } = {}) => {
-  return candyColorStyles(countColors({ env, stream }));
-};
+export default function candy({
+  env = process.env,
+  stream = process.stderr,
+} = {}) {
+  const colorDepth = countColors({ env, stream });
+  if (colorDepth === COLOR_DEPTH.MONO) return PLAIN;
+  if (colorDepth === COLOR_DEPTH.BASIC) return SGR4;
+  if (colorDepth === COLOR_DEPTH.INDEXED) return SGR8;
+  return SGR24;
+}

@@ -9,12 +9,7 @@ import {
   toKeyPathPath,
   WILDCARD,
 } from '@grr/oddjob/string';
-import {
-  candyColorStyles,
-  COLOR,
-  countColors,
-  default as candy,
-} from '@grr/oddjob/candy';
+import { COLOR_DEPTH, countColors, default as candy } from '@grr/oddjob/candy';
 import { count, duration } from '@grr/oddjob/format';
 import harness from './harness.js';
 import {
@@ -28,12 +23,15 @@ import { isBoxed, isMap, isSet, isStringArray, isURL } from '@grr/oddjob/types';
 import pickle from '@grr/oddjob/pickle';
 import { enumView, readOnlyView } from '@grr/oddjob/object';
 import { runInNewContext } from 'vm';
+import { WriteStream } from 'tty';
 import { types } from 'util';
 
+const { BASIC, FULL, INDEXED, MONO } = COLOR_DEPTH;
 const { isArray } = Array;
 const { isNativeError } = types;
 const { MAX_SAFE_INTEGER } = Number;
-const { BASIC, FULL, INDEXED, NONE } = COLOR;
+const { stringify } = JSON;
+const escape = s => stringify(s).slice(1, -1);
 
 harness.test('@grr/oddjob', t => {
   // ===========================================================================
@@ -60,65 +58,45 @@ harness.test('@grr/oddjob', t => {
 
   // ===========================================================================
   t.test('candy', t => {
-    // ---------------------------------------------------------- countColors()
-    t.is(countColors({ env: { NODE_DISABLE_COLORS: '', stream: {} } }), NONE);
-    t.is(countColors({ env: { NO_COLOR: '', stream: {} } }), NONE);
-    t.is(countColors({ env: {}, stream: { isTTY: false } }), NONE);
-    t.is(countColors({ env: { TERM: 'dumb' }, stream: { isTTY: true } }), NONE);
-    t.is(countColors({ env: { CI: '' }, stream: { isTTY: true } }), NONE);
-    t.is(
-      countColors({ env: { CI: '', TRAVIS: '' }, stream: { isTTY: true } }),
-      BASIC
-    );
-    t.is(
-      countColors({
-        env: { TERM_PROGRAM: 'iTerm.app' },
-        stream: { isTTY: true },
-      }),
-      INDEXED
-    );
-    t.is(
-      countColors({
-        env: { TERM_PROGRAM: 'Apple_Terminal' },
-        stream: { isTTY: true },
-      }),
-      INDEXED
-    );
-    t.is(
-      countColors({ env: { TERM: 'xterm-256' }, stream: { isTTY: true } }),
-      INDEXED
-    );
-    t.is(
-      countColors({
-        env: { TERM_PROGRAM: 'MacTerm' },
-        stream: { isTTY: true },
-      }),
-      FULL
-    );
-    t.is(
-      countColors({ env: { TERM: 'vt100' }, stream: { isTTY: true } }),
-      BASIC
-    );
-    t.is(
-      countColors({ env: { TERM: 'monochromatic' }, stream: { isTTY: true } }),
-      NONE
-    );
+    // ----------------------------------------------------------- countColors()
+    const APPLE = 'Apple_Terminal';
+    // We only fake as much of the stream as we need.
+    const stream = { getColorDepth: WriteStream.prototype.getColorDepth };
 
-    // ----------------------------------------------------- candyColorStyles()
-    t.throws(() => candyColorStyles(665));
+    t.is(countColors({ env: { NODE_DISABLE_COLORS: '', stream } }), MONO);
+    t.is(countColors({ env: { NO_COLOR: '', stream } }), MONO);
+    t.is(countColors({ env: {}, stream }), MONO);
+    t.is(countColors({ env: { TERM: 'dumb' }, stream }), MONO);
+    t.is(countColors({ env: { CI: 'true' }, stream }), MONO);
+    t.is(countColors({ env: { CI: 'true', TRAVIS: '' }, stream }), INDEXED);
+    t.is(countColors({ env: { TERM_PROGRAM: 'iTerm.app' }, stream }), INDEXED);
+    t.is(countColors({ env: { TERM_PROGRAM: APPLE }, stream }), INDEXED);
+    t.is(countColors({ env: { TERM_PROGRAM: 'MacTerm' }, stream }), FULL);
+    t.is(countColors({ env: { TERM: 'xterm-256' }, stream }), INDEXED);
+    t.is(countColors({ env: { TERM_PROGRAM: 'MacTerm' }, stream }), FULL);
+    t.is(countColors({ env: { TERM: 'vt100' }, stream }), BASIC);
+    t.is(countColors({ env: { TERM: 'monochromatic' }, stream }), MONO);
 
-    // ---------------------------------------------------------------- candy()
-    let sweet = candy({ env: { TERM: 'dumb' }, stream: { isTTY: true } });
-    t.is(sweet.colors, NONE);
-    t.is(sweet.boldOrange(''), '');
+    // ----------------------------------------------------------------- candy()
+    let sweet = candy({ env: { TERM: 'dumb' }, stream });
+    t.is(sweet.colorDepth, MONO);
+    let styled = escape(sweet.boldOrange(' ({[*]}) '));
+    t.is(styled, ' ({[*]}) ');
 
-    sweet = candy({ env: { TERM: 'xterm' }, stream: { isTTY: true } });
-    t.is(sweet.colors, BASIC);
-    t.is(sweet.boldOrange(''), '\x1b[33;1m\x1b[39;22m');
+    sweet = candy({ env: { TERM: 'xterm' }, stream });
+    t.is(sweet.colorDepth, BASIC);
+    styled = escape(sweet.boldOrange(' ({[*]}) '));
+    t.is(styled, '\\u001b[33;1m ({[*]}) \\u001b[39;22m');
 
-    sweet = candy({ env: { TERM: 'xterm-256' }, stream: { isTTY: true } });
-    t.is(sweet.colors, INDEXED);
-    t.is(sweet.boldOrange(''), '\x1b[38;5;208;1m\x1b[39;22m');
+    sweet = candy({ env: { TERM: 'xterm-256' }, stream });
+    t.is(sweet.colorDepth, INDEXED);
+    styled = escape(sweet.boldOrange(' ({[*]}) '));
+    t.is(styled, '\\u001b[38;5;208;1m ({[*]}) \\u001b[39;22m');
+
+    sweet = candy({ env: { TERM_PROGRAM: 'MacTerm' }, stream });
+    t.is(sweet.colorDepth, FULL);
+    styled = escape(sweet.boldOrange(' ({[*]}) '));
+    t.is(styled, '\\u001b[38;5;208;1m ({[*]}) \\u001b[39;22m');
 
     t.end();
   });

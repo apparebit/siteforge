@@ -2,6 +2,7 @@
 
 import {
   copyAsset,
+  createSnippetInjector,
   extractFrontMatter,
   minifyScript,
   minifyStyle,
@@ -14,10 +15,13 @@ import {
 import harness from './harness.js';
 import { join } from 'path';
 import { Kind } from '@grr/inventory/kind';
+import { pipeline as doPipeline } from 'stream';
+import { promisify } from 'util';
 import { readFile, rmdir, toDirectory } from '@grr/fs';
 
 const __directory = toDirectory(import.meta.url);
 const { assign, keys: keysOf } = Object;
+const pipeline = promisify(doPipeline);
 
 harness.test('@grr/builder', async t => {
   const buildDir = join(__directory, 'fixtures', 'build');
@@ -182,6 +186,58 @@ harness.test('@grr/builder', async t => {
     context
   ));
   t.equal(content, '.class{margin-top:1em;margin-bottom:1em}');
+
+  const rewrite = (snippet, ...fragments) => {
+    function* source() {
+      for (const fragment of fragments) {
+        yield fragment;
+      }
+    }
+
+    async function sink(fragments) {
+      const result = [];
+      for await (const fragment of fragments) {
+        result.push(fragment);
+      }
+      return Promise.resolve(result.join(''));
+    }
+
+    const transform = createSnippetInjector(snippet);
+    return pipeline(source, transform, sink);
+  };
+
+  t.is(
+    await rewrite('waldo', '<!DOCTYPE html><html lang=en><body></body></html>'),
+    '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
+  );
+
+  t.is(
+    await rewrite(
+      'waldo',
+      '<!DOCTYPE html>',
+      '<html lang=en><body>',
+      '</body></html>'
+    ),
+    '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
+  );
+
+  t.is(
+    await rewrite(
+      'waldo',
+      '<!DOCTYPE html>',
+      '<html lang=en><body>',
+      '</bo',
+      'dy></html>'
+    ),
+    '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
+  );
+
+  t.is(
+    await rewrite('waldo', '<!DOCTYPE html>', '<html lang=en>', '</html>'),
+    '<!DOCTYPE html><html lang=en>waldo</html>'
+  );
+
+  t.is(await rewrite('waldo', 'hello '), 'hello waldo');
 
   t.end();
 });

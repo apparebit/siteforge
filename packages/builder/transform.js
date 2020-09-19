@@ -15,6 +15,7 @@ import minify from 'babel-minify';
 import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
+import { Transform } from 'stream';
 
 const { assign, create, defineProperty, setPrototypeOf } = Object;
 const configurable = true;
@@ -319,4 +320,53 @@ export async function minifyStyle(file, context) {
     to: join(context.options.buildDir, file.path),
   });
   return { content: minified.css };
+}
+
+// -----------------------------------------------------------------------------
+
+const TrailingClosingTag = /<(\/[^>]*)?$/iu;
+const EndOfDocument = /<\/body>|<\/html>/iu;
+
+export function createSnippetInjector(snippet) {
+  let injected = false;
+  let buffered = null;
+
+  return new Transform({
+    encoding: 'utf8',
+
+    transform(chunk, encoding, callback) {
+      if (buffered) {
+        chunk = buffered + chunk;
+        buffered = null;
+      }
+
+      if (!injected) {
+        // Buffer incomplete closing tag at end of buffer for next step.
+        let match = TrailingClosingTag.exec(chunk);
+        if (match) {
+          buffered = match[0];
+          chunk = chunk.slice(0, -1 * match[0].length);
+        }
+
+        match = EndOfDocument.exec(chunk);
+        if (match) {
+          injected = true;
+          const before = chunk.slice(0, match.index);
+          const after = chunk.slice(match.index);
+          chunk = before + snippet + after;
+        }
+      }
+
+      callback(null, chunk);
+    },
+
+    flush(callback) {
+      if (!injected) {
+        buffered = (buffered ?? '') + snippet;
+      }
+
+      callback(null, buffered);
+      buffered = null;
+    },
+  });
 }

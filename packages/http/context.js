@@ -66,6 +66,7 @@ const {
   Status,
   StrictTransportSecurity,
   TransferEncoding,
+  UserAgent,
   XssProtection,
 } = Header;
 
@@ -573,14 +574,20 @@ export default class Context {
 
   // ===========================================================================
 
-  /** Summarize this request, response exchange in common log format. */
-  summary({ time = Date.now() } = {}) {
+  /**
+   * Format a log entry for this request, response interaction in the combined
+   * log format, which is the same as the Common Log Format with the values of
+   * the `referer` and `user-agent` request headers appended.
+   */
+  toCombinedLogFormat({ time = Date.now() } = {}) {
+    // See http://httpd.apache.org/docs/current/logs.html#accesslog
     const { request, response } = this;
 
     let message = `${this.client} - - [${new Date(time).toISOString()}]`;
     message += ` "${request.method} ${request.path} HTTP2"`;
     message += ` ${response.status} ${response.length ?? '-'}`;
     message += ` "${request.get(Referer) ?? '-'}"`;
+    message += ` "${request.get(UserAgent) ?? '-'}"`;
     return message;
   }
 

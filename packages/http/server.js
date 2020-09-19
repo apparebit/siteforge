@@ -118,7 +118,7 @@ export default class Server {
   static async log(context, next) {
     const time = Date.now();
     await next();
-    context.logger.info(context.summary({ time }));
+    context.logger.info(context.toCombinedLogFormat({ time }));
   }
 
   /** Send the response. */
@@ -194,7 +194,7 @@ export default class Server {
     context.respond();
 
     // Log request and response.
-    context.logger.info(context.summary({ time }));
+    context.logger.info(context.toCombinedLogFormat({ time }));
   }
 
   /** Redirect requests with path ending with slash to the unslashed version. */
@@ -217,6 +217,19 @@ export default class Server {
     };
   }
 
+  /**
+   * Create a new event source. This method returns new middleware that accepts
+   * client requests for connecting to the event source. The result not only is
+   * a function but also has three properties that help manage the event source:
+   *
+   *  -  `ping()` sends a comment to all connected clients;
+   *  -  `emit({ id, event, data })` sends a message to all connected clients,
+   *  -  `close()` gracefully shuts down the event source.
+   *
+   * The data for sending a message should either be a string or an array of
+   * strings. In the latter case, the message has as many `data:` lines as the
+   * array has elements. Browsers concatenate these lines with a newline.
+   */
   static makeEventSource({
     heartbeat = 10 * 60 * 1000,
     reconnect = 2000,

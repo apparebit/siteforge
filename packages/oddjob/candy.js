@@ -19,10 +19,12 @@ const [PLAIN, SGR4, SGR8, SGR24] = (() => {
   // Provide skeleton style definitions for the four color depths.
   const PLAIN = assign(create(null), {
     colorDepth: COLOR_DEPTH.MONO,
+    plain: identity,
   });
 
   const SGR4 = assign(create(null), {
     colorDepth: COLOR_DEPTH.BASIC,
+    plain: identity,
 
     bold: ['1', '22'],
     italic: ['3', '23'],
@@ -42,12 +44,11 @@ const [PLAIN, SGR4, SGR8, SGR24] = (() => {
     boldRed: ['31;1', '39;22'],
     red: ['31', '39'],
     overRed: ['97;41;1', '39;49;22'],
-
-    plain: identity,
   });
 
   const SGR8 = assign(create(null), {
     colorDepth: COLOR_DEPTH.INDEXED,
+    plain: identity,
 
     overGreen: ['48;5;119;1', '49;22'],
     boldOrange: ['38;5;208;1', '39;22'],
@@ -56,30 +57,30 @@ const [PLAIN, SGR4, SGR8, SGR24] = (() => {
 
   const SGR24 = assign(create(null), {
     colorDepth: COLOR_DEPTH.FULL,
+    plain: identity,
   });
 
   // Automatically flesh out style definitions to make them usable.
   for (const key of keysOf(SGR8)) {
-    if (key === 'colorDepth') continue;
+    if (key === 'colorDepth' || key === 'plain') continue;
 
     const [on, off] = SGR8[key];
-    const format = s => `\x1b[${on}m${s}\x1b[${off}m`;
+    const stylize = s => `\x1b[${on}m${s}\x1b[${off}m`;
 
-    SGR8[key] = format;
-    if (SGR24[key] === undefined) SGR24[key] = format;
+    SGR8[key] = stylize;
+    if (SGR24[key] === undefined) SGR24[key] = stylize;
   }
 
   for (const key of keysOf(SGR4)) {
-    if (key === 'colorDepth') continue;
+    if (key === 'colorDepth' || key === 'plain') continue;
     PLAIN[key] = identity;
-    if (key === 'plain') continue;
 
     const [on, off] = SGR4[key];
-    const format = s => `\x1b[${on}m${s}\x1b[${off}m`;
+    const stylize = s => `\x1b[${on}m${s}\x1b[${off}m`;
 
-    SGR4[key] = format;
-    if (SGR8[key] === undefined) SGR8[key] = format;
-    if (SGR24[key] === undefined) SGR24[key] = format;
+    SGR4[key] = stylize;
+    if (SGR8[key] === undefined) SGR8[key] = stylize;
+    if (SGR24[key] === undefined) SGR24[key] = stylize;
   }
 
   return [PLAIN, SGR4, SGR8, SGR24];

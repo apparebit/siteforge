@@ -1,29 +1,24 @@
 /* © 2019-2020 Robert Grimm */
 
-import { rmdir, toDirectory } from '@grr/fs';
-import harness from './harness.js';
-import { join } from 'path';
+// Start measuring.
 import Metrics from '@grr/metrics';
-import Parser from 'tap-parser';
-import { pipeline as doPipeline } from 'stream';
-import { promisify } from 'util';
-
-const ROOT = join(toDirectory(import.meta.url), '..');
-const COVERAGE_DATA = join(ROOT, '.coverage');
-
-// Tap is a readable stream and tap-parser is a writable stream. That means
-// reasonable error reporting is only a few event handlers and a `pipeline`
-// away.
-
-process.title = 'test:forge';
-
 const metrics = new Metrics();
-const endTest = metrics.timer('main').start();
+const stopMainTimer = metrics.timer('main').start();
 
-const parser = new Parser({});
+// Instantiate test harness. Set process title, since it is used by logger.
+process.title = 'test:forge';
+import harness from './harness.js';
+
+// Load rest of modules.
+import { join } from 'path';
+import Parser from 'tap-parser';
+import { pipeline } from 'stream';
+import { rmdir, toDirectory } from '@grr/fs';
+
+// Set up reporting of individual test results.
 const { rollcall } = harness;
+const parser = new Parser({});
 parser.on('result', result => rollcall.test(result));
-
 const onComment = comment => rollcall.info(comment);
 const onChild = child => {
   child.on('comment', onComment);
@@ -31,20 +26,24 @@ const onChild = child => {
 };
 onChild(parser);
 
-const done = () => {
+pipeline(harness, parser, (error) => {
+  if (error) rollcall.error(error);
+});
+
+// Set up reporting of overall test results.
+process.on('exit', () => {
   const { pass, fail } = harness.counts;
   rollcall.doneTesting({
     pass,
     fail,
-    duration: endTest().get(),
+    duration: stopMainTimer().get(),
   });
   if (fail === 0) process.exitCode = 0;
-};
+});
 
-process.on('exit', done);
-
-const pipeline = promisify(doPipeline);
-pipeline(harness, parser);
+// Run per-package tests by loading corresponding module.
+const ROOT = join(toDirectory(import.meta.url), '..');
+const COVERAGE_DATA = join(ROOT, '.coverage');
 
 (async function run() {
   await rmdir(COVERAGE_DATA, { recursive: true });

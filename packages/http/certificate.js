@@ -19,9 +19,10 @@ const { mkdir, readFile, writeFile } = promises;
 
 /**
  * Create a new configuration for certificate creation via OpenSSL. This
- * function returns an object. Its `config` property is the text for the
- * corresponding configuration file. Its `commonName` is the the text for the corresponding configuration file
- *
+ * function returns the text for the corresponding configuration file. The
+ * signature and hash algorithms as well as the validity period in days must be
+ * specified as command line arguments, e.g., `-newkey rsa:2048 -sha256 -days
+ * 30`.
  */
 export const createConfiguration = ({
   dns = ['localhost'],
@@ -93,9 +94,8 @@ const onExit = child => {
  * Create a new self-signed certificate for the given DNS names and IP
  * addresses. The certificate is valid for the given number of days. It is
  * stored in a file with the given path and the `.crt` extension. Its private
- * key is stored in a file with the same path and the `.key` extension. The
- * OpenSSL configuration is stored in a file with the same path and the `.cnf`
- * extension.
+ * key is stored in a file with the same path and `.key` extension. The OpenSSL
+ * configuration is stored in a file with the same path and `.cnf` extension.
  */
 export const createCertificate = async ({
   dns = ['localhost'],

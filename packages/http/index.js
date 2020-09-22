@@ -25,7 +25,12 @@ export {
   escapeText,
 } from './util.js';
 
-export { certifyLocalhost, readCertDates, refreshen } from './certificate.js';
+export {
+  certificate,
+  createCertificate,
+  parseValidity,
+} from './certificate.js';
+
 export { default as MediaType } from './media-type.js';
 
 // Client.

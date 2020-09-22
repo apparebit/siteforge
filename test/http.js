@@ -7,6 +7,7 @@ import { join } from 'path';
 import { promises } from 'fs';
 
 import {
+  certificate,
   Client,
   Context,
   //createServerEventHandler,
@@ -17,7 +18,6 @@ import {
   MethodName,
   parseDateHTTP,
   parseDateOpenSSL,
-  refreshen,
   Server,
   StatusCode,
   validateRequestPath,
@@ -54,8 +54,8 @@ const BareType = {
 };
 
 const prepareSecrets = async () => {
-  const path = fileURLToPath(new URL('../tls', import.meta.url));
-  const secrets = await refreshen({ path });
+  const path = fileURLToPath(new URL('../tls/localhost', import.meta.url));
+  const secrets = await certificate({ path });
   secrets.authority = 'https://localhost:6651';
   return secrets;
 };

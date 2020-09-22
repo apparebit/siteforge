@@ -1,57 +1,87 @@
 /* © 2020 Robert Grimm */
 
 import { strict as assert } from 'assert';
+import { dirname } from 'path';
 import { EOL } from 'os';
-import { fileURLToPath } from 'url';
-import { join } from 'path';
 import { parseDateOpenSSL } from './util.js';
 import { promises } from 'fs';
 import { spawn } from 'child_process';
 
-const LOCALHOST_CFG = 'localhost.cfg';
-const LOCALHOST_CRT = 'localhost.crt';
-const LOCALHOST_KEY = 'localhost.key';
+const { mkdir, readFile, writeFile } = promises;
 
-const { mkdir, readFile } = promises;
+// NB: OpenSSL used to require a configuration file for generating self-signed
+// certificates. That changed with OpenSSL 1.1.0 thanks to the introduction of
+// the `-addext` command line option. However, the implementation is buggy
+// (https://github.com/openssl/openssl/issues/12940) and the option is not
+// supported by LibreSSL. In short, we are stuck with the configuration file.
 
 // -----------------------------------------------------------------------------
 
 /**
- * Create a new self-signed certificate. The certificate is restricted for use
- * as a server certificate for `localhost` for 30 days. Both certificate and
- * private key are stored in the directory with the given path. This function
- * expects that OpenSSL is installed and the executable is on the system's PATH.
+ * Create a new configuration for certificate creation via OpenSSL. This
+ * function returns an object. Its `config` property is the text for the
+ * corresponding configuration file. Its `commonName` is the the text for the corresponding configuration file
+ *
  */
-export const certifyLocalhost = async ({ openssl = 'openssl', path }) => {
-  // Make sure the directory exists.
-  await mkdir(path, { recursive: true });
+export const createConfiguration = ({
+  dns = ['localhost'],
+  ip = ['127.0.0.1', '::ffff:7f00:1'],
+} = {}) => {
+  const names = dns.map(name => `DNS:${name}`).join(',');
+  const addresses = ip.map(address => `IP:${address}`).join(',');
 
-  // prettier-ignore
-  const args = [
-    'req', '-x509',
-    '-newkey', 'rsa',
-    '-nodes',
-    '-keyout', LOCALHOST_KEY,
-    '-subj', '/CN=localhost',
-    '-days', '30', // It's the default but let's be explicit.
-    '-config', fileURLToPath(new URL(LOCALHOST_CFG, import.meta.url)),
-    '-out', LOCALHOST_CRT,
-  ];
+  let commonName, altNames;
+  if (dns.length && ip.length) {
+    commonName = dns[0];
+    altNames = `${names},${addresses}`;
+  } else if (dns.length) {
+    commonName = dns[0];
+    altNames = names;
+  } else if (ip.length) {
+    commonName = ip[0];
+    altNames = addresses;
+  } else {
+    throw new TypeError(
+      `Certificate must have at least one DNS name or IP address`
+    );
+  }
 
-  const child = spawn(openssl, args, { cwd: path });
+  return `[req]
+prompt             = no
+distinguished_name = dn
+x509_extensions    = ext
 
+[dn]
+commonName         = ${commonName}
+
+[ext]
+basicConstraints   = critical,CA:FALSE
+subjectAltName     = ${altNames}
+keyUsage           = critical,digitalSignature,keyCertSign
+extendedKeyUsage   = serverAuth
+`;
+};
+
+/**
+ * Create a promise for exit of the child process. If the child process exits
+ * with a code of 0, the promise resolves with the child process' output and
+ * error streams. Otherwise, the promise rejects with an appropriate error.
+ */
+const onExit = child => {
+  // Capture output.
   let out = '';
   child.stdout.on('data', chunk => (out += chunk));
   child.stderr.on('data', chunk => (out += chunk));
 
+  // Report exit condition.
   return new Promise((resolve, reject) => {
     child.on('exit', (code, signal) => {
       if (code === 0) {
-        resolve();
+        resolve(out);
       } else {
-        const indicator = signal ? `signal "${signal}"` : `code "${code}"`;
-        const output = `output << EOM${EOL}${out}${EOL}EOM`;
-        reject(new Error(`OpenSSL terminated with ${indicator} and ${output}`));
+        const event = signal ? `signal "${signal}"` : `code "${code}"`;
+        const output = `output <<< EOM${EOL}${out}${EOL}EOM`;
+        reject(new Error(`OpenSSL terminated with ${event} and ${output}`));
       }
     });
   });
@@ -59,54 +89,79 @@ export const certifyLocalhost = async ({ openssl = 'openssl', path }) => {
 
 // =============================================================================
 
-// Helper function to convert (part of a) certificate to text.
-const getCertInfo = ({ openssl = 'openssl', path, cert, info = '-text' }) => {
-  assert((path == null && cert != null) || (path != null && cert == null));
+/**
+ * Create a new self-signed certificate for the given DNS names and IP
+ * addresses. The certificate is valid for the given number of days. It is
+ * stored in a file with the given path and the `.crt` extension. Its private
+ * key is stored in a file with the same path and the `.key` extension. The
+ * OpenSSL configuration is stored in a file with the same path and the `.cnf`
+ * extension.
+ */
+export const createCertificate = async ({
+  dns = ['localhost'],
+  ip = ['127.0.0.1', '::ffff:7f00:1'],
+  days = '30',
+  path = './localhost',
+  openssl = 'openssl',
+} = {}) => {
+  await mkdir(dirname(path), { recursive: true });
+
+  await writeFile(
+    path + '.cnf',
+    createConfiguration({ dns, ip, path }),
+    'utf8'
+  );
 
   // prettier-ignore
-  const args = [
+  const child = spawn(openssl, [
+    'req', '-x509',
+    '-newkey', 'rsa:2048',
+    '-nodes',
+    '-keyout', path + '.key',
+    '-config', path + '.cnf',
+    '-sha256',
+    '-days', days,
+    '-out', path + '.crt',
+  ]);
+
+  return onExit(child);
+};
+
+// =============================================================================
+
+const doParseCert = ({
+  cert,
+  path,
+  openssl = 'openssl',
+  info = '-text',
+} = {}) => {
+  if ((cert && path) || (!cert && !path)) {
+    throw new TypeError(`Invoke function with either a certificate or a path`);
+  }
+
+  // prettier-ignore
+  const child = spawn(openssl, [
     'x509',
     ...(path ? ['-in', path] : []),
     '-noout',
     info,
-  ];
+  ]);
 
-  const child = spawn(openssl, args);
-
-  // Pipe certificate if in memory.
   if (cert) child.stdin.write(cert);
-
-  // Capture stdout with printed information, drop stderr to floor.
-  let out = '';
-  child.stdout.on('data', chunk => (out += chunk));
-  child.stderr.on('data', () => {});
-
-  return new Promise((resolve, reject) => {
-    child.on('exit', (code, signal) => {
-      if (code === 0) {
-        resolve(out);
-      } else if (signal != null) {
-        reject(new Error(`OpenSSL terminated with signal "${signal}"`));
-      } else {
-        reject(new Error(`OpenSSL terminated with code "${code}"`));
-      }
-    });
-  });
+  return onExit(child);
 };
 
-// -----------------------------------------------------------------------------
-
 /**
- * Read the not-before and not-after dates from a certificate. If `path` is
- * defined, the certificate is stored in a file with that path. If `cert` is
- * defined instead, the certificate is passed by value. This function expects
- * that OpenSSL is installed and on the path.
+ * Extract the not-before and not-after dates from a certificate, which is
+ * either provided by value (`cert`) or by reference (`path`).
  */
-export const readCertDates = async ({ openssl = 'openssl', path, cert }) => {
-  const output = getCertInfo({ openssl, path, cert, info: '-dates' });
-
-  // Parse OpenSSL's output of two lines with key=value pairs.
-  const lines = (await output).split(/\r?\n/u);
+export const parseValidity = async ({
+  cert,
+  path,
+  openssl = 'openssl',
+} = {}) => {
+  const text = await doParseCert({ cert, path, openssl, info: '-dates' });
+  const lines = text.split(/\r?\n/u);
 
   let [label, date] = lines[0].split('=');
   assert(label === 'notBefore');
@@ -120,42 +175,32 @@ export const readCertDates = async ({ openssl = 'openssl', path, cert }) => {
   return { notBefore, notAfter };
 };
 
-// -----------------------------------------------------------------------------
-
-/** Convert a certificate to its human-readable representation. */
-export const dumpCertificate = /* async */ ({
-  openssl = 'openssl',
-  path,
-  cert,
-}) => getCertInfo({ openssl, path, cert });
+/**
+ * Dump the entire certificate in human-readable representation. The certificate
+ * can be provided by value (`cert`) or by reference (`path`).
+ */
+export const dumpCertificate = ({ cert, path, openssl = 'openssl' } = {}) =>
+  doParseCert({ cert, path, openssl });
 
 // =============================================================================
 
-/**
- * Load the TLS certificate and key from the given directory. If the certificate
- * does not exist, the certificate is not yet valid, the certificate is about to
- * expire, or the private key does not exist, this function automatically
- * recreates a new self-signed certificate and key. This function treats a
- * certificate as expired `epsilon` seconds before its actual expiration.
- * OpenSSL or its fork LibreSSL must be installed and on the system path.
- */
-export const refreshen = async ({
+/** Load or create a self-signed certificate meeting the specification. */
+export const certificate = async ({
+  dns = ['localhost'],
+  ip = ['127.0.0.1', '::ffff:7f00:1'],
+  days = '30',
+  path = './localhost',
   openssl = 'openssl',
-  path,
   epsilon = 10 * 60,
-}) => {
-  const certPath = join(path, LOCALHOST_CRT);
-  const keyPath = join(path, LOCALHOST_KEY);
+} = {}) => {
+  const certPath = path + '.crt';
+  const keyPath = path + '.key';
 
-  const readChecked = async () => {
-    // Read the certificate and private key.
-    const cert = await readFile(certPath);
-    const key = await readFile(keyPath);
+  const load = async () => {
+    const cert = await readFile(certPath, 'utf8');
+    const key = await readFile(keyPath, 'utf8');
 
-    // Extract the not-before and not-after dates.
-    const { notBefore, notAfter } = await readCertDates({ openssl, cert });
-
-    // Validate against current time.
+    const { notBefore, notAfter } = await parseValidity({ cert, openssl });
     const now = Date.now();
     if (notBefore <= now && now <= notAfter - epsilon * 1000) {
       return { cert, key };
@@ -163,20 +208,20 @@ export const refreshen = async ({
 
     const lower = new Date(notBefore).toISOString();
     const upper = new Date(notAfter).toISOString();
-    const error = new Error(`Certificate valid from ${lower} to ${upper}`);
+    const error = new Error(`Certificate only valid from ${lower} to ${upper}`);
     error.code = 'CERT_INVALID';
     throw error;
   };
 
-  // Try to read and validate certificate (plus private key).
+  // Try loading certificate and key. If that doesn't work because there is no
+  // certificate or the certificate isn't valid, create a new certificate and
+  // try loading again.
   try {
-    return await readChecked();
+    return await load();
   } catch (x) {
     if (x.code !== 'ENOENT' && x.code !== 'CERT_INVALID') throw x;
   }
 
-  // Either the file didn't exist or the certificate wasn't valid. So we create
-  // a new self-signed certificate and try to read and validate again.
-  await certifyLocalhost({ openssl, path });
-  return readChecked();
+  await createCertificate({ dns, ip, days, path, openssl });
+  return load();
 };

@@ -26,9 +26,10 @@ export {
 } from './util.js';
 
 export {
-  certificate,
-  createCertificate,
+  createSelfSigned,
+  dumpCertificate,
   parseValidity,
+  readySelfSigned,
 } from './certificate.js';
 
 export { default as MediaType } from './media-type.js';

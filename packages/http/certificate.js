@@ -18,11 +18,11 @@ const { mkdir, readFile, writeFile } = promises;
 // -----------------------------------------------------------------------------
 
 /**
- * Create a new configuration for certificate creation via OpenSSL. This
- * function returns the text for the corresponding configuration file. The
- * signature and hash algorithms as well as the validity period in days must be
- * specified as command line arguments, e.g., `-newkey rsa:2048 -sha256 -days
- * 30`.
+ * Create a new configuration for creation of self-signed certificates via
+ * OpenSSL. This function returns the text for the corresponding configuration
+ * file. The signature and hash algorithms as well as the validity period in
+ * days must be specified as command line arguments, e.g., `-newkey rsa:2048
+ * -sha256 -days 30`.
  */
 export const createConfiguration = ({
   dns = ['localhost'],
@@ -97,7 +97,7 @@ const onExit = child => {
  * key is stored in a file with the same path and `.key` extension. The OpenSSL
  * configuration is stored in a file with the same path and `.cnf` extension.
  */
-export const createCertificate = async ({
+export const createSelfSigned = async ({
   dns = ['localhost'],
   ip = ['127.0.0.1', '::ffff:7f00:1'],
   days = '30',
@@ -185,7 +185,7 @@ export const dumpCertificate = ({ cert, path, openssl = 'openssl' } = {}) =>
 // =============================================================================
 
 /** Load or create a self-signed certificate meeting the specification. */
-export const certificate = async ({
+export const readySelfSigned = async ({
   dns = ['localhost'],
   ip = ['127.0.0.1', '::ffff:7f00:1'],
   days = '30',
@@ -222,6 +222,6 @@ export const certificate = async ({
     if (x.code !== 'ENOENT' && x.code !== 'CERT_INVALID') throw x;
   }
 
-  await createCertificate({ dns, ip, days, path, openssl });
+  await createSelfSigned({ dns, ip, days, path, openssl });
   return load();
 };

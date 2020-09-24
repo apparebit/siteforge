@@ -9,8 +9,6 @@ import { promises } from 'fs';
 import {
   Client,
   Context,
-  //createServerEventHandler,
-  //events,
   Header,
   identifyEndpoint,
   MediaType,

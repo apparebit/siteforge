@@ -5,11 +5,11 @@
 import { buildAll } from '@grr/builder';
 import { configure, validate } from './config.js';
 import createContext from '@grr/builder/context';
-import { createStaticContentHandler, Server } from '@grr/http';
+import { readySelfSigned, Server } from '@grr/http';
 import { join, resolve } from 'path';
 import { Kind } from '@grr/inventory/kind';
 import launch from '@grr/loader/launch';
-import { readFile, rmdir, toDirectory } from '@grr/fs';
+import { readFile, rm, toDirectory } from '@grr/fs';
 import run from '@grr/run';
 import vnuPath from 'vnu-jar';
 import walk from '@grr/walk';
@@ -137,7 +137,7 @@ async function main() {
     !options.dryRun
   ) {
     logger.section(1, `Clean previous build in "${options.buildDir}"`, config);
-    await rmdir(options.buildDir, { recursive: true });
+    await rm(options.buildDir, { recursive: true });
   }
 
   // ---------------------------------------------------------------------------

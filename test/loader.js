@@ -61,38 +61,38 @@ function main() {
         () => returnOrThrow({ error: 'boo!', stack: 'empty' }),
         /^boo!/u
       );
-      t.is(returnOrThrow({ value: 665 }), 665);
+      t.equal(returnOrThrow({ value: 665 }), 665);
 
       // ---------------------------------------------------- @grr/loader/invoke
       const request = async specifier =>
         (await call.handleRequest(specifier)).url;
       const response = num => call.handleResponse(DummyHash(num)).source;
 
-      t.is(await request('@grr/loader/invoke/billy'), DummyHash(1));
-      t.is(await request('@grr/loader/invoke/frilly/13'), DummyHash(2));
-      t.is(await request('@grr/loader/invoke/billy/665'), DummyHash(3));
-      t.is(await request('@grr/loader/invoke/silly/665'), DummyHash(4));
+      t.equal(await request('@grr/loader/invoke/billy'), DummyHash(1));
+      t.equal(await request('@grr/loader/invoke/frilly/13'), DummyHash(2));
+      t.equal(await request('@grr/loader/invoke/billy/665'), DummyHash(3));
+      t.equal(await request('@grr/loader/invoke/silly/665'), DummyHash(4));
 
-      t.is(
+      t.equal(
         response(1),
         `export default ` +
           `{"error":"Malformed XPC request \\"@grr/loader/invoke/billy\\""};`
       );
 
-      t.is(
+      t.equal(
         response(2),
         `export default ` +
           `{"error":"XPC command \\"frilly\\" is not implemented"};`
       );
 
-      t.is(response(3), `export default ` + `{"value":{"data":665}};`);
+      t.equal(response(3), `export default ` + `{"value":{"data":665}};`);
       t.ok(response(4).startsWith(`export default {"error":"data is 665"`));
 
       t.end();
     });
 
     let { default: status } = await import('@grr/loader/status');
-    t.is(status, 'no loader');
+    t.equal(status, 'no loader');
 
     const { execPath: node } = process;
     // Warnings by the subprocess only clutter test output. Suppress them.
@@ -107,7 +107,7 @@ function main() {
 function withLoader() {
   harness.test('@grr/loader/invoke', async t => {
     let status = await import('@grr/loader/status');
-    t.is(status.default, '@grr/loader');
+    t.equal(status.default, '@grr/loader');
 
     t.same(await invoke('ping', 665), { pong: 665 });
     t.same(await invoke('ping', { ping: 42 }), { pong: { ping: 42 } });

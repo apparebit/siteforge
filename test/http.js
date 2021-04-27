@@ -80,15 +80,15 @@ harness.test('@grr/http', t => {
   t.test('@grr/http/MediaType', t => {
     // ----------------------------------------------------- MediaType.unquote()
     t.throws(() => MediaType.unquote('#boo#'));
-    t.is(MediaType.unquote(`""`).value, ``);
-    t.is(MediaType.unquote(`"boo"`).value, `boo`);
-    t.is(MediaType.unquote(`"\\"\\\\\\""`).value, `"\\"`);
-    t.is(
+    t.equal(MediaType.unquote(`""`).value, ``);
+    t.equal(MediaType.unquote(`"boo"`).value, `boo`);
+    t.equal(MediaType.unquote(`"\\"\\\\\\""`).value, `"\\"`);
+    t.equal(
       MediaType.unquote(`"text\\"text\\\\text\\"text"`).value,
       `text"text\\text"text`
     );
-    t.is(MediaType.unquote(`"text`).value, `text`);
-    t.is(MediaType.unquote(`"text\\`).value, `text\\`);
+    t.equal(MediaType.unquote(`"text`).value, `text`);
+    t.equal(MediaType.unquote(`"text\\`).value, `text\\`);
 
     // -------------------------------------------------------- MediaType.from()
     t.throws(() => MediaType.from(``));
@@ -122,91 +122,91 @@ harness.test('@grr/http', t => {
     );
 
     const css = MediaType.from('text/css');
-    t.is(css, MediaType.CSS);
-    t.is(css.parameters.charset, 'UTF-8');
-    t.is(MediaType.from('text/css'), MediaType.CSS);
+    t.equal(css, MediaType.CSS);
+    t.equal(css.parameters.charset, 'UTF-8');
+    t.equal(MediaType.from('text/css'), MediaType.CSS);
 
     // ------------------------------------------- MediaType.prototype.compare()
 
-    t.is(
+    t.equal(
       MediaType.VideoMP4.compareTo(MediaType.AudioMP4.with({ q: 0.5 })),
       -0.5
     );
-    t.is(
+    t.equal(
       MediaType.Any.with({ q: 0.2 }).compareTo(
         MediaType.Audio.with({ q: 0.4 })
       ),
       1
     );
-    t.is(
+    t.equal(
       MediaType.Audio.with({ q: 0.4 }).compareTo(
         MediaType.Any.with({ q: 0.2 })
       ),
       -1
     );
-    t.is(
+    t.equal(
       MediaType.Any.with({ q: 0.2 }).compareTo(
         MediaType.AudioMP4.with({ q: 0.4 })
       ),
       2
     );
-    t.is(
+    t.equal(
       MediaType.AudioMP4.with({ q: 0.4 }).compareTo(
         MediaType.Any.with({ q: 0.2 })
       ),
       -2
     );
-    t.is(
+    t.equal(
       MediaType.Any.with({ q: 0.2 }).compareTo(
         MediaType.PlainText.with({ q: 0.4 })
       ),
       3
     );
-    t.is(
+    t.equal(
       MediaType.PlainText.with({ q: 0.4 }).compareTo(
         MediaType.Any.with({ q: 0.2 })
       ),
       -3
     );
-    t.is(
+    t.equal(
       MediaType.PlainText.with({ q: 0.2 }).compareTo(
         MediaType.HTML.with({ q: 0.4 })
       ),
       0.2
     );
-    t.is(
+    t.equal(
       MediaType.HTML.with({ q: 0.4 }).compareTo(
         MediaType.PlainText.with({ q: 0.2 })
       ),
       -0.2
     );
-    t.is(MediaType.AudioMP4.compareTo(MediaType.VideoMP4), 0);
-    t.is(MediaType.VideoMP4.compareTo(MediaType.AudioMP4), 0);
-    t.is(MediaType.Any.compareTo(MediaType.Any), 0);
-    t.is(MediaType.Any.compareTo(MediaType.Video), 1);
-    t.is(MediaType.Video.compareTo(MediaType.Any), -1);
-    t.is(MediaType.Video.compareTo(MediaType.VideoMP4), 1);
-    t.is(MediaType.VideoMP4.compareTo(MediaType.Video), -1);
-    t.is(MediaType.VideoMP4.compareTo(MediaType.H264), 0);
-    t.is(MediaType.H264.compareTo(MediaType.VideoMP4), 0);
-    t.is(MediaType.PNG.compareTo(MediaType.SVG), 0);
-    t.is(MediaType.SVG.compareTo(MediaType.PNG), 0);
-    t.is(MediaType.Image.compareTo(MediaType.Image), 0);
-    t.is(MediaType.PlainText.compareTo(MediaType.PlainText), 0);
-    t.is(
+    t.equal(MediaType.AudioMP4.compareTo(MediaType.VideoMP4), 0);
+    t.equal(MediaType.VideoMP4.compareTo(MediaType.AudioMP4), 0);
+    t.equal(MediaType.Any.compareTo(MediaType.Any), 0);
+    t.equal(MediaType.Any.compareTo(MediaType.Video), 1);
+    t.equal(MediaType.Video.compareTo(MediaType.Any), -1);
+    t.equal(MediaType.Video.compareTo(MediaType.VideoMP4), 1);
+    t.equal(MediaType.VideoMP4.compareTo(MediaType.Video), -1);
+    t.equal(MediaType.VideoMP4.compareTo(MediaType.H264), 0);
+    t.equal(MediaType.H264.compareTo(MediaType.VideoMP4), 0);
+    t.equal(MediaType.PNG.compareTo(MediaType.SVG), 0);
+    t.equal(MediaType.SVG.compareTo(MediaType.PNG), 0);
+    t.equal(MediaType.Image.compareTo(MediaType.Image), 0);
+    t.equal(MediaType.PlainText.compareTo(MediaType.PlainText), 0);
+    t.equal(
       MediaType.PlainText.with({ formed: 'fixed' }).compareTo(
         MediaType.PlainText
       ),
       -1
     );
-    t.is(
+    t.equal(
       MediaType.PlainText.with({ formed: 'fixed' }).compareTo(
         BareType.PlainText
       ),
       -2
     );
-    t.is(BareType.PlainText.compareTo(MediaType.PlainText), 1);
-    t.is(MediaType.PlainText.compareTo(BareType.PlainText), -1);
+    t.equal(BareType.PlainText.compareTo(MediaType.PlainText), 1);
+    t.equal(MediaType.PlainText.compareTo(BareType.PlainText), -1);
 
     // ---------------------------------------------------- MediaType.parseAll()
     let lotsOfParsedTypes = [
@@ -346,10 +346,10 @@ harness.test('@grr/http', t => {
     t.ok(MediaType.VideoMP4.matchTo(MediaType.Any));
 
     // ------------------------------------------ MediaType.prototype.toString()
-    t.is(MediaType.Any.toString(), '*/*');
-    t.is(MediaType.Text.toString(), 'text/*');
-    t.is(BareType.PlainText.toString(), 'text/plain');
-    t.is(MediaType.PlainText.toString(), 'text/plain; charset=UTF-8');
+    t.equal(MediaType.Any.toString(), '*/*');
+    t.equal(MediaType.Text.toString(), 'text/*');
+    t.equal(BareType.PlainText.toString(), 'text/plain');
+    t.equal(MediaType.PlainText.toString(), 'text/plain; charset=UTF-8');
 
     t.end();
   });
@@ -394,7 +394,7 @@ harness.test('@grr/http', t => {
 
     // -------------------------------------------------------------------------
 
-    t.is(
+    t.equal(
       identifyEndpoint({
         address: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
         family: 'IPv6',
@@ -403,7 +403,7 @@ harness.test('@grr/http', t => {
       '[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:42'
     );
 
-    t.is(
+    t.equal(
       identifyEndpoint({
         address: '127.0.0.1',
         family: 'IPv4',
@@ -414,25 +414,25 @@ harness.test('@grr/http', t => {
 
     // -------------------------------------------------------------------------
     // Nothing to parse.
-    t.is(parseDateHTTP(), undefined);
-    t.is(parseDateOpenSSL(), undefined);
+    t.equal(parseDateHTTP(), undefined);
+    t.equal(parseDateOpenSSL(), undefined);
 
     // Timezone other than GMT.
-    t.is(parseDateHTTP('Sat, 08 Aug 2020 16:08:24 EST'), undefined);
-    t.is(parseDateOpenSSL('Aug 14 17:13:12 2020 EST'), undefined);
+    t.equal(parseDateHTTP('Sat, 08 Aug 2020 16:08:24 EST'), undefined);
+    t.equal(parseDateOpenSSL('Aug 14 17:13:12 2020 EST'), undefined);
 
     // Perfectly valid time and date.
     t.is(
       new Date(parseDateHTTP('Sat, 08 Aug 2020 16:08:24 GMT')).toISOString(),
       '2020-08-08T16:08:24.000Z'
     );
-    t.is(
+    t.equal(
       new Date(parseDateOpenSSL('Aug 14 17:13:12 2020 GMT')).toISOString(),
       '2020-08-14T17:13:12.000Z'
     );
 
     // Wrong day of the week, which is ignored.
-    t.is(
+    t.equal(
       new Date(parseDateHTTP('Tue, 08 Aug 2020 16:08:24 GMT')).toISOString(),
       '2020-08-08T16:08:24.000Z'
     );
@@ -444,12 +444,12 @@ harness.test('@grr/http', t => {
 
   t.test('@grr/http/Server', async t => {
     const checkSecurityHeaders = response => {
-      t.is(response.get(ReferrerPolicy), 'origin-when-cross-origin');
-      t.is(response.get(StrictTransportSecurity), 'max-age=86400');
-      t.is(response.get(ContentTypeOptions), 'nosniff');
-      t.is(response.get(FrameOptions), 'DENY');
-      t.is(response.get(PermittedCrossDomainPolicies), 'none');
-      t.is(response.get(XssProtection), '1; mode-block');
+      t.equal(response.get(ReferrerPolicy), 'origin-when-cross-origin');
+      t.equal(response.get(StrictTransportSecurity), 'max-age=86400');
+      t.equal(response.get(ContentTypeOptions), 'nosniff');
+      t.equal(response.get(FrameOptions), 'DENY');
+      t.equal(response.get(PermittedCrossDomainPolicies), 'none');
+      t.equal(response.get(XssProtection), '1; mode-block');
     };
 
     const testcases = [
@@ -459,13 +459,13 @@ harness.test('@grr/http', t => {
         async client(session) {
           const response = await session.request();
 
-          t.is(response.status, Ok);
-          t.is(response.get(Status), Ok);
-          t.is(response.type, MediaType.PlainText);
-          t.is(response.get(ContentType), MediaType.PlainText);
-          t.is(response.length, 5);
-          t.is(response.get(ContentLength), 5);
-          t.is(response.body, 'first');
+          t.equal(response.status, Ok);
+          t.equal(response.get(Status), Ok);
+          t.equal(response.type, MediaType.PlainText);
+          t.equal(response.get(ContentType), MediaType.PlainText);
+          t.equal(response.length, 5);
+          t.equal(response.get(ContentLength), 5);
+          t.equal(response.body, 'first');
         },
 
         async server(context, next) {
@@ -473,11 +473,11 @@ harness.test('@grr/http', t => {
           t.notOk(context.isTerminated);
           t.notOk(context.isDisconnected);
 
-          t.is(context.request.method, GET);
-          t.is(context.request.path, '/');
+          t.equal(context.request.method, GET);
+          t.equal(context.request.path, '/');
 
           context.prepare('first');
-          t.is(context.response.body, 'first');
+          t.equal(context.response.body, 'first');
 
           await next();
         },
@@ -492,15 +492,15 @@ harness.test('@grr/http', t => {
             [Path]: '/answer',
           });
 
-          t.is(response.status, Ok);
-          t.is(response.type, MediaType.Jason);
-          t.is(response.length, 13);
-          t.is(response.body, '');
+          t.equal(response.status, Ok);
+          t.equal(response.type, MediaType.Jason);
+          t.equal(response.length, 13);
+          t.equal(response.body, '');
         },
 
         async server(context, next) {
-          t.is(context.request.method, HEAD);
-          t.is(context.request.path, '/answer');
+          t.equal(context.request.method, HEAD);
+          t.equal(context.request.path, '/answer');
           context.prepare({ answer: 42 });
 
           await next();
@@ -513,15 +513,15 @@ harness.test('@grr/http', t => {
         async client(session) {
           const response = await session.request({ [Path]: '/answer' });
 
-          t.is(response.status, Ok);
-          t.is(response.type, MediaType.Jason);
-          t.is(response.length, 13);
-          t.is(response.body, '{"answer":42}');
+          t.equal(response.status, Ok);
+          t.equal(response.type, MediaType.Jason);
+          t.equal(response.length, 13);
+          t.equal(response.body, '{"answer":42}');
         },
 
         async server(context, next) {
-          t.is(context.request.method, GET);
-          t.is(context.request.path, '/answer');
+          t.equal(context.request.method, GET);
+          t.equal(context.request.path, '/answer');
           context.prepare({ answer: 42 });
 
           await next();
@@ -535,9 +535,9 @@ harness.test('@grr/http', t => {
           const response = await session.request({ [Path]: '/some/page/' });
 
           t.ok(response instanceof Context.Response);
-          t.is(response.status, 301);
-          t.is(response.type, MediaType.HTML);
-          t.is(response.get(PoweredBy), '12 Monkeys');
+          t.equal(response.status, 301);
+          t.equal(response.type, MediaType.HTML);
+          t.equal(response.get(PoweredBy), '12 Monkeys');
 
           const location = response.get(Location);
           t.ok(
@@ -546,8 +546,8 @@ harness.test('@grr/http', t => {
               location === 'https://localhost:6651/some/page'
           );
           const contentLength = 130 + 2 * location.length;
-          t.is(response.length, contentLength);
-          t.is(response.body.length, contentLength);
+          t.equal(response.length, contentLength);
+          t.equal(response.body.length, contentLength);
 
           checkSecurityHeaders(response);
         },
@@ -555,11 +555,11 @@ harness.test('@grr/http', t => {
         async server(context, next) {
           const { request, response } = context;
 
-          t.is(typeof request, 'object');
+          t.equal(typeof request, 'object');
           t.ok(request instanceof Context.Request);
-          t.is(request.path, '/some/page/');
+          t.equal(request.path, '/some/page/');
 
-          t.is(typeof response, 'object');
+          t.equal(typeof response, 'object');
           t.ok(response instanceof Context.Response);
           // Thanks to the trailing slash, the request triggers the
           // redirectOnTrailingSlash() middleware.
@@ -570,20 +570,20 @@ harness.test('@grr/http', t => {
             ContentLength,
           ]);
 
-          t.is(response.status, MovedPermanently);
-          t.is(response.type, MediaType.HTML);
+          t.equal(response.status, MovedPermanently);
+          t.equal(response.type, MediaType.HTML);
           const location = response.get(Location);
           t.ok(location.endsWith('/some/page'));
-          t.is(response.length, 130 + 2 * location.length);
+          t.equal(response.length, 130 + 2 * location.length);
 
           response.status = Teapot;
-          t.is(response.status, Teapot);
+          t.equal(response.status, Teapot);
           response.status = MovedPermanently;
-          t.is(response.status, MovedPermanently);
+          t.equal(response.status, MovedPermanently);
 
-          t.is(response.get(PoweredBy), undefined);
+          t.equal(response.get(PoweredBy), undefined);
           response.set('x-powered-by', '12 Monkeys');
-          t.is(response.get(PoweredBy), '12 Monkeys');
+          t.equal(response.get(PoweredBy), '12 Monkeys');
 
           const promise = next();
           t.type(promise, Promise);
@@ -597,8 +597,8 @@ harness.test('@grr/http', t => {
         async client(session) {
           const response = await session.request({ ':path': '/boo' });
 
-          t.is(response.status, Teapot);
-          t.is(response.type, MediaType.HTML);
+          t.equal(response.status, Teapot);
+          t.equal(response.type, MediaType.HTML);
 
           const { body } = response;
           t.ok(body.includes(`<h1>418 I'm a Teapot</h1>`));
@@ -658,10 +658,10 @@ harness.test('@grr/http', t => {
     let client, server;
     try {
       const eventSource = Server.makeEventSource();
-      t.is(typeof eventSource, 'function');
-      t.is(typeof eventSource.ping, 'function');
-      t.is(typeof eventSource.emit, 'function');
-      t.is(typeof eventSource.close, 'function');
+      t.equal(typeof eventSource, 'function');
+      t.equal(typeof eventSource.ping, 'function');
+      t.equal(typeof eventSource.emit, 'function');
+      t.equal(typeof eventSource.close, 'function');
 
       const { authority, cert, key } = await prepareSecrets();
       const options = { authority, port, cert, key, ca: cert, logger };
@@ -688,16 +688,16 @@ harness.test('@grr/http', t => {
 
         switch (count) {
           case 1:
-            t.is(event.origin, EVENT_SOURCE_ORIGIN);
-            t.is(event.type, 'greeting');
-            t.is(event.lastEventId, 'one');
-            t.is(event.data, 'hello');
+            t.equal(event.origin, EVENT_SOURCE_ORIGIN);
+            t.equal(event.type, 'greeting');
+            t.equal(event.lastEventId, 'one');
+            t.equal(event.data, 'hello');
             break;
           case 2:
-            t.is(event.origin, EVENT_SOURCE_ORIGIN);
-            t.is(event.type, 'message');
-            t.is(event.lastEventId, 'two');
-            t.is(event.data, '\n');
+            t.equal(event.origin, EVENT_SOURCE_ORIGIN);
+            t.equal(event.type, 'message');
+            t.equal(event.lastEventId, 'two');
+            t.equal(event.data, '\n');
             break;
           default:
             t.fail();
@@ -786,9 +786,9 @@ harness.test('@grr/http', t => {
           `-------------------------------------------------------------`
         );
 
-        t.is(response.status, test.status ?? Ok);
-        t.is(response.type, test.type);
-        if (test.length) t.is(response.length, test.length);
+        t.equal(response.status, test.status ?? Ok);
+        t.equal(response.type, test.type);
+        if (test.length) t.equal(response.length, test.length);
         if (test.content) t.ok(response.body, test.content);
       }
     } finally {

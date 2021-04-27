@@ -17,7 +17,7 @@ import { join } from 'path';
 import { Kind } from '@grr/inventory/kind';
 import { pipeline as doPipeline } from 'stream';
 import { promisify } from 'util';
-import { readFile, rmdir, toDirectory } from '@grr/fs';
+import { readFile, rm, toDirectory } from '@grr/fs';
 
 const __directory = toDirectory(import.meta.url);
 const { assign, keys: keysOf } = Object;
@@ -97,7 +97,7 @@ harness.test('@grr/builder', async t => {
 `
     );
   } finally {
-    await rmdir(buildDir, { recursive: true });
+    await rm(buildDir, { recursive: true });
   }
 
   // Extract and Prefix Copyright Notice.
@@ -180,12 +180,12 @@ harness.test('@grr/builder', async t => {
       path: '/some/content',
       content: `.class {
   margin-top: 1em;
-  margin-bottom: 1em;
+  margin-bottom: 2em;
 }`,
     },
     context
   ));
-  t.equal(content, '.class{margin-top:1em;margin-bottom:1em}');
+  t.equal(content, '.class{margin-bottom:2em;margin-top:1em}');
 
   const rewrite = (snippet, ...fragments) => {
     function* source() {
@@ -206,12 +206,12 @@ harness.test('@grr/builder', async t => {
     return pipeline(source, transform, sink);
   };
 
-  t.is(
+  t.equal(
     await rewrite('waldo', '<!DOCTYPE html><html lang=en><body></body></html>'),
     '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
   );
 
-  t.is(
+  t.equal(
     await rewrite(
       'waldo',
       '<!DOCTYPE html>',
@@ -221,7 +221,7 @@ harness.test('@grr/builder', async t => {
     '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
   );
 
-  t.is(
+  t.equal(
     await rewrite(
       'waldo',
       '<!DOCTYPE html>',
@@ -232,12 +232,12 @@ harness.test('@grr/builder', async t => {
     '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
   );
 
-  t.is(
+  t.equal(
     await rewrite('waldo', '<!DOCTYPE html>', '<html lang=en>', '</html>'),
     '<!DOCTYPE html><html lang=en>waldo</html>'
   );
 
-  t.is(await rewrite('waldo', 'hello '), 'hello waldo');
+  t.equal(await rewrite('waldo', 'hello '), 'hello waldo');
 
   t.end();
 });

@@ -4,7 +4,7 @@ import { basename, join } from 'path';
 import Task from '@grr/async/task';
 import harness from './harness.js';
 import { tmpdir } from 'os';
-import { mkdir, rmdir, symlink, toDirectory, writeFile } from '@grr/fs';
+import { mkdir, rm, symlink, toDirectory, writeFile } from '@grr/fs';
 import { didPoll, settleable } from '@grr/async/promise';
 import walk from '@grr/walk';
 
@@ -263,7 +263,7 @@ harness.test('@grr/walk', async t => {
   const dirdir = join(dir, 'dir');
 
   try {
-    await rmdir(tmp, { recursive: true });
+    await rm(tmp, { force: true, recursive: true });
     await mkdir(dirdir);
     await writeFile(join(tmp, 'file'), 'file', 'utf8');
     await writeFile(join(dir, 'file'), 'nested file', 'utf8');
@@ -326,7 +326,7 @@ harness.test('@grr/walk', async t => {
     t.match(lines[13], pat2('/dir/dir/file', 'file'));
     t.match(lines[15], pat2('/dir/file', 'file'));
   } finally {
-    await rmdir(tmp, { recursive: true });
+    await rm(tmp, { recursive: true });
   }
 
   // ---------------------------------------------------------------------------
@@ -397,7 +397,7 @@ harness.test('@grr/walk', async t => {
   await didPoll();
   x = new Error('hell');
   x.code = 'EHELL';
-  t.notEqual(mockLstat.out, last);
+  t.not(mockLstat.out, last);
   mockLstat.out.reject(x);
 
   await didPoll();
@@ -449,7 +449,7 @@ harness.test('@grr/walk', async t => {
   await didPoll();
   x = new Error('boom');
   x.code = 'EBOOM';
-  t.notEqual(mockReaddir.out, last);
+  t.not(mockReaddir.out, last);
   mockReaddir.out.reject(x);
 
   try {

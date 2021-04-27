@@ -13,7 +13,7 @@ import harness from './harness.js';
 import { join } from 'path';
 import Parser from 'tap-parser';
 import { pipeline } from 'stream';
-import { rmdir, toDirectory } from '@grr/fs';
+import { rm, toDirectory } from '@grr/fs';
 
 // Set up reporting of individual test results.
 const { rollcall } = harness;
@@ -26,7 +26,7 @@ const onChild = child => {
 };
 onChild(parser);
 
-pipeline(harness, parser, (error) => {
+pipeline(harness, parser, error => {
   if (error) rollcall.error(error);
 });
 
@@ -46,7 +46,7 @@ const ROOT = join(toDirectory(import.meta.url), '..');
 const COVERAGE_DATA = join(ROOT, '.coverage');
 
 (async function run() {
-  await rmdir(COVERAGE_DATA, { recursive: true });
+  await rm(COVERAGE_DATA, { recursive: true });
   await import('./async.js');
   await import('./builder.js');
   await import('./fs.js');

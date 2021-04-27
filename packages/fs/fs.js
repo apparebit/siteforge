@@ -14,7 +14,7 @@ export const {
   readdir,
   readFile,
   realpath,
-  rmdir,
+  rm,
   symlink,
   unlink,
 } = promises;
@@ -131,9 +131,7 @@ export function writeFile(path, data, options) {
 export function versionPath(path, data, encoding) {
   return injectIntoPath(
     path,
-    createHash('sha256')
-      .update(data, encoding)
-      .digest('hex')
+    createHash('sha256').update(data, encoding).digest('hex')
   );
 }
 

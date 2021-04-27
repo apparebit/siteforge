@@ -13,9 +13,9 @@ harness.test('@grr/metrics', t => {
 
   // --------------------------------------------- Counter: 0 measurements
   let counter = metrics.counter('one count');
-  t.is(counter.size, 0);
+  t.equal(counter.size, 0);
   t.same(counter.summarize(), { count: 0 });
-  t.is(metrics.counter('one count'), counter);
+  t.equal(metrics.counter('one count'), counter);
   t.throws(() => metrics.counter('one count', { isBigInt: true }));
 
   // --------------------------------------------- Counter: 1 measurement
@@ -24,13 +24,13 @@ harness.test('@grr/metrics', t => {
   counter.add(9);
   counter.add(1);
 
-  t.is(counter[toStringTag], 'Counter');
+  t.equal(counter[toStringTag], 'Counter');
   t.throws(() => new getPrototypeOf(getPrototypeOf(counter)).constructor());
-  t.is(counter.name, 'one count');
+  t.equal(counter.name, 'one count');
   t.notOk(counter.isBigInt);
-  t.is(counter.size, 1);
-  t.is(counter.get(), 20);
-  t.is(counter.get(''), 20);
+  t.equal(counter.size, 1);
+  t.equal(counter.get(), 20);
+  t.equal(counter.get(''), 20);
   t.same(counter.summarize(), {
     count: 1,
     mean: 20,
@@ -46,15 +46,15 @@ harness.test('@grr/metrics', t => {
   counter.add(1, 'd');
   t.throws(() => counter.add(665n));
 
-  t.is(counter[toStringTag], 'Counter');
-  t.is(counter.name, 'four counts');
+  t.equal(counter[toStringTag], 'Counter');
+  t.equal(counter.name, 'four counts');
   t.notOk(counter.isBigInt);
-  t.is(counter.size, 4);
-  t.is(counter.get(), undefined);
-  t.is(counter.get('a'), 3);
-  t.is(counter.get('b'), 7);
-  t.is(counter.get('c'), 9);
-  t.is(counter.get('d'), 1);
+  t.equal(counter.size, 4);
+  t.equal(counter.get(), undefined);
+  t.equal(counter.get('a'), 3);
+  t.equal(counter.get('b'), 7);
+  t.equal(counter.get('c'), 9);
+  t.equal(counter.get('d'), 1);
   t.same(counter.summarize(), {
     count: 4,
     mean: 5,
@@ -69,17 +69,17 @@ harness.test('@grr/metrics', t => {
   counter.add(9n, 'c');
   counter.add(1n, 'd');
 
-  t.is(counter[toStringTag], 'Counter');
-  t.is(counter.name, 'big integer');
+  t.equal(counter[toStringTag], 'Counter');
+  t.equal(counter.name, 'big integer');
   t.ok(counter.isBigInt);
-  t.is(counter.size, 4);
+  t.equal(counter.size, 4);
   t.ok(counter.has('a'));
   t.ok(!counter.has('x'));
-  t.is(counter.get(), undefined);
-  t.is(counter.get('a'), 3n);
-  t.is(counter.get('b'), 7n);
-  t.is(counter.get('c'), 9n);
-  t.is(counter.get('d'), 1n);
+  t.equal(counter.get(), undefined);
+  t.equal(counter.get('a'), 3n);
+  t.equal(counter.get('b'), 7n);
+  t.equal(counter.get('c'), 9n);
+  t.equal(counter.get('d'), 1n);
   t.same(counter.summarize(), {
     count: 4,
     mean: 5n,
@@ -89,8 +89,8 @@ harness.test('@grr/metrics', t => {
 
   // --------------------------------------------- Timing two times:
   let timer = metrics.timer('watch', { clock });
-  t.is(metrics.timer('watch'), timer);
-  t.is(metrics.timer('watch', { clock }), timer);
+  t.equal(metrics.timer('watch'), timer);
+  t.equal(metrics.timer('watch', { clock }), timer);
 
   let end = timer.start('a');
   clockwerk = 500;
@@ -105,12 +105,12 @@ harness.test('@grr/metrics', t => {
   clockwerk = 1999;
   t.throws(() => end());
 
-  t.is(timer[toStringTag], 'Timer');
-  t.is(timer.name, 'watch');
+  t.equal(timer[toStringTag], 'Timer');
+  t.equal(timer.name, 'watch');
   t.notOk(timer.isBigInt);
-  t.is(timer.size, 2);
-  t.is(timer.get('a'), 500);
-  t.is(timer.get('b'), 1500);
+  t.equal(timer.size, 2);
+  t.equal(timer.get('a'), 500);
+  t.equal(timer.get('b'), 1500);
   t.same(timer.summarize(), {
     count: 2,
     mean: 1000,
@@ -118,11 +118,11 @@ harness.test('@grr/metrics', t => {
     max: 1500,
   });
 
-  t.is(metrics.get('watch'), timer);
-  t.is(metrics.get('wtf'), undefined);
-  t.is(metrics.get('big integer'), counter);
-  t.is(metrics.delete('big integer'), true);
-  t.is(metrics.get('big integer'), undefined);
+  t.equal(metrics.get('watch'), timer);
+  t.equal(metrics.get('wtf'), undefined);
+  t.equal(metrics.get('big integer'), counter);
+  t.equal(metrics.delete('big integer'), true);
+  t.equal(metrics.get('big integer'), undefined);
 
   t.end();
 });

@@ -39,7 +39,7 @@ harness.test('@grr/inventory', t => {
     });
 
     for (const [path, kind] of entries(FAUX)) {
-      t.is(classify(path).kind, kind);
+      t.equal(classify(path).kind, kind);
     }
 
     t.same(classify('/a/b/f.booboo'), {
@@ -78,25 +78,25 @@ harness.test('@grr/inventory', t => {
       inventory.add(path);
     }
 
-    t.is(inventory.size, keysOf(FAUX).length);
+    t.equal(inventory.size, keysOf(FAUX).length);
 
     let ent = inventory.byPath('/');
-    t.is(ent.path, '/');
-    t.is(inventory.root, ent);
+    t.equal(ent.path, '/');
+    t.equal(inventory.root, ent);
 
     ent = inventory.byPath('/index.html');
-    t.is(ent.path, '/index.html');
-    t.is(ent.kind, Kind.Markup);
+    t.equal(ent.path, '/index.html');
+    t.equal(ent.kind, Kind.Markup);
 
     let ent2 = inventory.root.lookup('index.html');
-    t.is(ent2, ent);
+    t.equal(ent2, ent);
 
     ent = inventory.root.lookup('.');
-    t.is(ent, inventory.root);
+    t.equal(ent, inventory.root);
     ent = ent.lookup('..');
-    t.is(ent, inventory.root);
+    t.equal(ent, inventory.root);
     ent = ent.lookup('features').lookup('utopia');
-    t.is(ent, inventory.byPath('/features/utopia'));
+    t.equal(ent, inventory.byPath('/features/utopia'));
 
     t.end();
   });
@@ -236,22 +236,22 @@ harness.test('@grr/inventory', t => {
     const paths = index => index.files.map(file => file.path);
 
     let index = inventory.byKeyword('key');
-    t.is(index.keyword, 'key');
+    t.equal(index.keyword, 'key');
     t.same(index.display, ['key', 'keÿ']);
     t.same(paths(index), ['/index.html', '/about/apparebit.html']);
 
     index = inventory.byKeyword('wórd');
-    t.is(index.keyword, 'word');
+    t.equal(index.keyword, 'word');
     t.same(index.display, ['wórd', 'word']);
     t.same(paths(index), ['/index.html', '/about/robert-grimm.js']);
 
     index = inventory.byKeyword('appear');
-    t.is(index.keyword, 'appear');
+    t.equal(index.keyword, 'appear');
     t.same(index.display, ['appear']);
     t.same(paths(index), ['/about/apparebit.html']);
 
     index = inventory.byKeyword('boo!');
-    t.is(index.keyword, 'boo');
+    t.equal(index.keyword, 'boo');
     t.same(index.display, ['boo!']);
     t.same(index.files, []);
 

@@ -32,13 +32,13 @@ harness.test('@grr/temple', t => {
 
   let template = templatize({ name, tag, library, data, source });
 
-  t.is(
+  t.equal(
     template({ one: '---', two: '•••' }),
     '(1): <<[[---]]>>   (2): <<{{•••}}>>'
   );
 
   template = templatize({ name, data: 'one', source: '<<[[${one}]]>>' });
-  t.is(template({ one: '•••' }), '<<[[•••]]>>');
+  t.equal(template({ one: '•••' }), '<<[[•••]]>>');
 
   t.end();
 });

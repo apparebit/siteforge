@@ -8,7 +8,7 @@ import {
   isVersionedPath,
   pump,
   readFile,
-  rmdir,
+  rm,
   toDirectory,
   unlink,
   withTrailingSlash,
@@ -72,7 +72,7 @@ harness.test('@grr/fs', t => {
       const copy2 = await readFile(to2, 'utf8');
       t.equal(copy2, original);
     } finally {
-      await rmdir(join(__directory, 'down'), { recursive: true });
+      await rm(join(__directory, 'down'), { recursive: true });
     }
 
     t.end();

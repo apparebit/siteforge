@@ -9,11 +9,11 @@ harness.test('@grr/schemata', t => {
     // Static Assertions
     // -----------------
 
-    t.is(Context.assertString('string'), 'string');
+    t.equal(Context.assertString('string'), 'string');
     t.throws(() => Context.assertString(665));
 
-    t.is(Context.assertKey(665), 665);
-    t.is(Context.assertKey('key'), 'key');
+    t.equal(Context.assertKey(665), 665);
+    t.equal(Context.assertKey('key'), 'key');
     t.throws(() => Context.assertKey(665n));
     t.throws(() => Context.assertKey(/boo/u));
 
@@ -24,29 +24,29 @@ harness.test('@grr/schemata', t => {
     t.throws(() => Context.assertKeyArray(null));
     t.throws(() => Context.assertKeyArray({ length: 3 }));
 
-    t.is(Context.assertEnumConstant(true), true);
-    t.is(Context.assertEnumConstant(665), 665);
-    t.is(Context.assertEnumConstant(665n), 665n);
-    t.is(Context.assertEnumConstant('text'), 'text');
+    t.equal(Context.assertEnumConstant(true), true);
+    t.equal(Context.assertEnumConstant(665), 665);
+    t.equal(Context.assertEnumConstant(665n), 665n);
+    t.equal(Context.assertEnumConstant('text'), 'text');
     t.throws(() => Context.assertEnumConstant());
     t.throws(() => Context.assertEnumConstant(null));
     t.throws(() => Context.assertEnumConstant({}));
     t.throws(() => Context.assertEnumConstant(() => {}));
 
-    t.is(Context.assertFunction(Context), Context);
+    t.equal(Context.assertFunction(Context), Context);
     t.throws(() => Context.assertFunction(665));
 
     const a1 = [];
     const a2 = [Context];
-    t.is(Context.assertFunctionArray(a1), a1);
-    t.is(Context.assertFunctionArray(a2), a2);
+    t.equal(Context.assertFunctionArray(a1), a1);
+    t.equal(Context.assertFunctionArray(a2), a2);
     t.throws(() => Context.assertFunctionArray(665));
     t.throws(() => Context.assertFunctionArray([665]));
 
     const o1 = {};
     const o2 = () => {};
-    t.is(Context.assertObjectLike(o1), o1);
-    t.is(Context.assertObjectLike(o2), o2);
+    t.equal(Context.assertObjectLike(o1), o1);
+    t.equal(Context.assertObjectLike(o2), o2);
     t.throws(() => Context.assertObjectLike());
     t.throws(() => Context.assertObjectLike(null));
     t.throws(() => Context.assertObjectLike(665));
@@ -62,30 +62,30 @@ harness.test('@grr/schemata', t => {
     // Basic Properties
 
     const Quantity = Context.ify((value, context) => {
-      t.is(value, context.value);
-      t.is(value, context.result);
-      t.is(value, 665);
+      t.equal(value, context.value);
+      t.equal(value, context.result);
+      t.equal(value, 665);
       t.ok(context);
-      t.is(context.path, '$.quantity');
-      t.is(context.key, 'quantity');
+      t.equal(context.path, '$.quantity');
+      t.equal(context.key, 'quantity');
       context.result = 665n;
       return true;
     });
     const ObjectWithQuantity = Context.ify((value, context) => {
-      t.is(value, context.value);
-      t.is(value, context.result);
+      t.equal(value, context.value);
+      t.equal(value, context.result);
       t.same(value, { quantity: 665 });
       t.ok(context);
-      t.is(context.path, '$');
-      t.is(context.key, undefined);
-      t.is(context.toError(), undefined);
+      t.equal(context.path, '$');
+      t.equal(context.key, undefined);
+      t.equal(context.toError(), undefined);
       t.notOk(context.hasDefects());
 
       // withCheckpoint()
 
       context.withCheckpoint((v, c) => {
-        t.is(c, context);
-        t.is(v, value);
+        t.equal(c, context);
+        t.equal(v, value);
         t.notOk(c.hasDefectsSinceCheckpoint());
         c.defect('is bad');
         t.ok(c.hasDefectsSinceCheckpoint());
@@ -129,7 +129,7 @@ harness.test('@grr/schemata', t => {
       context.withKeyArray(['key'], Nothing, NonStrict)
     );
 
-    t.is(
+    t.equal(
       Context.ify((value, context) =>
         context.withKeyArray(['a', 'b'], (value, context) => {
           const ok = value === 42;
@@ -195,17 +195,17 @@ harness.test('@grr/schemata', t => {
     const fails = thunk =>
       t.throws(thunk, /Validation found (one defect|\d+ defects)/u);
 
-    t.is(Always(665), 665);
+    t.equal(Always(665), 665);
     fails(() => Never(665));
-    t.is(Schemata.Any(Never, Always)(665), 665);
+    t.equal(Schemata.Any(Never, Always)(665), 665);
     fails(() => Schemata.Any(Never, Never)(665));
     t.same(Schemata.All(Always, Always)({ key: 'value' }), { key: 'value' });
     fails(() => Schemata.All(Always, Never)(665));
-    t.is(Schemata.Option(Never)(), undefined);
-    t.is(Schemata.Option(Always)(665), 665);
+    t.equal(Schemata.Option(Never)(), undefined);
+    t.equal(Schemata.Option(Always)(665), 665);
     fails(() => Schemata.Option(Never)(665));
-    t.is(Schemata.From('a', Always)({ a: 665 }), 665);
-    t.is(Schemata.From(['a'], Always)({ a: 665 }), 665);
+    t.equal(Schemata.From('a', Always)({ a: 665 }), 665);
+    t.equal(Schemata.From(['a'], Always)({ a: 665 }), 665);
     t.throws(
       () => Schemata.From(['a'], Never)({ a: 665 }),
       /Validation found one defect:\nProperty \$\.a is entirely unacceptable/u

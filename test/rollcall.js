@@ -32,32 +32,32 @@ harness.test('@grr/rollcall', t => {
   // ------------------------------------------------------------ Logging JSON
   let logger = new Logger({ stream, json: true, label: 'SITE:FORGE' });
   t.ok(logger.json);
-  t.is(logger.volume, 0);
-  t.is(logger.withJSON(true), logger);
+  t.equal(logger.volume, 0);
+  t.equal(logger.withJSON(true), logger);
 
   logger.note(`The message`, ['More details']);
   let record = parseJSON(logged.shift());
   t.ok(has(record, 'timestamp'));
-  t.is(record.label, 'SITE:FORGE');
-  t.is(record.level, 'note');
-  t.is(record.message, 'The message');
+  t.equal(record.label, 'SITE:FORGE');
+  t.equal(record.level, 'note');
+  t.equal(record.message, 'The message');
   t.same(record.data, ['More details']);
 
   logger = new Logger({ stream, json: true });
   logger.warn(`Keep your distance!`);
   record = parseJSON(logged.shift());
   t.ok(has(record, 'timestamp'));
-  t.is(record.label, basename(process.title));
-  t.is(record.level, 'warn');
-  t.is(record.message, 'Keep your distance!');
+  t.equal(record.label, basename(process.title));
+  t.equal(record.level, 'warn');
+  t.equal(record.message, 'Keep your distance!');
   t.notOk(has(record, 'data'));
 
   logger.done({ files: 42, duration: 665 });
   record = parseJSON(logged.shift());
   t.ok(has(record, 'timestamp'));
-  t.is(record.label, basename(process.title));
-  t.is(record.level, 'warn');
-  t.is(record.message, 'Done');
+  t.equal(record.label, basename(process.title));
+  t.equal(record.level, 'warn');
+  t.equal(record.message, 'Done');
   t.same(record.data, {
     files: 42,
     duration: 665,
@@ -73,50 +73,50 @@ harness.test('@grr/rollcall', t => {
   t.ok(logger !== anotherLogger);
   t.ok(anotherLogger.json);
 
-  t.is(logger.volume, 3);
+  t.equal(logger.volume, 3);
   t.throws(() => logger.withVolume('volume'));
-  t.is(logger.withVolume(665).volume, 665);
+  t.equal(logger.withVolume(665).volume, 665);
 
-  t.is(logger.label, 'site:forge');
-  t.is(logger.withLabel('ostentation').label, 'ostentation');
+  t.equal(logger.label, 'site:forge');
+  t.equal(logger.withLabel('ostentation').label, 'ostentation');
 
   logger.debug(`testing message by itself`);
-  t.is(logged.shift(), `site:forge [DEBUG] testing message by itself`);
+  t.equal(logged.shift(), `site:forge [DEBUG] testing message by itself`);
 
   logger.aok('testing numeric detail', 665);
-  t.is(logged.shift(), 'site:forge [AOK]   testing numeric detail');
-  t.is(logged.shift(), '    665');
+  t.equal(logged.shift(), 'site:forge [AOK]   testing numeric detail');
+  t.equal(logged.shift(), '    665');
 
   logger.trace('testing object property detail', { key: 'value' });
-  t.is(logged.shift(), 'site:forge [TRACE] testing object property detail');
-  t.is(logged.shift(), `    { key: 'value' }`);
+  t.equal(logged.shift(), 'site:forge [TRACE] testing object property detail');
+  t.equal(logged.shift(), `    { key: 'value' }`);
 
   logger.note('testing array element detail', [665]);
-  t.is(logged.shift(), 'site:forge [NOTE]  testing array element detail');
-  t.is(logged.shift(), '    [ 665 ]');
+  t.equal(logged.shift(), 'site:forge [NOTE]  testing array element detail');
+  t.equal(logged.shift(), '    [ 665 ]');
 
   logger.note();
-  t.is(logged.shift(), 'site:forge [NOTE]  ---');
+  t.equal(logged.shift(), 'site:forge [NOTE]  ---');
 
   logger.note(new ErrorMessage('boom'));
-  t.is(logged.shift(), 'site:forge [NOTE]  Error: boom');
+  t.equal(logged.shift(), 'site:forge [NOTE]  Error: boom');
 
   logger.error(new ErrorMessage('boom'));
-  t.is(logged.shift(), 'site:forge [ERROR] boom');
+  t.equal(logged.shift(), 'site:forge [ERROR] boom');
 
   logger.note(665);
-  t.is(logged.shift(), 'site:forge [NOTE]  Logged data:');
-  t.is(logged.shift(), '    665');
+  t.equal(logged.shift(), 'site:forge [NOTE]  Logged data:');
+  t.equal(logged.shift(), '    665');
 
   let err = new Error('boo!');
   err.stack = '';
   logger.error('testing error detail', err);
-  t.is(logged.shift(), 'site:forge [ERROR] testing error detail: boo!');
+  t.equal(logged.shift(), 'site:forge [ERROR] testing error detail: boo!');
 
   err.stack = 'boo!\n    at Type.method (file:0:0)';
   logger.error('testing error detail', err);
-  t.is(logged.shift(), 'site:forge [ERROR] testing error detail: boo!');
-  t.is(logged.shift(), '    at Type.method (file:0:0)');
+  t.equal(logged.shift(), 'site:forge [ERROR] testing error detail: boo!');
+  t.equal(logged.shift(), '    at Type.method (file:0:0)');
 
   // done() sets the exitCode, so save value and restore later.
   const { exitCode } = process;
@@ -124,8 +124,8 @@ harness.test('@grr/rollcall', t => {
   // done() with errors only.
   logger.done({ files: 42, duration: 665 });
   const didIt = `Processed 42 files in 665ms`;
-  t.is(logged.shift(), `site:forge [ERROR] ${didIt} with 3 errors`);
-  t.is(process.exitCode, 70);
+  t.equal(logged.shift(), `site:forge [ERROR] ${didIt} with 3 errors`);
+  t.equal(process.exitCode, 70);
 
   // done() with both errors and warnings.
   ['a', 'b', 'c'].forEach(letter => {
@@ -134,7 +134,7 @@ harness.test('@grr/rollcall', t => {
   });
 
   logger.done({ files: 42, duration: 665 });
-  t.is(
+  t.equal(
     logged.shift(),
     `site:forge [ERROR] ${didIt} with 4 errors and 3 warnings`
   );
@@ -142,7 +142,7 @@ harness.test('@grr/rollcall', t => {
   // done() with no errors and no warnings.
   logger = new Logger({ stream, volume: 2, label: 'site:forge' });
   logger.done({ files: 42, duration: 665 });
-  t.is(
+  t.equal(
     logged.shift(),
     `site:forge [AOK]   ${didIt} with no errors and no warnings`
   );
@@ -154,38 +154,41 @@ harness.test('@grr/rollcall', t => {
   });
 
   logger.done({ files: 42, duration: 665 });
-  t.is(logged.shift(), `site:forge [WARN]  ${didIt} with 3 warnings`);
+  t.equal(logged.shift(), `site:forge [WARN]  ${didIt} with 3 warnings`);
 
   logger.done({ files: 42, duration: 665 });
-  t.is(logged.shift(), `site:forge [WARN]  ${didIt} with 4 warnings`);
+  t.equal(logged.shift(), `site:forge [WARN]  ${didIt} with 4 warnings`);
 
   logger.doneTesting({ pass: 33, fail: 9, duration: 665 });
-  t.is(
+  t.equal(
     logged.shift(),
     `site:forge [ERROR] Done! 9 out of 42 tests failed in 665ms`
   );
 
   logger.doneTesting({ pass: 42, duration: 665 });
-  t.is(logged.shift(), `site:forge [AOK]   Done! All 42 tests passed in 665ms`);
+  t.equal(
+    logged.shift(),
+    `site:forge [AOK]   Done! All 42 tests passed in 665ms`
+  );
 
   Logger.STAMP = undefined;
   logger.withJSON(true).doneTesting({ pass: 42, fail: 0, duration: 665 });
-  t.is(
+  t.equal(
     logged.shift(),
     `{"label":"site:forge","level":"aok","message":"Done",` +
       `"data":{"pass":42,"fail":0,"duration":665}}`
   );
 
   logger.done({ duration: 665 });
-  t.is(
+  t.equal(
     logged.shift(),
     `site:forge [ERROR] Ran for 665ms with 1 error and 5 warnings`
   );
 
   logger.print(EOL);
-  t.is(logged.shift(), '');
+  t.equal(logged.shift(), '');
 
-  t.is(logger.embolden('That is <b>bold</b>!'), 'That is bold!');
+  t.equal(logger.embolden('That is <b>bold</b>!'), 'That is bold!');
 
   process.exitCode = exitCode;
   t.end();

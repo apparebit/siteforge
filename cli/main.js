@@ -184,16 +184,29 @@ async function main() {
 
     let server;
     try {
-      const server = new Server({
-        logError: (...args) => logger.error(...args),
+      // Configure networking including security.
+      const keycert = readySelfSigned({ path: options.tlsCertificate });
+      const server = Server.create({
+        ip: '127.0.0.1',
+        port: 30000,
+        logger,
+        ...keycert,
       });
-      server.use(createStaticContentHandler({ root: options.buildDir }));
+
+      // Configure content processing.
+      server
+        .route(Server.redirectOnTrailingSlash)
+        .route(Server.makeServeStaticAsset({ root: options.buildDir }));
+
+      // Start the server.
+      await server.listen();
+      logger.note(`The development server is running at "${server.origin}"`);
+
       // TODO:
       //  * listen for file system changes in __contentDir__ (not buildDir).
       //  * rebuild and trigger reload.
       //  * add controller to trigger reloads via SSE.
       //  * rewrite HTML to inject client runtime for reloads.
-      await server.start();
     } catch (x) {
       logger.error(x);
       if (server) await server.close();

@@ -24,7 +24,10 @@ const HTTP_DATE_FORMAT = new RegExp(
 
 const OPENSSL_DATE_FORMAT = new RegExp(
   `(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ` +
-    `([0-3]\\d) ([0-2]\\d):([0-6]\\d):([0-6]\\d) (2\\d[2-9]\\d) GMT$`,
+    `([0-3]\\d) ` +
+    `([0-2]\\d):([0-6]\\d):([0-6]\\d) ` +
+    `(2\\d{3}) ` +
+    `GMT$`,
   'u'
 );
 

@@ -388,6 +388,11 @@ export default class Server {
 
   // ---------------------------------------------------------------------------
 
+  /** This server's origin. */
+  get origin() {
+    return this.#origin;
+  }
+
   /** The endpoint this server is listening on when it is listening. */
   get endpoint() {
     const address = this.#server?.address();

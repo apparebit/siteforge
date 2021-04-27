@@ -163,13 +163,24 @@ export const parseValidity = async ({
   const text = await doParseCert({ cert, path, openssl, info: '-dates' });
   const lines = text.split(/\r?\n/u);
 
-  let [label, date] = lines[0].split('=');
-  assert(label === 'notBefore');
-  const notBefore = parseDateOpenSSL(date);
+  const [label1, date1] = lines[0].split('=');
+  assert(label1 === 'notBefore');
+  const notBefore = parseDateOpenSSL(date1);
 
-  [label, date] = lines[1].split('=');
-  assert(label === 'notAfter');
-  const notAfter = parseDateOpenSSL(date);
+  const [label2, date2] = lines[1].split('=');
+  assert(label2 === 'notAfter');
+  const notAfter = parseDateOpenSSL(date2);
+
+  // Check for any errors.
+  if (notBefore === undefined && notAfter === undefined) {
+    throw new Error(
+      `notBefore date "${date1}" and notAfter date "${date2}" are malformed`
+    );
+  } else if (notBefore === undefined) {
+    throw new Error(`notBefore date "${date1}" is malformed`);
+  } else if (notAfter === undefined) {
+    throw new Error(`notAfter date "${date2}" is malformed`);
+  }
 
   // Done.
   return { notBefore, notAfter };

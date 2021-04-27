@@ -422,7 +422,15 @@ harness.test('@grr/http', t => {
     t.equal(parseDateOpenSSL('Aug 14 17:13:12 2020 EST'), undefined);
 
     // Perfectly valid time and date.
-    t.is(
+    t.equal(
+      new Date(parseDateOpenSSL('Sep 28 07:52:21 2019 GMT')).toISOString(),
+      '2019-09-28T07:52:21.000Z'
+    );
+    t.equal(
+      new Date(parseDateOpenSSL('Oct 28 07:52:21 2019 GMT')).toISOString(),
+      '2019-10-28T07:52:21.000Z'
+    );
+    t.equal(
       new Date(parseDateHTTP('Sat, 08 Aug 2020 16:08:24 GMT')).toISOString(),
       '2020-08-08T16:08:24.000Z'
     );

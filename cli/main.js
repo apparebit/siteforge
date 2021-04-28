@@ -23,6 +23,7 @@ const IGNORED_VALIDATIONS = [
   `CSS: “backdrop-filter”: Property “backdrop-filter” doesn't exist.`,
   `CSS: “background-image”: “0%” is not a “color” value.`,
   `CSS: “color-adjust”: Property “color-adjust” doesn't exist.`,
+  `CSS: “line-height”: Cannot invoke "org.w3c.css.values.CssValue.getType\\(\\)" because "this.val1" is null.`,
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];
@@ -48,13 +49,23 @@ async function takeInventory(config) {
 // Validation
 
 function validateMarkup(config) {
+  const { inventory, logger, options } = config;
+  const { doNotValidate } = options;
+
   // Nu Validator's command line interface pretends to be useful but is not.
   // Anything beyond selecting all files of a given type is impossible. That
   // means traversing the file system before traversing the file system. Yay!
   const paths = [];
-  for (const { target } of config.inventory.byKind(Kind.MARKUP)) {
-    if (!config.options.doNotValidate(target)) paths.push(target);
+  for (const { target } of inventory.byKind(Kind.Markup)) {
+    if (doNotValidate(target)) continue;
+    paths.push(target);
   }
+
+  logger.info(
+    `Found ${paths.length} markup file${
+      paths.length !== 1 ? 's' : ''
+    } to validate`
+  );
 
   // prettier-ignore
   return run('java', [

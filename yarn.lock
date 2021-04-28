@@ -3934,10 +3934,10 @@ verror@1.10.0:
     core-util-is "1.0.2"
     extsprintf "^1.2.0"
 
-vnu-jar@20.6.30:
-  version "20.6.30"
-  resolved "https://registry.yarnpkg.com/vnu-jar/-/vnu-jar-20.6.30.tgz#897882d4502411e77a3f17a2e793b26396603109"
-  integrity sha512-zlNNe7jW6cTIrxVlZK9AcZiNWjxzjqi7LpTafBCi4OY4bsh2uyGhxXT2l6hZ3ibpxP0ZC/pQsBpFQEACS0ePIg==
+vnu-jar@21.4.9:
+  version "21.4.9"
+  resolved "https://registry.yarnpkg.com/vnu-jar/-/vnu-jar-21.4.9.tgz#63e6ec7c272eafe35a85b94dacc46cb426ec9f5c"
+  integrity sha512-R7srw8MSJCak+zWmJ673TxOppXvgMaR+03mKyU2h2Uhrg5jrTLkTGheP+xe6OpQowEO+7R2Xl4Fn771yGAvfMQ==
 
 which-module@^2.0.0:
   version "2.0.0"

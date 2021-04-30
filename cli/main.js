@@ -164,7 +164,7 @@ async function main() {
     try {
       await takeInventory(config);
     } catch (x) {
-      logger.error(`Unable to read file system:`, x);
+      logger.error(`Unable to scan file system:`, x);
       process.exitCode = 74; // EX_IOERR
       return;
     }
@@ -196,10 +196,10 @@ async function main() {
     let server;
     try {
       // Configure networking including security.
-      const keycert = readySelfSigned({ path: options.tlsCertificate });
+      const keycert = await readySelfSigned({ path: options.tlsCertificate });
       const server = Server.create({
         ip: '127.0.0.1',
-        port: 30000,
+        port: 8888,
         logger,
         ...keycert,
       });

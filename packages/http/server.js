@@ -366,7 +366,14 @@ export default class Server {
   #didShutDown;
 
   /** Create a new server with the given options. */
-  constructor({ host, ip, port, cert, key, logger = console }) {
+  constructor({
+    host,
+    ip = `127.0.0.1`,
+    port = 8080,
+    cert,
+    key,
+    logger = console,
+  } = {}) {
     this.#logger = logger;
     this.#origin = `https://${host ?? ip ?? `127.0.0.1`}:${port}`;
     this.#ip = ip;

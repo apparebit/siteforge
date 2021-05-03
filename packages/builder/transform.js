@@ -15,7 +15,6 @@ import minify from 'babel-minify';
 import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
-import { Transform } from 'stream';
 
 const { assign, create, defineProperty, setPrototypeOf } = Object;
 const configurable = true;
@@ -30,15 +29,15 @@ const FRONT_CLOSE = '</script>';
 // Regex for extracting copyright notice at top of source file.
 const NOTICE = new RegExp(
   `^` + // Start at the beginning.
-  `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
-  `\\s*` + // Also ignore any space if present.
-  `(?:` + // Match either just a multi-line comment or 1+ single-line comments.
-  `(?:\\/\\*` + // Multi-line comment it is.
-  `[\\s*_=-]*` + // Ignore any number of spacing or "decorative" characters.
-  `((?:\\(c\\)|©|copyright).*?)` + // Extract the copyright notice.
-  `[\\s*_=-]*` + // Again, ignore spacing or decorative characters.
-  `\\*\\/)` + // Until we reach end of comment: It's safe to split content here.
-  `|(?:\\/\\/[\\p{Zs}*_=-]*\\n)*` + // Or: Single-line comments its is.
+    `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
+    `\\s*` + // Also ignore any space if present.
+    `(?:` + // Match either just a multi-line comment or 1+ single-line comments.
+    `(?:\\/\\*` + // Multi-line comment it is.
+    `[\\s*_=-]*` + // Ignore any number of spacing or "decorative" characters.
+    `((?:\\(c\\)|©|copyright).*?)` + // Extract the copyright notice.
+    `[\\s*_=-]*` + // Again, ignore spacing or decorative characters.
+    `\\*\\/)` + // Until we reach end of comment: It's safe to split content here.
+    `|(?:\\/\\/[\\p{Zs}*_=-]*\\n)*` + // Or: Single-line comments its is.
     `(?:\\/\\/\\p{Zs}*((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Extract notice.
   'iu' // Oh yeah, ignore case and embrace the Unicode.
 );
@@ -324,49 +323,20 @@ export async function minifyStyle(file, context) {
 
 // -----------------------------------------------------------------------------
 
-const TrailingClosingTag = /<(\/[^>]*)?$/iu;
-const EndOfDocument = /<\/body>|<\/html>/iu;
+const EndOfBody = /<\/body>/iu;
+const EndOfDocument = /<\/html>/iu;
 
 export function createSnippetInjector(snippet) {
-  let injected = false;
-  let buffered = null;
+  return body => {
+    const inject = ({ index }) =>
+      body.slice(0, index) + snippet + body.slice(index);
 
-  return new Transform({
-    encoding: 'utf8',
+    let match = EndOfBody.exec(body);
+    if (match) return inject(match);
 
-    transform(chunk, encoding, callback) {
-      if (buffered) {
-        chunk = buffered + chunk;
-        buffered = null;
-      }
+    match = EndOfDocument.exec(body);
+    if (match) return inject(match);
 
-      if (!injected) {
-        // Buffer incomplete closing tag at end of buffer for next step.
-        let match = TrailingClosingTag.exec(chunk);
-        if (match) {
-          buffered = match[0];
-          chunk = chunk.slice(0, -1 * match[0].length);
-        }
-
-        match = EndOfDocument.exec(chunk);
-        if (match) {
-          injected = true;
-          const before = chunk.slice(0, match.index);
-          const after = chunk.slice(match.index);
-          chunk = before + snippet + after;
-        }
-      }
-
-      callback(null, chunk);
-    },
-
-    flush(callback) {
-      if (!injected) {
-        buffered = (buffered ?? '') + snippet;
-      }
-
-      callback(null, buffered);
-      buffered = null;
-    },
-  });
+    return body + snippet;
+  };
 }

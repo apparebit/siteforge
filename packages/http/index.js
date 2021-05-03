@@ -1,4 +1,4 @@
-/* © 2020 Robert Grimm */
+/* © 2020-2021 Robert Grimm */
 
 // Shared features, from constants to low-level utilities to media types.
 export {
@@ -38,5 +38,8 @@ export { default as MediaType } from './media-type.js';
 export { default as Client } from './client.js';
 
 // Server including middleware.
-export { default as Server } from './server.js';
 export { default as Context } from './context.js';
+export { default as Server } from './server.js';
+
+import * as Middleware from './middleware.js';
+export { Middleware };

@@ -13,6 +13,7 @@ import {
   identifyEndpoint,
   MediaType,
   MethodName,
+  Middleware,
   parseDateHTTP,
   parseDateOpenSSL,
   readySelfSigned,
@@ -561,6 +562,10 @@ harness.test('@grr/http', t => {
         },
 
         async server(context, next) {
+          const promise = next();
+          t.type(promise, Promise);
+          await promise;
+
           const { request, response } = context;
 
           t.equal(typeof request, 'object');
@@ -592,10 +597,6 @@ harness.test('@grr/http', t => {
           t.equal(response.get(PoweredBy), undefined);
           response.set('x-powered-by', '12 Monkeys');
           t.equal(response.get(PoweredBy), '12 Monkeys');
-
-          const promise = next();
-          t.type(promise, Promise);
-          await promise;
         },
       },
 
@@ -629,14 +630,14 @@ harness.test('@grr/http', t => {
 
       let serverIndex = -1;
       server = new Server(options)
-        .route(Server.scaffold)
-        .route(Server.redirectOnTrailingSlash)
+        .route(Middleware.scaffold())
         .route((context, next) => {
           const current = ++serverIndex;
           logger.debug(`Did receive request #${current + 1}`);
           testcases[current].server(context, next);
           logger.debug(`About to send response #${current + 1}`);
-        });
+        })
+        .route(Middleware.redirectOnTrailingSlash());
       await server.listen();
 
       let clientIndex = -1;
@@ -659,13 +660,13 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/makeEventSource', async t => {
+  t.test('@grr/http/eventSource', async t => {
     const EVENT_SOURCE_ORIGIN = 'https://localhost:6651';
     const EVENT_SOURCE_PATH = '/.well-known/server-events';
 
     let client, server;
     try {
-      const eventSource = Server.makeEventSource();
+      const eventSource = Middleware.eventSource();
       t.equal(typeof eventSource, 'function');
       t.equal(typeof eventSource.ping, 'function');
       t.equal(typeof eventSource.emit, 'function');
@@ -674,16 +675,18 @@ harness.test('@grr/http', t => {
       const { authority, cert, key } = await prepareSecrets();
       const options = { authority, port, cert, key, ca: cert, logger };
       server = new Server(options)
-        .route(Server.scaffold)
+        .route(Middleware.scaffold())
         .route(EVENT_SOURCE_PATH, eventSource);
       await server.listen();
       client = await Client.connect(options);
 
+      // The server emits three events. Yet the client only yields two events.
+      // That is consistent with the WhatWG specification since the first sent
+      // event has no data and thus is dropped by the client.
       setTimeout(() => {
         eventSource.emit({ event: 'greeting', id: 'boo' });
         eventSource.emit({ event: 'greeting', id: 'one', data: 'hello' });
         eventSource.emit({ id: 'two', data: ['', ''] });
-        eventSource.close();
       }, 10);
 
       let count = 0;
@@ -727,7 +730,7 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/Server.makeServeStaticAsset', async t => {
+  t.test('@grr/http/Server.satisfyFromDirectory', async t => {
     // Set up tests
     // ------------
 
@@ -774,9 +777,9 @@ harness.test('@grr/http', t => {
       const options = { authority, port, cert, key, ca: cert, logger };
 
       server = new Server(options)
-        .route(Server.scaffold)
-        .route(Server.redirectOnTrailingSlash)
-        .route(Server.makeServeStaticAsset({ root }));
+        .route(Middleware.scaffold())
+        .route(Middleware.redirectOnTrailingSlash())
+        .route(Middleware.satisfyFromFileSystem({ root }));
       await server.listen();
 
       client = await Client.connect(options);

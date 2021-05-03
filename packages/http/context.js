@@ -1,4 +1,4 @@
-/* © 2020 Robert Grimm */
+/* © 2020-2021 Robert Grimm */
 
 import { createReadStream, promises } from 'fs';
 import { EOL } from 'os';
@@ -557,10 +557,7 @@ export default class Context {
     if (typeof handler !== 'function') {
       throw new TypeError(`Handler "${handler}" is not a function`);
     }
-    const cleanup = finished(this.#stream, () => {
-      cleanup();
-      handler();
-    });
+    finished(this.#stream, handler);
   }
 
   /**
@@ -639,13 +636,42 @@ export default class Context {
       // It may be preferable to serialize the body only in respond() below. As
       // is, serializing the body is wasted work if it gets replaced again.
       // However, JSON serialization may fail and respond() should avoid just
-      // that. It is designed to run as the very last step in the middleware
-      // pipeline, after all handlers have complete.
+      // that, since it is intended to run as the very last step in the
+      // middleware pipeline, after all handlers have completed.
       const serialized = this.stringify(value);
       response.body = serialized;
       response.setIfUnset(ContentType, Jason);
       response.set(ContentLength, byteLength(serialized));
     }
+
+    return this;
+  }
+
+  /** Harden the response. */
+  harden() {
+    if (this.hasSentHeaders) return this;
+
+    // See https://owasp.org/www-project-secure-headers/
+    const { response } = this;
+    const { type } = response;
+    if (type != null) {
+      if (type.type === 'font') {
+        response.setIfUnset(AccessControlAllowOrigin, this.origin);
+      } else if (type.type === 'text' && type.subtype === 'html') {
+        response.setIfUnset(ReferrerPolicy, 'origin-when-cross-origin');
+        response.setIfUnset(FrameOptions, 'DENY');
+        response.setIfUnset(XssProtection, '1; mode-block');
+      }
+    }
+
+    response.setIfUnset(
+      StrictTransportSecurity,
+      `max-age=${(PRODUCTION ? 120 : 1) * 24 * 60 * 60}`
+    );
+    response.setIfUnset(ContentTypeOptions, 'nosniff');
+    response.setIfUnset(PermittedCrossDomainPolicies, 'none');
+
+    return this;
   }
 
   // ---------------------------------------------------------------------------
@@ -655,7 +681,7 @@ export default class Context {
    * marked as `responded` via `markResponded()`.
    */
   respond() {
-    if (this.hasResponded || this.isTerminated) return;
+    if (this.hasResponded || this.isTerminated) return this;
     this.markResponded();
 
     let { request, response, stream } = this;
@@ -685,55 +711,29 @@ export default class Context {
         });
       }
     }
-  }
 
-  // ===========================================================================
-
-  /** Harden the response. */
-  hardenResponse() {
-    if (this.hasSentHeaders) return this;
-
-    // See https://owasp.org/www-project-secure-headers/
-    const { response } = this;
-    const { type } = response;
-    if (type != null) {
-      if (type.type === 'font') {
-        response.setIfUnset(AccessControlAllowOrigin, this.origin);
-      } else if (type.type === 'text' && type.subtype === 'html') {
-        response.setIfUnset(ReferrerPolicy, 'origin-when-cross-origin');
-        response.setIfUnset(FrameOptions, 'DENY');
-        response.setIfUnset(XssProtection, '1; mode-block');
-      }
-    }
-
-    response.setIfUnset(
-      StrictTransportSecurity,
-      `max-age=${(PRODUCTION ? 120 : 1) * 24 * 60 * 60}`
-    );
-    response.setIfUnset(ContentTypeOptions, 'nosniff');
-    response.setIfUnset(PermittedCrossDomainPolicies, 'none');
     return this;
   }
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   /**
    * Turn error into response. This method sets the response to a self-contained
    * HTML document describing the error. That error document includes details on
    * the request and the thrown error when running outside of production.
-   * Consistent with best security practices, almost all information is elided
-   * when running in production.
+   * Consistent with best security practices, almost all this information is
+   * elided when running in production.
    */
-  async failResponse(error) {
+  async fail(error) {
     if (this.hasSentHeaders || this.isTerminated) {
-      return; // Nothing to do.
+      return this; // Nothing to do.
     } else if (!isNativeError(error)) {
       error = new Error(`Middleware threw non-error "${error}"`);
     }
 
     // Check for lazily instantiated formatError() first since it may fail.
     if (!this.formatError) {
-      this.formatError = await this.createFormatError();
+      this.formatError = await this._errorFormatter();
     }
 
     // Generate error response.
@@ -752,10 +752,12 @@ export default class Context {
         requestHeaders: PRODUCTION ? undefined : entriesOf(request.headers),
       })
     );
+
+    return this;
   }
 
   /** Create the template function for formatting an error document. */
-  async createFormatError() {
+  async _errorFormatter() {
     const url = new URL('error.html', import.meta.url);
     return templatize({
       name: 'formatError',
@@ -766,20 +768,20 @@ export default class Context {
   }
 
   /**
-   * Handle an internal server error. While this method is conceptually similar
-   * to `failResponse()`, that method instantiates an HTML template and thus may
-   * very well fail itself. In contrast, this method is purposefully minimal: It
-   * always produces a plain text error message, which is the error's stack
-   * outside production and `Internal Server Error` in production. It is
-   * entirely reasonable and, in fact, intended for this method to handle any
-   * error thrown by `failResponse()`.
+   * Handle any error during a call to `fail()`. Rich error reporting has many
+   * opportunities for resulting in errors as well. This method provides the
+   * error handler for just that eventuality by creating a simpler plain text
+   * response.
    */
-  failWithInternalError(error) {
-    if (this.hasSentHeaders || this.isTerminated) return;
+  failAgain(error) {
+    if (this.hasSentHeaders || this.isTerminated) return this;
+
     const { response } = this;
     response.clear().set(error.headers);
     response.status = error.status ?? InternalServerError;
     this.prepare(PRODUCTION ? 'Internal Server Error' : error.stack);
+
+    return this;
   }
 
   // ---------------------------------------------------------------------------
@@ -790,6 +792,8 @@ export default class Context {
     const { path, query } = validateRequestPath(request.path);
     request.path = path;
     if (query) request.set(Query, query);
+
+    return this;
   }
 
   // ---------------------------------------------------------------------------
@@ -891,17 +895,21 @@ The resource has moved to <a href="${href}">${display}</a>.
   }
 
   /**
-   * Try satisfying the request by serving a file. This method relies on
-   * `resolveFile()` to determine the effective file path (if any). However, it
-   * rejects any path that has a segment starting with a dot (with exception of
-   * paths starting with `/.well-known/`) or including a symlink (nested under
-   * `root`). Both measures are precautions that seek to contain the danger of
-   * security exploits. This method returns `true` if it set the body to a
-   * stream for the resource. It returns `false` if the file has not been
-   * modified since last seen by the client. And it throws an exception in the
-   * case of errors.
+   * Try satisfying the request by serving a file from the given file system
+   * tree. This method relies on `resolveFile()` to determine the effective file
+   * path. It rejects any path that has a segment starting with a dot (unless
+   * the path starts with `/.well-known/`)  or that includes a symlink. Both
+   * restrictions are security precautions to limit exposed state to content
+   * (and not dot files) that is actually stored in the file system tree (and
+   * not just reachable via some symbolic link).
+   *
+   * If this function locates a suitable file for the first time, it sets the
+   * response body to a stream of the file's content and returns `true`. If the
+   * file has not been modified since last served to the client, this function
+   * simply returns `false`. In all other cases, including a file-not-found
+   * condition, this function throws a suitable error.
    */
-  async serveStaticAsset({ root }) {
+  async satisfyFromFileSystem({ root }) {
     const { request, response } = this;
     const { path } = request;
 

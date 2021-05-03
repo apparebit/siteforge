@@ -1,4 +1,4 @@
-/* © 2020 Robert Grimm */
+/* © 2020-2021 Robert Grimm */
 
 import Builtin from '@grr/oddjob/builtin';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@grr/oddjob/string';
 import { COLOR_DEPTH, countColors, default as candy } from '@grr/oddjob/candy';
 import { count, duration } from '@grr/oddjob/format';
+import { debounce } from '@grr/oddjob/function';
 import harness from './harness.js';
 import {
   ErrorMessage,
@@ -318,6 +319,30 @@ harness.test('@grr/oddjob', t => {
       ),
       `{"a":2,"f":3,"z":1}`
     );
+
+    t.end();
+  });
+
+  // ===========================================================================
+  t.test('function', t => {
+    t.test('debounce', t => {
+      let counter = 0;
+      const incr0 = () => {
+        counter++;
+      };
+      const incr = debounce(incr0, 100);
+
+      incr();
+      incr();
+      incr();
+      incr();
+      incr();
+
+      setTimeout(() => {
+        t.equal(counter, 1);
+        t.end();
+      }, 200);
+    });
 
     t.end();
   });

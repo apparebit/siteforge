@@ -125,6 +125,7 @@ harness.test('@grr/walk', async t => {
     '/oddjob/candy.js',
     '/oddjob/error.js',
     '/oddjob/format.js',
+    '/oddjob/function.js',
     '/oddjob/object.js',
     '/oddjob/package.json',
     '/oddjob/pickle.js',

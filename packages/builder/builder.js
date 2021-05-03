@@ -1,4 +1,4 @@
-/* © 2020 Robert Grimm */
+/* © 2020-2021 Robert Grimm */
 
 import {
   assemblePage,
@@ -14,7 +14,9 @@ import {
   writeTarget,
 } from './transform.js';
 
+import { debounce } from '@grr/oddjob/function';
 import { Kind } from '@grr/inventory/kind';
+import { watch } from 'chokidar';
 
 // -----------------------------------------------------------------------------
 
@@ -100,4 +102,73 @@ export async function buildAll(context) {
     logger.info(`Awaiting outstanding async tasks (join)`);
     await executor.onIdle();
   }
+}
+
+// -----------------------------------------------------------------------------
+
+/**
+ * Rebuild the website using whenever its content or components changes. To
+ * prevent thrashing as a result of too many and possibly overlapping rebuild
+ * operations, this function debounces file system change events before
+ * considering a rebuild and then prevents more than one on-going rebuild from
+ * running. Nonetheless, it correctly captures all file system change evens
+ * included in a build and passes that list to the `afterBuild` callback (which
+ * may be asynchronous).
+ */
+export function rebuildOnDemand(context, { afterBuild = () => {} } = {}) {
+  const { options } = context;
+  const { componentDir, contentDir } = options;
+
+  // Rebuild website, then run completion handler.
+  let building = false;
+  const rebuild = async changes => {
+    if (building) return;
+    building = true;
+
+    let error;
+    try {
+      await buildAll(context);
+    } catch (x) {
+      error = x;
+    }
+
+    try {
+      await afterBuild(error, changes);
+    } finally {
+      building = false;
+    }
+  };
+
+  // Trigger rebuild, with trigger debounced and rebuild strictly consecutive.
+  let changes = [];
+  const triggerRebuild = debounce(async () => {
+    if (building) return;
+    const includedChanges = changes;
+    changes = [];
+    await rebuild(includedChanges);
+  });
+
+  // Set up file system watcher.
+  const watcher = watch([componentDir, contentDir], {
+    followSymlinks: false,
+    // Match path segments that start with dot [chokidar docs]
+    ignored: /(^|[/\\])\../u,
+    persistent: true,
+  });
+
+  watcher.on('all', (event, path) => {
+    // Invoke debounced function only after recording event to capture all.
+    changes.push({ event, path });
+    triggerRebuild();
+  });
+
+  // Return function to tear down watcher.
+  let stopped = false;
+  const stop = async () => {
+    if (stopped) return;
+    stopped = true;
+    await watcher.close();
+  };
+
+  return stop;
 }

@@ -20,6 +20,7 @@
     "@grr/oddjob": "0.1.0",
     "@grr/proact": "0.1.0",
     "babel-minify": "0.5.1",
+    "chokidar": "3.5.1",
     "cssnano": "5.0.1",
     "postcss": "8.2.13"
   }

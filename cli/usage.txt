@@ -12,9 +12,7 @@
       validate         Validate the website with the Nu Html Checker
       deploy           Deploy the website to web server
 
-      <b>develop</b> only runs in development mode (`NODE_ENV` is not `production`)
-      and is incompatible with validate and deploy. <b>deploy</b> works the other
-      way around and runs only in production.
+      <b>develop</b> is incompatible with <b>validate</b> and <b>deploy</b>.
 
   <b>OPTIONS</b>
 
@@ -53,8 +51,7 @@
 
   <i>Output</i>
 
-      --build-dir <u>path</u>          Write to directory ("./build/dev" or
-                                "./build/prod")
+      --build-dir <u>path</u>          Write generated files to directory ("./build")
       --tls-certificate <u>path</u>    Use path with ".crt" and ".key" for TLS
                                 certificate and private key, respectively
                                 ("./config/localhost")
@@ -69,7 +66,5 @@
 
       NO_COLOR                  If defined, log without color
       NODE_DISABLE_COLORS       If defined, log without color
-      NODE_ENV                  Determine <b>mode</b>; to enable deployment, run
-                                as `NODE_ENV=production siteforge ...`
 
   <i>site:forge is © 2019-2020 Robert Grimm</i>

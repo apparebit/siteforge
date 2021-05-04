@@ -1,14 +1,15 @@
 #!/usr/bin/env node --title=site:forge
 
-// © 2020 Robert Grimm
+// © 2020-2021 Robert Grimm
 
-import { buildAll } from '@grr/builder';
+import { buildAll, rebuildOnDemand } from '@grr/builder';
 import { configure, validate } from './config.js';
 import createContext from '@grr/builder/context';
-import { readySelfSigned, Server } from '@grr/http';
+import { createDevServer } from '@grr/http';
 import { join, resolve } from 'path';
 import { Kind } from '@grr/inventory/kind';
 import launch from '@grr/loader/launch';
+import open from 'open';
 import { readFile, rm, toDirectory } from '@grr/fs';
 import run from '@grr/run';
 import vnuPath from 'vnu-jar';
@@ -193,34 +194,21 @@ async function main() {
   if (options.develop) {
     logger.section(3.3, `Serve website in "${options.buildDir}"`, config);
 
-    let server;
+    let server, stopBuilding;
     try {
-      // Configure networking including security.
-      const keycert = await readySelfSigned({ path: options.tlsCertificate });
-      const server = Server.create({
-        ip: '127.0.0.1',
-        port: 8888,
-        logger,
-        ...keycert,
+      const { eventSource, server } = createDevServer(config);
+      logger.note(`Dev server is running at "${server.origin}"`);
+      await open(server.origin);
+
+      stopBuilding = rebuildOnDemand(config, {
+        afterBuild(changes) {
+          eventSource.emit({ data: JSON.stringify(changes) });
+        },
       });
-
-      // Configure content processing.
-      server
-        .route(Server.redirectOnTrailingSlash)
-        .route(Server.makeServeStaticAsset({ root: options.buildDir }));
-
-      // Start the server.
-      await server.listen();
-      logger.note(`The development server is running at "${server.origin}"`);
-
-      // TODO:
-      //  * listen for file system changes in __contentDir__ (not buildDir).
-      //  * rebuild and trigger reload.
-      //  * add controller to trigger reloads via SSE.
-      //  * rewrite HTML to inject client runtime for reloads.
     } catch (x) {
       logger.error(x);
       if (server) await server.close();
+      if (stopBuilding) await stopBuilding();
     }
 
     // Skip the rest of main():

@@ -45,7 +45,7 @@
       --static-assets <u>glob</u>      Treat JavaScript files as static assets, not as
                                 views ("**/asset/**|**/assets/**|**/static/**")
       --version-assets          Version scripts and styles by injecting content
-                                hash into filename (enabled in production)
+                                hash into filename
       --copyright <u>text</u>          Prepend copyright notice to scripts and styles
                                 (automatically extracted from comments)
 
@@ -62,7 +62,7 @@
       default volume is 0, which logs error, warning, success/notice, but not
       debug and trace.
 
-  <b></b>
+  <b>ENVIRONMENT VARIABLES</b>
 
       NO_COLOR                  If defined, log without color
       NODE_DISABLE_COLORS       If defined, log without color

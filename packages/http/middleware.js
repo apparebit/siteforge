@@ -239,3 +239,21 @@ export const transformMatchingBodyText = (predicate, transform) => {
     }
   };
 };
+
+const EndOfBody = /<\/body>/iu;
+const EndOfDocument = /<\/html>/iu;
+
+export function createAppendToBody(snippet) {
+  return body => {
+    const inject = ({ index }) =>
+      body.slice(0, index) + snippet + body.slice(index);
+
+    let match = EndOfBody.exec(body);
+    if (match) return inject(match);
+
+    match = EndOfDocument.exec(body);
+    if (match) return inject(match);
+
+    return body + snippet;
+  };
+}

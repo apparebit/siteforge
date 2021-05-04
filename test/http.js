@@ -21,7 +21,6 @@ import {
   StatusCode,
   validateRequestPath,
 } from '@grr/http';
-import { createSnippetInjector } from '@grr/builder/transform';
 
 const {
   ContentLength,
@@ -810,6 +809,23 @@ harness.test('@grr/http', t => {
     t.end();
   });
 
+  t.test('@grr/http/middleware/createAppendToBody', t => {
+    const transform = Middleware.createAppendToBody('waldo');
+
+    t.equal(
+      transform('<!DOCTYPE html><html lang=en><body></body></html>'),
+      '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
+    );
+
+    t.equal(
+      transform('<!DOCTYPE html><html lang=en></html>'),
+      '<!DOCTYPE html><html lang=en>waldo</html>'
+    );
+
+    t.equal(transform('hello '), 'hello waldo');
+    t.end();
+  });
+
   t.test('@grr/http/middleware/transformMatchingBodyText', async t => {
     const { authority, cert, key } = await prepareSecrets();
     const options = { authority, port, cert, key, ca: cert, logger };
@@ -847,7 +863,7 @@ harness.test('@grr/http', t => {
         .route(
           Middleware.transformMatchingBodyText(
             MediaType.HTML,
-            createSnippetInjector('<script src="/script.js"></script>')
+            Middleware.createAppendToBody('<script src="/script.js"></script>')
           )
         );
       await server.listen();

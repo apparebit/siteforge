@@ -2,7 +2,6 @@
 
 import {
   copyAsset,
-  createSnippetInjector,
   extractFrontMatter,
   minifyScript,
   minifyStyle,
@@ -183,20 +182,6 @@ harness.test('@grr/builder', async t => {
     context
   ));
   t.equal(content, '.class{margin-bottom:2em;margin-top:1em}');
-
-  const transform = createSnippetInjector('waldo');
-
-  t.equal(
-    transform('<!DOCTYPE html><html lang=en><body></body></html>'),
-    '<!DOCTYPE html><html lang=en><body>waldo</body></html>'
-  );
-
-  t.equal(
-    transform('<!DOCTYPE html><html lang=en></html>'),
-    '<!DOCTYPE html><html lang=en>waldo</html>'
-  );
-
-  t.equal(transform('hello '), 'hello waldo');
 
   t.end();
 });

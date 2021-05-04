@@ -14,6 +14,7 @@ import { count, duration } from '@grr/oddjob/format';
 import { debounce } from '@grr/oddjob/function';
 import harness from './harness.js';
 import {
+  AbortError,
   ErrorMessage,
   isError,
   relocate,
@@ -172,6 +173,14 @@ harness.test('@grr/oddjob', t => {
     at a (repl:666:42)
 `
     );
+
+    // -------------------------------------------------------------- AbortError
+    t.equal(typeof AbortError, 'function');
+    t.equal(AbortError.name, 'AbortError');
+
+    const error = new AbortError();
+    t.ok(error instanceof Error);
+    t.ok(error instanceof AbortError);
 
     t.end();
   });

@@ -90,3 +90,22 @@ export function relocate(trace, 𝛿Line, 𝛿Column = 0) {
     (_, l, c) => `:${Number(l) + 𝛿Line}:${Number(c) + 𝛿Column})`
   );
 }
+
+import { setTimeout } from 'timers/promises';
+
+/** Liberate `AbortError` from Node's core. */
+export const AbortError = await (async function () {
+  // eslint-disable-next-line no-undef
+  const controller = new AbortController();
+  const { signal } = controller;
+
+  try {
+    const timeout = setTimeout(60000, null, { signal });
+    controller.abort();
+    await timeout;
+  } catch (x) {
+    return x.constructor;
+  }
+
+  throw new Error(`abort signal didn't result in error`);
+})();

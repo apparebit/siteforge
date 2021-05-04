@@ -44,6 +44,8 @@ const createDevServer = async config => {
     .route(Middleware.satisfyFromFileSystem({ root: options.buildDir }));
 
   await server.listen();
+
+  return { eventSource, server };
 };
 
 export default createDevServer;

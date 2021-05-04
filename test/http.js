@@ -1,10 +1,10 @@
 /* © 2020 Robert Grimm */
 
+import { createReadStream, promises } from 'fs';
 import { EOL } from 'os';
 import { fileURLToPath } from 'url';
 import harness from './harness.js';
 import { join } from 'path';
-import { promises } from 'fs';
 
 import {
   Client,
@@ -21,6 +21,7 @@ import {
   StatusCode,
   validateRequestPath,
 } from '@grr/http';
+import { createSnippetInjector } from '@grr/builder/transform';
 
 const {
   ContentLength,
@@ -660,7 +661,7 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/eventSource', async t => {
+  t.test('@grr/http/middleware/eventSource', async t => {
     const EVENT_SOURCE_ORIGIN = 'https://localhost:6651';
     const EVENT_SOURCE_PATH = '/.well-known/server-events';
 
@@ -730,7 +731,7 @@ harness.test('@grr/http', t => {
 
   // ===========================================================================
 
-  t.test('@grr/http/Server.satisfyFromDirectory', async t => {
+  t.test('@grr/http/middleware/satisfyFromFileSystem', async t => {
     // Set up tests
     // ------------
 
@@ -802,6 +803,65 @@ harness.test('@grr/http', t => {
         if (test.length) t.equal(response.length, test.length);
         if (test.content) t.ok(response.body, test.content);
       }
+    } finally {
+      cleanupEndpoints(client, server);
+    }
+
+    t.end();
+  });
+
+  t.test('@grr/http/middleware/transformMatchingBodyText', async t => {
+    const { authority, cert, key } = await prepareSecrets();
+    const options = { authority, port, cert, key, ca: cert, logger };
+    const root = fileURLToPath(new URL('fixtures/content', import.meta.url));
+    const laFlor = join(root, 'la-flor.html');
+    const BODY =
+      '<!DOCTYPE html><title>La Flor</title>' +
+      '<p>De Mi Secreto</p>\n<script src="/script.js"></script>';
+
+    let client, server;
+    try {
+      server = new Server(options)
+        .route(Middleware.scaffold())
+        .route('/stream', async (context, next) => {
+          const { response } = context;
+          response.body = createReadStream(laFlor);
+          response.type = MediaType.HTML;
+
+          await next();
+        })
+        .route('/buffer', async (context, next) => {
+          const { response } = context;
+          response.body = await readFile(laFlor);
+          response.type = MediaType.HTML;
+
+          await next();
+        })
+        .route('/string', async (context, next) => {
+          const { response } = context;
+          response.body = await readFile(laFlor, 'utf8');
+          response.type = MediaType.HTML;
+
+          await next();
+        })
+        .route(
+          Middleware.transformMatchingBodyText(
+            MediaType.HTML,
+            createSnippetInjector('<script src="/script.js"></script>')
+          )
+        );
+      await server.listen();
+
+      client = await Client.connect(options);
+
+      let response = await client.request({ [Path]: '/stream' });
+      t.equal(response.body, BODY);
+
+      response = await client.request({ [Path]: '/buffer' });
+      t.equal(response.body, BODY);
+
+      response = await client.request({ [Path]: '/string' });
+      t.equal(response.body, BODY);
     } finally {
       cleanupEndpoints(client, server);
     }

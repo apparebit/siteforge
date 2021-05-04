@@ -9,7 +9,7 @@ import { validateRoutePath } from './util.js';
 const { byteLength, isBuffer } = Buffer;
 const configurable = true;
 const { defineProperties } = Object;
-const { EventStream, HTML } = MediaType;
+const { EventStream } = MediaType;
 const { GET, HEAD } = MethodName;
 const { isArray } = Array;
 const { isSafeInteger } = Number;
@@ -192,32 +192,50 @@ export const eventSource = ({
   return acceptReceiver;
 };
 
-export const ensureBodyIsString = () => async (context, next) => {
-  await next();
+/**
+ * If the predicate matches the context, apply the transform to the stringified
+ * body. If the predicate is a string specifying a media type or a media type
+ * object, the transform is applied to all responses of that media type. If the
+ * predicate is a function, the transform is applied when the function applied
+ * to the context returns `true`. Before applying the transform, a body in
+ * stream or buffer representation is converted to a string.
+ */
+export const transformMatchingBodyText = (predicate, transform) => {
+  // Turn the predicate argument into an actual test function.
+  let test;
+  if (typeof predicate === 'string' || MediaType.isMediaType(predicate)) {
+    test = context =>
+      MediaType.from(context.response.type).matchTo(MediaType.from(predicate));
+  } else if (typeof predicate === 'function') {
+    test = predicate;
+  } else {
+    throw new Error(
+      `Predicate "${predicate}" is neither a media type nor a function`
+    );
+  }
 
-  const { response } = context;
-  const { body } = response;
+  return async (context, next) => {
+    await next();
 
-  if (isBuffer(body)) {
-    response.body = body.toString('utf8');
-  } else if (body instanceof Readable) {
-    body.setEncoding('utf8');
+    const { response } = context;
+    let { body } = response;
 
-    const chunks = [];
-    for await (const chunk of body) {
-      chunks.push(chunk);
+    if (test(context) && body != null) {
+      if (isBuffer(body)) {
+        body = body.toString('utf8');
+      } else if (body instanceof Readable) {
+        body.setEncoding('utf8');
+
+        const chunks = [];
+        for await (const chunk of body) {
+          chunks.push(chunk);
+        }
+        body = chunks.join('');
+      }
+
+      body = transform(body);
+      response.body = body;
+      response.length = byteLength(body);
     }
-    response.body = chunks.join('');
-  }
-};
-
-export const transformHTML = transform => async (context, next) => {
-  await next();
-
-  const { response } = context;
-  if (MediaType.from(response.type).matchTo(HTML)) {
-    const body = transform(response.body);
-    response.body = body;
-    response.length = byteLength(body);
-  }
+  };
 };

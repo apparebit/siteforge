@@ -8,14 +8,13 @@ import {
   writeVersionedFile,
 } from '@grr/fs';
 
-import { ErrorMessage } from '@grr/oddjob/error';
+import { AbortError, ErrorMessage } from '@grr/oddjob/error';
 import cssnano from 'cssnano';
 import { join } from 'path';
 import minify from 'babel-minify';
 import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
-import { AbortError } from '../oddjob/error';
 
 const { assign, create, defineProperty, setPrototypeOf } = Object;
 const configurable = true;

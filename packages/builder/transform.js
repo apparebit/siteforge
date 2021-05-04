@@ -15,6 +15,7 @@ import minify from 'babel-minify';
 import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
+import { AbortError } from '../oddjob/error';
 
 const { assign, create, defineProperty, setPrototypeOf } = Object;
 const configurable = true;
@@ -68,14 +69,21 @@ export function toBuilder(label, ...steps) {
 /** Create a bare file processing pipeline. */
 export function pipe(...steps) {
   return async function pipe(file, context) {
+    const { signal } = context;
+
     const diff = create(file);
     for (const step of steps) {
+      if (signal?.aborted) throw new AbortError();
+
       let delta = step(diff, context);
       if (delta && typeof delta.then === 'function') {
         delta = await delta;
       }
       assign(diff, delta);
     }
+
+    if (signal?.aborted) throw new AbortError();
+
     setPrototypeOf(diff, null);
     return diff;
   };

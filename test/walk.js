@@ -91,6 +91,7 @@ harness.test('@grr/walk', async t => {
     '/http/client.js',
     '/http/constants.js',
     '/http/context.js',
+    '/http/dev-server.js',
     '/http/error.html',
     '/http/index.js',
     '/http/media-type.js',

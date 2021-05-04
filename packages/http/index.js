@@ -43,3 +43,5 @@ export { default as Server } from './server.js';
 
 import * as Middleware from './middleware.js';
 export { Middleware };
+
+export { default as createDevServer } from './dev-server.js';

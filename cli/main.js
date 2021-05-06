@@ -194,10 +194,24 @@ async function main() {
   if (options.develop) {
     logger.section(3.3, `Serve website in "${options.buildDir}"`, config);
 
-    let server, stopBuilding;
+    let eventSource, server, stopBuilding;
+
+    let closed = false;
+    const close = async () => {
+      if (closed) return;
+      closed = true;
+
+      logger.note(`Shutting down Dev Server`);
+      if (eventSource) eventSource.close();
+      const steps = [];
+      if (server) steps.push(server.close());
+      if (stopBuilding) steps.push(stopBuilding());
+      await Promise.all(steps);
+    };
+
     try {
-      const { eventSource, server } = createDevServer(config);
-      logger.note(`Dev server is running at "${server.origin}"`);
+      ({ eventSource, server } = await createDevServer(config));
+      logger.note(`Dev Server is running at "${server.origin}"`);
       await open(server.origin);
 
       stopBuilding = rebuildOnDemand(config, {
@@ -207,9 +221,11 @@ async function main() {
       });
     } catch (x) {
       logger.error(x);
-      if (server) await server.close();
-      if (stopBuilding) await stopBuilding();
+      await close();
     }
+
+    process.on('SIGINT', close);
+    process.on('SIGTERM', close);
 
     // Skip the rest of main():
     //  * Validate and deploy are disabled b/c incompatible.

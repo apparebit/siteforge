@@ -1,14 +1,15 @@
 /* © 2020-2021 Robert Grimm */
 
+import { constants, createSecureServer } from 'http2';
 import Context from './context.js';
-import { createSecureServer } from 'http2';
-import { finished } from 'stream';
-import { identifyEndpoint, isMountedAt } from './util.js';
+import { isMountedAt } from './util.js';
 import { once } from 'events';
 import { posix } from 'path';
 
 const { defineProperty } = Object;
 const { isAbsolute, normalize } = posix;
+const kSessionNumber = Symbol('SessionNumber');
+const { NGHTTP2_CANCEL } = constants;
 
 // =============================================================================
 
@@ -45,7 +46,7 @@ class Router {
       if (typeof path !== 'string') {
         throw Context.Error(`Route path "${path}" is not a path`);
       } else if (path !== '*' && !isAbsolute(path)) {
-        throw new Context.Error(
+        throw Context.Error(
           `Route path "${path}" is neither wildcard nor absolute`
         );
       }
@@ -116,6 +117,7 @@ export default class Server {
   #key;
   #server;
   #router;
+  #sessionCount;
   #sessions;
   #didStartUp;
   #didShutDown;
@@ -136,7 +138,8 @@ export default class Server {
     this.#cert = cert;
     this.#key = key;
     this.#router = new Router();
-    this.#sessions = new Map();
+    this.#sessionCount = 0;
+    this.#sessions = new Set();
   }
 
   /**
@@ -153,12 +156,6 @@ export default class Server {
   /** This server's origin. */
   get origin() {
     return this.#origin;
-  }
-
-  /** The endpoint this server is listening on when it is listening. */
-  get endpoint() {
-    const address = this.#server?.address();
-    return address ? identifyEndpoint(address) : '<none>';
   }
 
   /** Start to listen. This method returns a promise that the server listens. */
@@ -185,14 +182,19 @@ export default class Server {
   /** Accept a connection (aka session). */
   accept(session) {
     if (this.#server == null || !this.#server.listening) {
-      this.disconnect(session);
+      session.destroy(NGHTTP2_CANCEL);
       return;
     }
 
-    finished(session, () => this.#sessions.delete(session));
-    this.#sessions.set(session, {});
+    session[kSessionNumber] = ++this.#sessionCount;
+    this.#logger.trace(`Accept session ${session[kSessionNumber]}`);
+
+    this.#sessions.add(session);
+    session.on('close', () => {
+      this.#logger.trace(`Did close session ${session[kSessionNumber]}`);
+      this.#sessions.delete(session);
+    });
     session.on('stream', this.onRequest.bind(this));
-    session.on('close', () => this.#sessions.get(session)?.dispose());
     session.on('error', error => this.onSessionError(error, session));
   }
 
@@ -235,28 +237,29 @@ export default class Server {
    * connections and then waits for inflight request, response exchanges to
    * complete.
    */
-  shutDown() {
-    if (!this.#didShutDown) {
-      const server = this.#server;
-      this.#server = undefined;
-      const { listening } = server;
+  close() {
+    if (!this.#didStartUp || this.#didShutDown) {
+      return Promise.resolve();
+    }
 
-      // Close server to stop accepting new connections.
-      this.#didShutDown = new Promise(resolve => {
-        if (listening) {
-          server.close(resolve);
+    this.#logger.trace('Close HTTP/2 server');
+    const server = this.#server;
+    this.#server = null;
+    this.#didShutDown = new Promise((resolve, reject) => {
+      server.close(error => {
+        if (error) {
+          reject(error);
         } else {
           resolve();
         }
       });
+    });
 
-      // Disconnect sessions to accelerate shutdown.
-      if (listening) {
-        for (const session of this.#sessions) {
-          this.disconnect(session);
-        }
-      }
+    for (const session of this.#sessions) {
+      this.#logger.trace(`Close session ${session[kSessionNumber]}`);
+      session.close();
     }
+
     return this.#didShutDown;
   }
 }

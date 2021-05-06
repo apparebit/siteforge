@@ -524,6 +524,11 @@ export default class Context {
 
   // ---------------------------------------------------------------------------
 
+  /** Flag for whether the out-going headers have been sent. */
+  get hasSentHeaders() {
+    return this.#stream.headersSent;
+  }
+
   /** Determine whether the response has been sent. */
   get hasResponded() {
     return this.#responded;
@@ -534,18 +539,11 @@ export default class Context {
     this.#responded = true;
   }
 
-  /** Flag for whether the out-going headers have been sent. */
-  get hasSentHeaders() {
-    return this.#stream.headersSent;
-  }
-
   /**
    * Flag for whether this context has terminated. In terms of the Node.js API,
    * a context has terminated if the stream is closed or destroyed. In other
    * words, this flag accounts for regular completion via `stream.end()` or
-   * `stream.close()` as well as abrupt termination due to an error. To
-   * determine the state of the overall connection, see the `isDisconnected`
-   * property.
+   * `stream.close()` as well as abrupt termination due to an error.
    */
   get isTerminated() {
     const stream = this.#stream;
@@ -558,15 +556,6 @@ export default class Context {
       throw new TypeError(`Handler "${handler}" is not a function`);
     }
     finished(this.#stream, handler);
-  }
-
-  /**
-   * Flag for whether the underlying connection (aka session) has been
-   * disconnected, i.e., closed or destroyed.
-   */
-  get isDisconnected() {
-    const { session } = this.#stream;
-    return session.closed || session.destroyed;
   }
 
   // ===========================================================================
@@ -660,7 +649,7 @@ export default class Context {
       } else if (type.type === 'text' && type.subtype === 'html') {
         response.setIfUnset(ReferrerPolicy, 'origin-when-cross-origin');
         response.setIfUnset(FrameOptions, 'DENY');
-        response.setIfUnset(XssProtection, '1; mode-block');
+        response.setIfUnset(XssProtection, '1; mode=block');
       }
     }
 

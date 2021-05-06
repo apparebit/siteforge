@@ -70,7 +70,7 @@ const cleanupEndpoints = async (client, server) => {
 
   if (server) {
     try {
-      await server.shutDown();
+      await server.close();
     } catch (x) {
       harness.rollcall.error('Error shutting down server', x);
     }
@@ -458,7 +458,7 @@ harness.test('@grr/http', t => {
       t.equal(response.get(ContentTypeOptions), 'nosniff');
       t.equal(response.get(FrameOptions), 'DENY');
       t.equal(response.get(PermittedCrossDomainPolicies), 'none');
-      t.equal(response.get(XssProtection), '1; mode-block');
+      t.equal(response.get(XssProtection), '1; mode=block');
     };
 
     const testcases = [
@@ -480,7 +480,6 @@ harness.test('@grr/http', t => {
         async server(context, next) {
           t.notOk(context.hasSentHeaders);
           t.notOk(context.isTerminated);
-          t.notOk(context.isDisconnected);
 
           t.equal(context.request.method, GET);
           t.equal(context.request.path, '/');

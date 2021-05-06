@@ -1,5 +1,6 @@
 /* © 2021 Robert Grimm */
 
+import { constants } from 'http2';
 import Context from './context.js';
 import MediaType from './media-type.js';
 import { MethodName, StatusCode } from './constants.js';
@@ -13,7 +14,8 @@ const { EventStream } = MediaType;
 const { GET, HEAD } = MethodName;
 const { isArray } = Array;
 const { isSafeInteger } = Number;
-const { MethodNotAllowed, NotAcceptable, Ok } = StatusCode;
+const { MethodNotAllowed, NotAcceptable, Ok, ServiceUnavailable } = StatusCode;
+const { NGHTTP2_STREAM_CLOSED } = constants;
 
 /**
  * Provide basic scaffolding for middleware processing. Before the next
@@ -65,6 +67,11 @@ export const allowGetAndHeadOnly = () => async (context, next) => {
   }
 };
 
+export const doNotCache = () => async (context, next) => {
+  await next();
+  context.response.cache = 'no-store, no-transform';
+};
+
 /** Provide the response body by mapping the request path to the file system. */
 export const satisfyFromFileSystem = ({ root }) => {
   root = validateRoutePath(root);
@@ -80,7 +87,7 @@ export const content = ({ body, type }) => {
 
   return context => {
     context.prepare(body);
-    context.type = type;
+    context.response.type = type;
   };
 };
 
@@ -101,11 +108,17 @@ export const eventSource = ({
     throw new TypeError(`Stop timer "${stopTimer}" isn't a function`);
   }
 
-  const listening = new Set();
+  const listeners = new Set();
+  let closed = false;
 
   const acceptReceiver = context => {
+    if (closed) {
+      throw Context.Error(ServiceUnavailable, `Server is shutting down`);
+    }
+
     const { request, response, stream } = context;
-    if (request.method !== GET && request.method !== HEAD) {
+    const { method } = request;
+    if (method !== GET && method !== HEAD) {
       throw Context.Error(
         MethodNotAllowed,
         `Use GET not ${request.method} for subscribing to event source "${request.path}"`
@@ -118,8 +131,8 @@ export const eventSource = ({
     }
 
     context.markResponded();
-    listening.add(context);
-    context.onDidTerminate(() => listening.delete(context));
+    listeners.add(context);
+    context.onDidTerminate(() => listeners.delete(context));
 
     response.status = Ok;
     response.cache = 'no-store, no-transform';
@@ -127,61 +140,69 @@ export const eventSource = ({
 
     stream.respond(response.headers);
     stream.setEncoding('utf8');
-    if (reconnect >= 0) {
-      stream.write(`retry: ${reconnect}\n\n`);
-    } else {
-      stream.write(`:start\n\n`);
+
+    if (method === GET) {
+      if (reconnect >= 0) {
+        stream.write(`retry: ${reconnect}\n\n`);
+      } else {
+        stream.write(`:start\n\n`);
+      }
     }
     return Promise.resolve();
   };
 
-  let finished = false;
   const each = fn => {
-    if (!finished) {
-      for (const context of listening) {
-        if (context.isTerminated) {
-          listening.delete(context);
-        } else {
-          fn(context);
-        }
+    for (const context of listeners) {
+      if (context.isTerminated) {
+        listeners.delete(context);
+      } else {
+        fn(context);
       }
     }
+  };
+
+  const doEmit = ({ id, event, data }) => {
+    let message = '';
+    if (id) message += `id: ${id}\n`;
+    if (event) message += `event: ${event}\n`;
+    if (data) {
+      if (isArray(data)) {
+        message += data.map(data => `data: ${data}\n`).join('');
+      } else {
+        message += `data: ${data}\n`;
+      }
+    }
+    if (!message) return;
+    message += '\n';
+    each(context => context.stream.write(message));
   };
 
   const emit = ({ id, event, data }) => {
-    if (!finished) {
-      let message = '';
-      if (id) message += `id: ${id}\n`;
-      if (event) message += `event: ${event}\n`;
-      if (data) {
-        if (isArray(data)) {
-          message += data.map(data => `data: ${data}\n`).join('');
-        } else {
-          message += `data: ${data}\n`;
-        }
-      }
-      if (!message) return;
-      message += '\n';
-      each(context => context.stream.write(message));
-    }
+    if (closed) return;
+    doEmit({ id, event, data });
   };
 
-  const ping = () => each(context => context.stream.write(`:lub-dub\n\n`));
+  const ping = () => {
+    if (closed) return;
+    each(context => context.stream.write(`:lub-dub\n\n`));
+  };
   let timer = heartbeat > 0 ? startTimer(ping, heartbeat) : null;
 
   const close = () => {
-    if (timer) {
-      stopTimer(timer);
-      timer = null;
-    }
+    if (closed) return;
+    closed = true;
 
-    if (!finished) {
-      each(context => {
-        context.stream.end();
-        listening.delete(context);
-      });
-      finished = true;
-    }
+    // When receiving a close event, a well-behaved client should close its
+    // event source. It does speed up server shutdown.
+    doEmit({ event: 'close', data: 'now!' });
+
+    stopTimer(timer);
+    timer = null;
+
+    each(context => {
+      context.stream.close(NGHTTP2_STREAM_CLOSED);
+      listeners.delete(context);
+    });
   };
 
   defineProperties(acceptReceiver, {

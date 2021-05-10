@@ -216,7 +216,10 @@ async function main() {
 
       stopBuilding = rebuildOnDemand(config, {
         afterBuild(changes) {
-          eventSource.emit({ data: JSON.stringify(changes) });
+          eventSource.emit({
+            event: 'reload',
+            data: JSON.stringify({ changes }),
+          });
         },
       });
     } catch (x) {

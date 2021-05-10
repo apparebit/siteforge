@@ -59,7 +59,7 @@ const createDevServer = async config => {
     logger,
     ...keycert,
   });
-  const eventSource = Middleware.eventSource();
+  const eventSource = Middleware.eventSource({ logger });
 
   server
     .route(Middleware.scaffold())

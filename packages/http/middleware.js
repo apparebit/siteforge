@@ -97,6 +97,7 @@ export const eventSource = ({
   reconnect = 2000,
   startTimer = setInterval,
   stopTimer = clearInterval,
+  logger,
 } = {}) => {
   if (!isSafeInteger(heartbeat)) {
     throw new TypeError(`Heartbeat interval "${heartbeat}" isn't an integer`);
@@ -174,6 +175,13 @@ export const eventSource = ({
     }
     if (!message) return;
     message += '\n';
+
+    logger.info(
+      `Emit server-sent event ${event ?? 'message'}(${data}) to ${
+        listeners.size
+      } listener${listeners.size === 1 ? '' : 's'}`
+    );
+
     each(context => context.stream.write(message));
   };
 

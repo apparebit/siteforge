@@ -66,12 +66,13 @@ const optionTypes = aliased(
     componentDir: FilePath,
     contentDir: FilePath,
     copyright: String,
-    deploymentDir: String,
+    deploymentHost: String,
     doNotBuild: FileGlob,
     doNotValidate: FileGlob,
     dryRun: Boolean,
     json: Boolean,
     pageProvider: FilePath,
+    routableAddress: Boolean,
     staticAssets: FileGlob,
     tlsCertificate: FilePath,
     versionAssets: Boolean,
@@ -144,6 +145,7 @@ export const configure = async () => {
     doNotBuild: () => false,
     doNotValidate: () => false,
     pageProvider: 'layout/page.js',
+    routableAddress: () => false,
     staticAssets: glob('**/asset/**', '**/assets/**', '**/static/**'),
     tlsCertificate: resolve('./config/localhost'),
   };
@@ -179,8 +181,8 @@ export const validate = config => {
     logger.error(`The develop task is incompatible with validate and deploy`);
     errors++;
   }
-  if (options.deploy && !options.deploymentDir) {
-    logger.error(`The deploy task requires valid "deployment-dir" option`);
+  if (options.deploy && !options.deploymentHost) {
+    logger.error(`The deploy task requires valid "deployment-host" option`);
     errors++;
   }
   if (errors > 0) {

@@ -52,10 +52,12 @@
   <i>Output</i>
 
       --build-dir <u>path</u>          Write generated files to directory ("./build")
+      --routable-address        Instead of internal "127.0.0.1" IP address,
+                                use routable IP address for dev server.
       --tls-certificate <u>path</u>    Use path with ".crt" and ".key" for TLS
                                 certificate and private key, respectively
                                 ("./config/localhost")
-      --deployment-dir <u>rhost</u>    Copy build to rsync host and directory
+      --deployment-host <u>rhost</u>   Copy build to rsync host and directory
 
       If the only command line argument is "-v", "-vh", or "-hv", site:forge
       treats the useless "-v" option as the more informative "-V" option. The

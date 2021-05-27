@@ -9,6 +9,7 @@ import { createDevServer } from '@grr/http';
 import { join, resolve } from 'path';
 import { Kind } from '@grr/inventory/kind';
 import launch from '@grr/loader/launch';
+import { networkInterfaces } from 'os';
 import open from 'open';
 import { readFile, rm, toDirectory } from '@grr/fs';
 import run from '@grr/run';
@@ -28,6 +29,7 @@ const IGNORED_VALIDATIONS = [
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];
+const { keys: keysOf } = Object;
 
 // -----------------------------------------------------------------------------
 // Inventory of File System
@@ -57,9 +59,10 @@ function validateMarkup(config) {
   // Anything beyond selecting all files of a given type is impossible. That
   // means traversing the file system before traversing the file system. Yay!
   const paths = [];
-  for (const { target } of inventory.byKind(Kind.Markup)) {
-    if (doNotValidate(target)) continue;
-    paths.push(target);
+  for (const file of inventory.byKind(Kind.Markup)) {
+    if (doNotValidate(file.path)) continue;
+    const path = join(options.buildDir, file.path);
+    paths.push(path);
   }
 
   logger.info(
@@ -73,7 +76,7 @@ function validateMarkup(config) {
     '-jar', vnuPath,
     '--skip-non-html',
     '--filterpattern', IGNORED_VALIDATIONS.join('|'),
-    ...(config.options.volume >= 2 ? ['--verbose'] : []),
+    ...(options.volume >= 2 ? ['--verbose'] : []),
     ...paths,
   ]);
 }
@@ -105,7 +108,9 @@ function deploy(config) {
     '--delete',
   ];
 
-  if (config.options.dryRun) rsyncOptions.push('--dry-run');
+  if (config.options.dryRun) {
+    rsyncOptions.push('--dry-run');
+  }
 
   let { buildDir } = config.options;
   if (!buildDir.endsWith('/')) buildDir += '/';
@@ -113,7 +118,7 @@ function deploy(config) {
   return run('rsync', [
     ...rsyncOptions,
     buildDir,
-    config.options.deploymentDir,
+    config.options.deploymentHost,
   ]);
 }
 
@@ -209,8 +214,23 @@ async function main() {
       await Promise.all(steps);
     };
 
+    let ip;
+    if (options.routableAddress) {
+      const interfaces = networkInterfaces();
+      for (const name of keysOf(interfaces)) {
+        for (const description of interfaces[name]) {
+          if (description.family === 'IPv4' && !description.internal) {
+            ip = description.address;
+            break;
+          }
+        }
+
+        if (ip) break;
+      }
+    }
+
     try {
-      ({ eventSource, server } = await createDevServer(config));
+      ({ eventSource, server } = await createDevServer({ ...config, ip }));
       logger.note(`Dev Server is running at "${server.origin}"`);
       await open(server.origin);
 
@@ -258,7 +278,7 @@ async function main() {
   if (options.deploy && logger.errors) {
     logger.warning(`Build has errors, skipping deployment`);
   } else if (options.deploy) {
-    logger.section(5, `Deploy to "${options.deploymentDir}"`, config);
+    logger.section(5, `Deploy to "${options.deploymentHost}"`, config);
     await deploy(config);
   }
 

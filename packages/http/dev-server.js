@@ -52,13 +52,20 @@ source.addEventListener("error", evt => {
 
 const createDevServer = async config => {
   const { logger, options } = config;
-  const keycert = await readySelfSigned({ path: options.tlsCertificate });
+
+  const tlsConfig = { path: options.tlsCertificate };
+  if (config.ip) {
+    tlsConfig.ip = [config.ip];
+  }
+  const keycert = await readySelfSigned(tlsConfig);
+
   const server = new Server({
-    ip: '127.0.0.1',
+    ip: config.ip ?? '127.0.0.1',
     port: 8080,
     logger,
     ...keycert,
   });
+
   const eventSource = Middleware.eventSource({ logger });
 
   server

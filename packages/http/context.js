@@ -696,7 +696,12 @@ export default class Context {
         stream.end(body, 'utf8');
       } else if (body instanceof Readable) {
         pipeline(body, stream, error => {
-          if (error) this.onError(error);
+          if (error) {
+            this.logger.error(
+              `Failed streaming body for ${request.path}`,
+              error
+            );
+          }
         });
       }
     }

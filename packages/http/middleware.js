@@ -97,7 +97,7 @@ export const eventSource = ({
   reconnect = 2000,
   startTimer = setInterval,
   stopTimer = clearInterval,
-  logger,
+  logger = { info() {} },
 } = {}) => {
   if (!isSafeInteger(heartbeat)) {
     throw new TypeError(`Heartbeat interval "${heartbeat}" isn't an integer`);

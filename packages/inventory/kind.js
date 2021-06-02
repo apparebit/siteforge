@@ -64,11 +64,17 @@ const Extension2Kind = freeze(
   })
 );
 
+const IsKnownConfigPath = freeze({
+  '/.htaccess': true,
+  '/robots.txt': true,
+  '/sitemap.xml': true,
+});
+
 export const isDefaultAssetPath = path => /^\/(assets?|static)\//iu.test(path);
 export const toCoolPath = path => path.replace(/(\/index.html|.html|\/)$/u, '');
 
 export const classify = (path, { isStaticAsset = isDefaultAssetPath } = {}) => {
-  if (path.endsWith('/.htaccess') || path.endsWith('/robots.txt')) {
+  if (IsKnownConfigPath[path]) {
     return { coolPath: path, kind: Kind.Config };
   }
 

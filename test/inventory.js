@@ -167,6 +167,41 @@ harness.test('@grr/inventory', t => {
     t.end();
   });
 
+  t.test('delete()', t => {
+    // (1) Let's delete the logo from the inventory.
+    const file = inventory.delete('/asset/logo.svg');
+
+    // Check that deletion returned correct hierarchical entry.
+    t.same(file.constructor.name, 'File');
+    t.same(file.path, '/asset/logo.svg');
+
+    // Check that file cannot be looked up by name anymore.
+    t.throws(
+      () => inventory.byPath('/asset/logo.svg'),
+      /entry "logo.svg" in directory "\/asset" does not exist/u
+    );
+
+    // Check that file cannot be looked up by kind anymore.
+    checkPaths(t, inventory.byKind(Kind.Graphic), []);
+
+    // (2) Let's delete the remaining assets from the inventory.
+    checkPaths(t, inventory.byKind(Kind.Script), ['/asset/function.js']);
+
+    const dir = inventory.delete('/asset');
+
+    t.same(dir.constructor.name, 'Directory');
+    t.same(dir.path, '/asset');
+
+    // Check that directory cannot be looked up by name anymore.
+    t.throws(
+      () => inventory.byPath('/asset'),
+      /entry "asset" in directory "\/" does not exist/u
+    );
+
+    // Check that directory entries cannot be looked up by kind anymore.
+    checkPaths(t, inventory.byKind(Kind.Script), []);
+  });
+
   t.test('error conditions', t => {
     // Error Conditions While Adding Files
     t.throws(() => inventory.add('about'), /path must be absolute/u);

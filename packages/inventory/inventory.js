@@ -13,7 +13,6 @@ import { strict as assert } from 'assert';
 const { assign, create, defineProperties } = Object;
 const { dirname, isAbsolute, join, parse, relative } = posix;
 const configurable = true;
-const EMPTY_ARRAY = [];
 const enumerable = true;
 const { iterator } = Symbol;
 const LA_FLOR = Symbol('secret');
@@ -90,7 +89,11 @@ class Directory {
   /** Look up the directory or file with the given relative path. */
   lookup(
     path,
-    { fillInMissingSegments = false, validateLastSegment = false } = {}
+    {
+      fillInMissingSegments = false,
+      validateLastSegment = false,
+      deleteLastSegment = false,
+    } = {}
   ) {
     assert.ok(!isAbsolute(path), 'path must be relative');
 
@@ -101,10 +104,16 @@ class Directory {
       const name = segments[index];
 
       if (cursor.#entries.has(name)) {
-        const skip = !validateLastSegment && index === segments.length - 1;
         const entry = cursor.#entries.get(name);
+        const last = index === segments.length - 1;
 
-        if (entry instanceof Directory || skip) {
+        if (last && deleteLastSegment) {
+          cursor.#entries.delete(name);
+          cursor = entry;
+        } else if (
+          entry instanceof Directory ||
+          (last && !validateLastSegment)
+        ) {
           cursor = entry;
         } else {
           throw new Error(
@@ -212,13 +221,55 @@ export default class Inventory {
     this.#size++;
 
     // Add file to kind index.
-    if (this.#byKind.has(kind)) {
-      this.#byKind.get(kind).push(file);
+    let files;
+    if (!this.#byKind.has(kind)) {
+      files = new Map();
+      this.#byKind.set(kind, files);
     } else {
-      this.#byKind.set(kind, [file]);
+      files = this.#byKind.get(kind);
     }
+    files.set(path, file);
 
     return file;
+  }
+
+  /**
+   * Delete the file system entity with the given path. If that is a directory,
+   * the transitive closure of children are also deleted.
+   */
+  delete(path) {
+    assert.ok(isAbsolute(path), 'path must be absolute');
+    assert.ok(path !== '/', 'path must not be root "/"');
+
+    path = relative('/', path);
+
+    // Delete from primary index (byPath).
+    const entry = this.#root.lookup(path, { deleteLastSegment: true });
+
+    // Delete from secondary index (byKind).
+    if (entry instanceof File) {
+      this.#byKind.get(entry.kind).delete(entry.path);
+    } else {
+      assert.ok(entry instanceof Directory);
+      for (const file of entry.files()) {
+        this.#byKind.get(file.kind).delete(file.path);
+      }
+    }
+
+    // Delete from secondary index (byKeyword).
+    if (entry instanceof File) {
+      if (entry.keywords && typeof entry.keywords[iterator] === 'function') {
+        for (const keyword of entry.keywords) {
+          const slug = slugify(keyword);
+          if (this.#byKeyword.has(slug)) {
+            this.#byKeyword.get(slug).files.delete(entry.path);
+          }
+        }
+      }
+    }
+
+    // Done.
+    return entry;
   }
 
   /**
@@ -234,15 +285,18 @@ export default class Inventory {
         const slug = slugify(keyword);
 
         if (!this.#byKeyword.has(slug)) {
+          const files = new Map();
+          files.set(file.path, file);
+
           this.#byKeyword.set(slug, {
             keyword: slug,
             display: [keyword],
-            files: [file],
+            files,
           });
         } else {
           const { display, files } = this.#byKeyword.get(slug);
           if (!display.includes(keyword)) display.push(keyword);
-          if (!files.includes(file)) files.push(file);
+          if (!files.has(file.path)) files.set(file.path, file);
         }
       }
     }
@@ -265,14 +319,17 @@ export default class Inventory {
   /** Look up some files by their kinds. */
   *byKind(...kinds) {
     for (const kind of kinds) {
-      yield* this.#byKind.get(kind) || EMPTY_ARRAY;
+      const files = this.#byKind.get(kind);
+      if (files) {
+        yield* files.values();
+      }
     }
   }
 
   /** Look up files by tool phase. */
   *byPhase(phase) {
-    for (const [kind, index] of this.#byKind) {
-      if (hasPhase(kind, phase)) yield* index;
+    for (const [kind, files] of this.#byKind) {
+      if (hasPhase(kind, phase)) yield* files.values();
     }
   }
 
@@ -284,13 +341,7 @@ export default class Inventory {
   /** Look up files by keyword. */
   byKeyword(keyword) {
     const slug = slugify(keyword);
-    const entry = this.#byKeyword.get(slug);
-
-    return {
-      keyword: slug,
-      display: entry ? [...entry.display] : [keyword],
-      files: entry ? [...entry.files] : [],
-    };
+    return this.#byKeyword.get(slug);
   }
 
   // ---------------------------------------------------------------------------

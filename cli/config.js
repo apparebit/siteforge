@@ -152,6 +152,18 @@ export const configure = async () => {
 
   const options = { ...optionDefaults, ...pkg, ...cli, volume };
 
+  // Fine-Tuning: Directory names should end with a trailing slash.
+  if (!options.buildDir.endsWith('/')) {
+    options.buildDir = options.buildDir + '/';
+  }
+  if (!options.componentDir.endsWith('/')) {
+    options.componentDir = options.componentDir + '/';
+  }
+  if (!options.contentDir.endsWith('/')) {
+    options.contentDir = options.contentDir + '/';
+  }
+
+  // Fine-Tuning: No build tasks indicates an urgent need for help.
   let hasTask = false;
   for (const task of tasks) {
     if (options[task]) {

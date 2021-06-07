@@ -273,6 +273,25 @@ export default class Inventory {
   }
 
   /**
+   * Handle a file system change event as produced by
+   * [chokidar](https://github.com/paulmillr/chokidar)
+   */
+  handleChange(event, path) {
+    // There is nothing to do for 'change' and 'addDir'. The latter can safely
+    // be ignored because the inventory implementation automatically creates
+    // directories as needed.
+    switch (event) {
+      case 'add':
+        if (!this.byPath(path)) this.add(path);
+        break;
+      case 'unlink':
+      case 'unlinkDir':
+        this.delete(path);
+        break;
+    }
+  }
+
+  /**
    * Index the file by its keywords. Each keyword is first converted into
    * the corresponding slug, though the original is also preserved.
    */

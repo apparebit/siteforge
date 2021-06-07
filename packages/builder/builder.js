@@ -116,7 +116,7 @@ export async function buildAll(context) {
  * may be asynchronous).
  */
 export function rebuildOnDemand(context, { afterBuild = () => {} } = {}) {
-  const { options } = context;
+  const { inventory, options } = context;
   const { componentDir, contentDir } = options;
 
   // Rebuild website, then run completion handler.
@@ -150,15 +150,16 @@ export function rebuildOnDemand(context, { afterBuild = () => {} } = {}) {
 
   // Set up file system watcher.
   const watcher = watch([componentDir, contentDir], {
-    followSymlinks: false,
-    // Match path segments that start with dot [chokidar docs]
-    ignored: /(^|[/\\])\../u,
-    persistent: true,
+    followSymlinks: false, // FIXME: We should be more consistent.
+    ignored: options.doNotBuild,
   });
 
   watcher.on('all', (event, path) => {
-    // Invoke debounced function only after recording event to capture all.
+    // Record event and apply to inventory
     changes.push({ event, path });
+    if (path.startsWith(contentDir)) {
+      inventory.handleChange(event, path.slice(contentDir.length - 1));
+    }
     triggerRebuild();
   });
 

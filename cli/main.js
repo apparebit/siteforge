@@ -191,7 +191,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Build and Serve Content
 
-  if (options.develop || options.build) {
+  if (options.build) {
     logger.section(3.2, `Build website in "${options.buildDir}"`, config);
     await buildAll(config);
   }
@@ -201,6 +201,7 @@ async function main() {
 
     let eventSource, server, stopBuilding;
 
+    // Shut down Dev Server, notably by stopping to build.
     let closed = false;
     const close = async () => {
       if (closed) return;
@@ -214,6 +215,7 @@ async function main() {
       await Promise.all(steps);
     };
 
+    // Try to identify an IP address that's routable on the public internet.
     let ip;
     if (options.routableAddress) {
       const interfaces = networkInterfaces();
@@ -229,6 +231,7 @@ async function main() {
       }
     }
 
+    // Instantiate Dev Server including SSE middleware.
     try {
       ({ eventSource, server } = await createDevServer({ ...config, ip }));
       logger.note(`Dev Server is running at "${server.origin}"`);

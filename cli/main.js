@@ -22,10 +22,11 @@ const BUILD_HTACCESS = resolve(
   '../../server-configs-apache/bin/build.sh'
 );
 const IGNORED_VALIDATIONS = [
+  `.*Cannot invoke "org.w3c.css.values.CssValue.get(Raw)?Type\\(\\)" because "this.val1" is null.`,
   `CSS: “backdrop-filter”: Property “backdrop-filter” doesn't exist.`,
   `CSS: “background-image”: “0%” is not a “color” value.`,
   `CSS: “color-adjust”: Property “color-adjust” doesn't exist.`,
-  `CSS: “line-height”: Cannot invoke "org.w3c.css.values.CssValue.getType\\(\\)" because "this.val1" is null.`,
+  `CSS: “font-stretch”: “\\d{1,3}\\%” is not a “font-stretch” value.`,
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];

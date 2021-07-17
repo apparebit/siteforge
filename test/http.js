@@ -219,17 +219,17 @@ harness.test('@grr/http', t => {
       ).map(MediaType.create),
       MediaType.parseAll(
         `*/*, ` +
-          `text/plain, ` +
-          `text/plain; charset=UTF-8; format=fixed, ` +
-          `text/plain; charset=utf8, ` +
-          `text/*`
+        `text/plain, ` +
+        `text/plain; charset=UTF-8; format=fixed, ` +
+        `text/plain; charset=utf8, ` +
+        `text/*`
       ).map(MediaType.create),
       MediaType.parseAll(
         `*/*; q=0.1, ` +
-          `text/plain; q=0.5, ` +
-          `text/plain; charset=UTF-8; format=fixed; q=0.8, ` +
-          `text/plain; charset=utf8, ` +
-          `text/*; q=0.2`
+        `text/plain; q=0.5, ` +
+        `text/plain; charset=UTF-8; format=fixed; q=0.8, ` +
+        `text/plain; charset=utf8, ` +
+        `text/*; q=0.2`
       ).map(MediaType.create),
     ];
 
@@ -550,8 +550,8 @@ harness.test('@grr/http', t => {
           const location = response.get(Location);
           t.ok(
             location === 'https://127.0.0.1:6651/some/page' ||
-              location === 'https://[::ffff:7f00:1]:6651/some/page' ||
-              location === 'https://localhost:6651/some/page'
+            location === 'https://[::ffff:7f00:1]:6651/some/page' ||
+            location === 'https://localhost:6651/some/page'
           );
           const contentLength = 130 + 2 * location.length;
           t.equal(response.length, contentLength);
@@ -693,7 +693,7 @@ harness.test('@grr/http', t => {
       for await (const event of client.subscribe(EVENT_SOURCE_PATH)) {
         logger.debug(
           `Received event #${++count} with type "${event.type}"` +
-            ` and ID "${event.lastEventId}"`
+          ` and ID "${event.lastEventId}"`
         );
 
         switch (count) {

@@ -15,16 +15,16 @@ const INSPECT = Symbol.for('nodejs.util.inspect.custom');
 const PARAMETER = new RegExp(
   // Semicolon
   `;` +
-    // Leading space
-    `[\\t\\n\\r ]*` +
-    // Name
-    `([^=;,]*)` +
-    // Optional value
-    `(?:=` +
-    `([^;,\\t\\n\\r ]*)` +
-    `)?` +
-    // Trailing space
-    `[\\t\\n\\r ]*`,
+  // Leading space
+  `[\\t\\n\\r ]*` +
+  // Name
+  `([^=;,]*)` +
+  // Optional value
+  `(?:=` +
+  `([^;,\\t\\n\\r ]*)` +
+  `)?` +
+  // Trailing space
+  `[\\t\\n\\r ]*`,
   `uy`
 );
 
@@ -73,18 +73,18 @@ const TOP_LEVEL_NAMES = [
 const TYPE_SUBTYPE_SUFFIX = new RegExp(
   // Possibly leading space
   `[\\t\\n\\r ]*` +
-    // Type
-    `([^/]*)` +
-    `\\/` +
-    // Subtype
-    `([^+;,\\t\\n\\r ]*)` +
-    // Optional suffix
-    `(?:` +
-    `\\+` +
-    `([^;,\\t\\n\\r ]+)` +
-    `)?` +
-    // Possibly trailing space
-    `[\\t\\n\\r ]*`,
+  // Type
+  `([^/]*)` +
+  `\\/` +
+  // Subtype
+  `([^+;,\\t\\n\\r ]*)` +
+  // Optional suffix
+  `(?:` +
+  `\\+` +
+  `([^;,\\t\\n\\r ]+)` +
+  `)?` +
+  // Possibly trailing space
+  `[\\t\\n\\r ]*`,
   `uy`
 );
 

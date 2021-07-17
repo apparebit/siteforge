@@ -2,22 +2,25 @@
 
 import { createReadStream, promises } from 'fs';
 import { EOL } from 'os';
+import { errorMonitor } from 'events';
 import {
   escapeText,
   parseDateHTTP,
   validateRequestPath,
   validateRoutePath,
 } from './util.js';
-import { finished, pipeline, Readable } from 'stream';
+import { extname, join } from 'path';
+import { finished, Readable } from 'stream';
 import {
   Header,
+  kSessionId,
   MethodName,
   StatusCode,
   StatusWithoutBody,
 } from './constants.js';
 import { inspect, types } from 'util';
-import { extname, join } from 'path';
 import MediaType from './media-type.js';
+import { pipeline } from 'stream/promises';
 import { STATUS_CODES } from 'http';
 import templatize from '@grr/temple';
 
@@ -292,7 +295,7 @@ class Request extends Message {
   /** Get parsed value for accept header. */
   get accept() {
     let accept = this.get(Accept);
-    if (!isArray()) {
+    if (!isArray(accept)) {
       accept = MediaType.parseAll(accept);
       this.set(Accept, accept);
     }
@@ -379,6 +382,9 @@ class Response extends Message {
 
 // =============================================================================
 
+/* The number of contexts created by a server instance. */
+let contextCounter = 0;
+
 /**
  * A request/response context. On client and server alike, a context is
  * instantiated with a request and subsequently completed with a response. Both
@@ -449,6 +455,7 @@ export default class Context {
 
   // ---------------------------------------------------------------------------
 
+  #id;
   #logger;
   #stringify;
   #origin;
@@ -466,13 +473,24 @@ export default class Context {
     logger = console,
     stringify = stringifyAsJSON,
   }) {
-    this.#logger = logger;
+    this.#id = `${stream.session[kSessionId]}.${++contextCounter}`;
+    this.#logger = logger.withLabel(`request-${this.#id}`);
     this.#stringify = stringify;
     this.#origin = origin;
     this.#client = stream.session.socket.remoteAddress;
     this.#stream = stream;
     this.#request = new Request(request);
     this.#response = new Response();
+  }
+
+  /**
+   * Get debug identifier. It consists of two positive integers separated by a
+   * period. The first number represents the session and the second number
+   * represents the stream (or request). Both numbers are unique for the
+   * lifetime of a server instance.
+   */
+  get id() {
+    return this.#id;
   }
 
   /** Get logger. */
@@ -589,18 +607,25 @@ export default class Context {
    * connecting a readable stream as body with the output stream.
    */
   prepare(value) {
+    if (this.hasResponded || this.isTerminated) return this;
     const { response } = this;
+
+    // Only process value if it is materially different.
+    const previous = response.body;
+    if (value === previous) return this;
+
+    // If the previous body is a stream, make sure it will be closed.
+    if (previous instanceof Readable) {
+      this.onDidTerminate(() => {
+        if (!previous.closed && !previous.destroyed) {
+          previous.close();
+        }
+      });
+    }
 
     // Set the status if not yet set.
     if (response.status == null) {
       response.status = value == null ? NoContent : Ok;
-    }
-
-    // If the old body is a different stream, close it.
-    const previous = response.body;
-    if (previous instanceof Readable && previous !== value) {
-      // Don't close here, since the stream may still be needed inside pipeline.
-      this.onDidTerminate(() => previous.destroy());
     }
 
     if (value == null) {
@@ -638,7 +663,9 @@ export default class Context {
 
   /** Harden the response. */
   harden() {
-    if (this.hasSentHeaders) return this;
+    if (this.hasSentHeaders || this.hasResponded || this.isTerminated) {
+      return this;
+    }
 
     // See https://owasp.org/www-project-secure-headers/
     const { response } = this;
@@ -646,8 +673,8 @@ export default class Context {
     if (type != null) {
       if (type.type === 'font') {
         response.setIfUnset(AccessControlAllowOrigin, this.origin);
-      } else if (type.type === 'text' && type.subtype === 'html') {
-        response.setIfUnset(ReferrerPolicy, 'origin-when-cross-origin');
+      } else if (MediaType.isScripted(type)) {
+        response.setIfUnset(ReferrerPolicy, 'strict-origin-when-cross-origin');
         response.setIfUnset(FrameOptions, 'DENY');
         response.setIfUnset(XssProtection, '1; mode=block');
       }
@@ -669,8 +696,8 @@ export default class Context {
    * Send the response. This method returns immediately if this context is
    * marked as `responded` via `markResponded()`.
    */
-  respond() {
-    if (this.hasResponded || this.isTerminated) return this;
+  async respond() {
+    if (this.hasResponded || this.isTerminated) return;
     this.markResponded();
 
     let { request, response, stream } = this;
@@ -703,6 +730,14 @@ export default class Context {
             );
           }
         });
+        try {
+          await pipeline(body, stream);
+        } catch (x) {
+          this.logger.error(`Pipeline for content failed`, x);
+        }
+      } else {
+        stream.end();
+        this.logger.error(`Invalid response body "${body}"`);
       }
     }
 

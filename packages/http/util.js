@@ -131,7 +131,7 @@ const normalize = (path, { checkDotted = true, checkChars = true } = {}) => {
       (segment !== '.well-known' || cleaned.length !== 0)
     ) {
       throw new Context.Error(
-        `Path "${path} contains segment starting with '.'`
+        `Path "${path}" contains segment starting with '.'`
       );
     } else if (checkChars && INVALID_CHAR.test(segment)) {
       throw new Context.Error(

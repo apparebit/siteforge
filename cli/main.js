@@ -27,6 +27,8 @@ const IGNORED_VALIDATIONS = [
   `CSS: “background-image”: “0%” is not a “color” value.`,
   `CSS: “color-adjust”: Property “color-adjust” doesn't exist.`,
   `CSS: “font-stretch”: “\\d{1,3}\\%” is not a “font-stretch” value.`,
+  `CSS: Parse Error.`,
+  `CSS: Unknown pseudo-element or pseudo-class “:is”`,
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];

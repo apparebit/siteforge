@@ -42,7 +42,7 @@ export const scaffold = () => async (context, next) => {
   }
 
   // Harden response and actually send it.
-  context.harden().respond();
+  await context.harden().respond();
 
   // Log request and response.
   context.logger.info(context.toCombinedLogFormat({ time }));
@@ -97,7 +97,7 @@ export const eventSource = ({
   reconnect = 2000,
   startTimer = setInterval,
   stopTimer = clearInterval,
-  logger = { info() {} },
+  logger = { info() { } },
 } = {}) => {
   if (!isSafeInteger(heartbeat)) {
     throw new TypeError(`Heartbeat interval "${heartbeat}" isn't an integer`);
@@ -177,8 +177,7 @@ export const eventSource = ({
     message += '\n';
 
     logger.info(
-      `Emit server-sent event ${event ?? 'message'}(${data}) to ${
-        listeners.size
+      `Emit server-sent event ${event ?? 'message'}(${data}) to ${listeners.size
       } listener${listeners.size === 1 ? '' : 's'}`
     );
 

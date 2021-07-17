@@ -462,7 +462,7 @@ harness.test('@grr/http', t => {
 
   t.test('@grr/http/Server', async t => {
     const checkSecurityHeaders = response => {
-      t.equal(response.get(ReferrerPolicy), 'origin-when-cross-origin');
+      t.equal(response.get(ReferrerPolicy), 'strict-origin-when-cross-origin');
       t.equal(response.get(StrictTransportSecurity), 'max-age=86400');
       t.equal(response.get(ContentTypeOptions), 'nosniff');
       t.equal(response.get(FrameOptions), 'DENY');

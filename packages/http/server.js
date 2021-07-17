@@ -1,14 +1,14 @@
 /* © 2020-2021 Robert Grimm */
 
 import { constants, createSecureServer } from 'http2';
+import { kSessionId } from './constants.js';
 import Context from './context.js';
-import { isMountedAt } from './util.js';
+import { identifyEndpoint, isMountedAt } from './util.js';
 import { once } from 'events';
 import { posix } from 'path';
 
 const { defineProperty } = Object;
 const { isAbsolute, normalize } = posix;
-const kSessionNumber = Symbol('SessionNumber');
 const { NGHTTP2_CANCEL } = constants;
 
 // =============================================================================
@@ -119,6 +119,7 @@ export default class Server {
   #router;
   #sessionCount;
   #sessions;
+  #streamCount;
   #didStartUp;
   #didShutDown;
 
@@ -140,6 +141,7 @@ export default class Server {
     this.#router = new Router();
     this.#sessionCount = 0;
     this.#sessions = new Set();
+    this.#streamCount = 0;
   }
 
   /**
@@ -167,8 +169,9 @@ export default class Server {
       }));
 
       this.#didStartUp = once(server, 'listening').then(() => {
+        this.#logger.trace(`Started up ${this.#origin}`);
         server.on('session', this.accept.bind(this));
-        server.on('error', this.onError.bind(this));
+        server.on('error', this.onServerError.bind(this));
       });
 
       const endpoint = [this.#port];
@@ -182,16 +185,31 @@ export default class Server {
   /** Accept a connection (aka session). */
   accept(session) {
     if (this.#server == null || !this.#server.listening) {
-      session.destroy(NGHTTP2_CANCEL);
+      if (!session.destroyed) {
+        session.destroy(NGHTTP2_CANCEL);
+      }
       return;
     }
 
-    session[kSessionNumber] = ++this.#sessionCount;
-    this.#logger.trace(`Accept session ${session[kSessionNumber]}`);
+    session[kSessionId] = ++this.#sessionCount;
+
+    if (this.#logger.volume >= 3) {
+      const { socket } = session;
+      let remote;
+      if (socket.remoteFamily === 'IPv6') {
+        remote = `[${socket.remoteAddress}]:${socket.remotePort}`;
+      } else {
+        remote = `${socket.remoteAddress}:${socket.remotePort}`;
+      }
+
+      this.#logger.trace(
+        `Accepted session ${session[kSessionId]} from ${remote}`
+      );
+    }
 
     this.#sessions.add(session);
     session.on('close', () => {
-      this.#logger.trace(`Did close session ${session[kSessionNumber]}`);
+      this.#logger.trace(`Did close session ${session[kSessionId]}`);
       this.#sessions.delete(session);
     });
     session.on('stream', this.onRequest.bind(this));
@@ -207,28 +225,28 @@ export default class Server {
       request: headers,
     });
 
-    this.#logger.trace('Request before middleware', context.request);
-    await this.#router.handle(context, () => {});
-    this.#logger.trace('Response after middleware', context.response);
+    const { request } = context;
+    context.logger.trace(`Begin ${request.method} ${request.path}`);
+    await this.#router.handle(context, () => { });
+    context.logger.trace(`End ${request.method} ${request.path}`);
   }
 
-  onError(error) {
-    this.#logger.error('General error', error);
-  }
-
-  onClientError(error, socket) {
-    this.#logger.error('Client error', error);
-    socket.destroy(error);
+  onServerError(error) {
+    this.#logger.error(`Server ${this.#origin} failed`, error);
+    this.close();
   }
 
   onSessionError(error, session) {
-    this.#logger.error('Session error', error);
-    session.destroy(error);
+    this.#logger.error(`Session ${session[kSessionId]} failed`, error);
+    if (!session.destroyed) session.destroy(error);
   }
 
   /** Disconnect a session. */
   disconnect(session) {
-    session.close();
+    if (!session.closed && !session.destroyed) {
+      this.#logger.trace(`Closing session ${session[kSessionId]}`);
+      session.close();
+    }
   }
 
   /**
@@ -242,22 +260,23 @@ export default class Server {
       return Promise.resolve();
     }
 
-    this.#logger.trace('Close HTTP/2 server');
+    this.#logger.trace(`Shutting down ${this.#origin}`);
     const server = this.#server;
     this.#server = null;
     this.#didShutDown = new Promise((resolve, reject) => {
       server.close(error => {
         if (error) {
+          this.#logger.error(`Shutdown of ${this.#origin} failed`, error);
           reject(error);
         } else {
+          this.#logger.trace(`Did shut down ${this.#origin}`);
           resolve();
         }
       });
     });
 
     for (const session of this.#sessions) {
-      this.#logger.trace(`Close session ${session[kSessionNumber]}`);
-      session.close();
+      this.disconnect(session);
     }
 
     return this.#didShutDown;

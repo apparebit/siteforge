@@ -61,3 +61,5 @@ const prepare = () => {
 };
 
 export const { Header, MethodName, StatusCode, StatusWithoutBody } = prepare();
+
+export const kSessionId = Symbol('Session ID');

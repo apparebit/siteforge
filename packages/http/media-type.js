@@ -427,6 +427,24 @@ export default class MediaType {
     return type1.compareTo(type2);
   }
 
+  /**
+   * Determine whether the given value is a media type for scripted content on
+   * the web. Such content includes HTML, JavaScript, PDF, and SVG.
+   */
+  static isScripted(value) {
+    if (value.type === 'text') {
+      const { subtype: sub } = value;
+      return sub === 'html' || sub === 'javascript';
+    } else if (value.type === 'image') {
+      return value.subtype === 'svg';
+    } else if (value.type === 'application') {
+      const { subtype: sub } = value;
+      return sub === 'pdf';
+    } else {
+      return false;
+    }
+  }
+
   // ===========================================================================
 
   /**
@@ -630,6 +648,7 @@ for (let [display, args] of entriesOf({
   // Not named JSON, which conflicts with standard library.
   Jason: ['application', 'json'],
   Markdown: ['text', 'markdown'],
+  PDF: ['application', 'pdf'],
   PlainText: ['text', 'plain'],
   PNG: ['image', 'png'],
   SVG: ['image', 'svg', 'xml'],

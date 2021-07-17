@@ -209,6 +209,15 @@ harness.test('@grr/http', t => {
     t.equal(BareType.PlainText.compareTo(MediaType.PlainText), 1);
     t.equal(MediaType.PlainText.compareTo(BareType.PlainText), -1);
 
+    // -------------------------------------------------- MediaType.isScripted()
+    t.ok(MediaType.isScripted(BareType.HTML));
+    t.ok(MediaType.isScripted(MediaType.HTML));
+    t.ok(MediaType.isScripted(MediaType.JavaScript));
+    t.ok(MediaType.isScripted(MediaType.PDF));
+    t.ok(MediaType.isScripted(MediaType.SVG));
+    t.notOk(MediaType.isScripted(MediaType.Jason));
+    t.notOk(MediaType.isScripted(MediaType.PNG));
+
     // ---------------------------------------------------- MediaType.parseAll()
     let lotsOfParsedTypes = [
       MediaType.parseAll('text/html, text/plain; q=0.7, text/*, */*;q=0.1').map(

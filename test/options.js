@@ -35,6 +35,7 @@ harness.test('tooling/options', t => {
       path: FilePath,
       round: Number,
       wetRun: Boolean,
+      N: Number,
     })
   );
 
@@ -127,6 +128,15 @@ harness.test('tooling/options', t => {
       escapeRegex('Command line argument "--not-a-flag" should be "whatever"'),
       'u'
     )
+  );
+
+  t.throws(
+    () =>
+      optionsFromArguments(
+        ['---n'],
+        configuration,
+      ),
+    new RegExp(escapeRegex('Unknown command line option"--n"'), 'u')
   );
 
   delete configuration._;

@@ -90,7 +90,9 @@ export const defaults = () => {
 /** Add dashed alias for camel-cased options if they don't already exist. */
 export const aliased = config => {
   for (const key of keysOf(config)) {
-    const dashed = key.replace(/[A-Z]/gu, s => `-${s.toLowerCase()}`);
+    if (key.length <= 1) continue;
+    let dashed = key.replace(/[A-Z]/gu, s => `-${s.toLowerCase()}`);
+    if (dashed.charCodeAt(0) === DASH) dashed = dashed.slice(1);
     if (dashed !== key && !has(config, dashed)) {
       config[dashed] = key;
     }

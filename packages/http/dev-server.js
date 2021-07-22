@@ -91,7 +91,13 @@ const createDevServer = async config => {
     )
     .route(Middleware.satisfyFromFileSystem({ root: options.buildDir }));
 
-  await server.listen();
+  try {
+    await server.listen();
+  } catch (x) {
+    // If server fails to start up, we must close eventSource to stop timer.
+    eventSource.close();
+    throw x;
+  }
   return { eventSource, server };
 };
 

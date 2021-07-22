@@ -232,12 +232,12 @@ export const transformMatchingBodyText = (predicate, transform) => {
   // Turn the predicate argument into an actual test function.
   let test;
   if (typeof predicate === 'string' || MediaType.isMediaType(predicate)) {
-    test = context =>
-      MediaType.from(context.response.type).matchTo(MediaType.from(predicate));
+    predicate = MediaType.from(predicate); // Fail early on a malformed type.
+    test = context => MediaType.from(context.response.type).matchTo(predicate);
   } else if (typeof predicate === 'function') {
     test = predicate;
   } else {
-    throw new Error(
+    throw new TypeError(
       `Predicate "${predicate}" is neither a media type nor a function`
     );
   }
@@ -248,7 +248,7 @@ export const transformMatchingBodyText = (predicate, transform) => {
     const { response } = context;
     let { body } = response;
 
-    if (test(context) && body != null) {
+    if (body != null && test(context)) {
       if (isBuffer(body)) {
         body = body.toString('utf8');
       } else if (body instanceof Readable) {

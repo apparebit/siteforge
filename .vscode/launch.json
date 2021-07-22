@@ -33,6 +33,20 @@
       "env": {
         "NODE_ENV": "test"
       }
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Site:forge apparebit.com",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "cwd": "${workspaceFolder}/../apparebit.com",
+      "program": "${workspaceFolder}/cli/main.js",
+      "args": ["---v", "build", "develop"],
+      "console": "internalConsole",
+      "outputCapture": "std"
     }
   ]
 }

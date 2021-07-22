@@ -69,8 +69,7 @@ function validateMarkup(config) {
   }
 
   logger.info(
-    `Found ${paths.length} markup file${
-      paths.length !== 1 ? 's' : ''
+    `Found ${paths.length} markup file${paths.length !== 1 ? 's' : ''
     } to validate`
   );
 
@@ -210,7 +209,7 @@ async function main() {
       if (closed) return;
       closed = true;
 
-      logger.note(`Shutting down Dev Server`);
+      logger.note(`Shutting down dev server`);
       if (eventSource) eventSource.close();
       const steps = [];
       if (server) steps.push(server.close());
@@ -237,7 +236,13 @@ async function main() {
     // Instantiate Dev Server including SSE middleware.
     try {
       ({ eventSource, server } = await createDevServer({ ...config, ip }));
-      logger.note(`Dev Server is running at "${server.origin}"`);
+    } catch (x) {
+      logger.error(`Couldn't start dev server`, x);
+      return;
+    }
+    logger.note(`Dev server is running at "${server.origin}"`);
+
+    try {
       await open(server.origin);
 
       stopBuilding = rebuildOnDemand(config, {
@@ -249,8 +254,9 @@ async function main() {
         },
       });
     } catch (x) {
-      logger.error(x);
+      logger.error(`Couldn't start file system monitor`, x);
       await close();
+      return;
     }
 
     process.on('SIGINT', close);

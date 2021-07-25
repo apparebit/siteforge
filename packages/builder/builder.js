@@ -73,7 +73,7 @@ const doBuild = (builder, file, context) => {
   if (builder) {
     const label = builder.verb;
     const verb = label[0].toUpperCase() + label.slice(1);
-    logger.info(` • ${verb} ${file.kind} "${file.path}"`);
+    logger.trace(` • ${verb} ${file.kind} "${file.path}"`);
     executor.run(builder, undefined, file, context).catch(reason => {
       logger.error(`Failed to ${label} "${file.path}"`, reason);
     });
@@ -93,14 +93,15 @@ export async function buildAll(context) {
     [1, builderFor],
     [2, contentBuilderFor],
   ]) {
-    logger.info(`Scheduling async tasks (fork)`);
+    logger.trace(`Run async build tasks:`);
     for (const file of inventory.byPhase(phase)) {
       doBuild(selector(file.kind), file, context);
     }
 
     // The poor man's version of structured concurrency or fork/join
-    logger.info(`Awaiting outstanding async tasks (join)`);
+    logger.trace(`Awaiting outstanding build tasks`);
     await executor.onIdle();
+    logger.trace(`Done building`);
   }
 }
 
@@ -115,9 +116,9 @@ export async function buildAll(context) {
  * included in a build and passes that list to the `afterBuild` callback (which
  * may be asynchronous).
  */
-export function rebuildOnDemand(context, { afterBuild = () => {} } = {}) {
-  const { inventory, options } = context;
-  const { componentDir, contentDir } = options;
+export function rebuildOnDemand(context, { afterBuild = () => { } } = {}) {
+  const { inventory, logger, options } = context;
+  const { contentDir } = options;
 
   // Rebuild website, then run completion handler.
   let building = false;
@@ -142,25 +143,27 @@ export function rebuildOnDemand(context, { afterBuild = () => {} } = {}) {
   // Trigger rebuild, with trigger debounced and rebuild strictly consecutive.
   let changes = [];
   const triggerRebuild = debounce(async () => {
-    if (building) return;
     const includedChanges = changes;
     changes = [];
     await rebuild(includedChanges);
   });
 
   // Set up file system watcher.
-  const watcher = watch([componentDir, contentDir], {
-    followSymlinks: false, // FIXME: We should be more consistent.
+  // FIXME: What about componentDir, followSymlinks?
+  const watcher = watch([contentDir], {
+    followSymlinks: false,
     ignored: options.doNotBuild,
   });
 
+  const prefix = contentDir.length - 1;
   watcher.on('all', (event, path) => {
     // Record event and apply to inventory
+    path = path.slice(prefix);
+    logger.trace(`File system monitor: ${event} "${path}"`);
+
+    inventory.handleChange(event, path);
     changes.push({ event, path });
-    if (path.startsWith(contentDir)) {
-      inventory.handleChange(event, path.slice(contentDir.length - 1));
-    }
-    triggerRebuild();
+    if (!building) triggerRebuild();
   });
 
   // Return function to tear down watcher.

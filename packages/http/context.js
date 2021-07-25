@@ -1,8 +1,8 @@
 /* © 2020-2021 Robert Grimm */
 
+import { constants as k } from 'http2';
 import { createReadStream, promises } from 'fs';
 import { EOL } from 'os';
-import { errorMonitor } from 'events';
 import {
   escapeText,
   parseDateHTTP,
@@ -722,26 +722,18 @@ export default class Context {
       } else if (typeof body === 'string') {
         stream.end(body, 'utf8');
       } else if (body instanceof Readable) {
-        pipeline(body, stream, error => {
-          if (error) {
-            this.logger.error(
-              `Failed streaming body for ${request.path}`,
-              error
-            );
-          }
-        });
         try {
           await pipeline(body, stream);
         } catch (x) {
-          this.logger.error(`Pipeline for content failed`, x);
+          this.logger.error(
+            `Failed streaming content for path "${request.path}"`, x
+          );
         }
       } else {
-        stream.end();
+        stream.close(k.NGHTTP2_INTERNAL_ERROR);
         this.logger.error(`Invalid response body "${body}"`);
       }
     }
-
-    return this;
   }
 
   // ===========================================================================

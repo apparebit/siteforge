@@ -3,7 +3,7 @@
 import { constants, createSecureServer } from 'http2';
 import { kSessionId } from './constants.js';
 import Context from './context.js';
-import { identifyEndpoint, isMountedAt } from './util.js';
+import { isMountedAt } from './util.js';
 import { once } from 'events';
 import { posix } from 'path';
 
@@ -203,7 +203,7 @@ export default class Server {
       }
 
       this.#logger.trace(
-        `Accepted session ${session[kSessionId]} from ${remote}`
+        `Did accept session ${session[kSessionId]} from ${remote}`
       );
     }
 
@@ -226,9 +226,9 @@ export default class Server {
     });
 
     const { request } = context;
-    context.logger.trace(`Begin ${request.method} ${request.path}`);
+    context.logger.trace(`Handle ${request.method} ${request.path}`);
     await this.#router.handle(context, () => { });
-    context.logger.trace(`End ${request.method} ${request.path}`);
+    context.logger.trace(`Did handle ${request.method} ${request.path}`);
   }
 
   onServerError(error) {
@@ -244,7 +244,7 @@ export default class Server {
   /** Disconnect a session. */
   disconnect(session) {
     if (!session.closed && !session.destroyed) {
-      this.#logger.trace(`Closing session ${session[kSessionId]}`);
+      this.#logger.trace(`Close session ${session[kSessionId]}`);
       session.close();
     }
   }
@@ -260,7 +260,7 @@ export default class Server {
       return Promise.resolve();
     }
 
-    this.#logger.trace(`Shutting down ${this.#origin}`);
+    this.#logger.trace(`Shut down ${this.#origin}`);
     const server = this.#server;
     this.#server = null;
     this.#didShutDown = new Promise((resolve, reject) => {

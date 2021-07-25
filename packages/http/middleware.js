@@ -176,7 +176,7 @@ export const eventSource = ({
     if (!message) return;
     message += '\n';
 
-    logger.info(
+    logger.trace(
       `Emit server-sent event ${event ?? 'message'}(${data}) to ${listeners.size
       } listener${listeners.size === 1 ? '' : 's'}`
     );

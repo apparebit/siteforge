@@ -675,7 +675,7 @@ export default class Context {
         response.setIfUnset(AccessControlAllowOrigin, this.origin);
       } else if (MediaType.isScripted(type)) {
         response.setIfUnset(ReferrerPolicy, 'strict-origin-when-cross-origin');
-        response.setIfUnset(FrameOptions, 'DENY');
+        response.setIfUnset(FrameOptions, 'SAMEORIGIN');
         response.setIfUnset(XssProtection, '1; mode=block');
       }
     }

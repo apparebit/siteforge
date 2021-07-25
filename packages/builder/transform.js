@@ -29,16 +29,16 @@ const FRONT_CLOSE = '</script>';
 // Regex for extracting copyright notice at top of source file.
 const NOTICE = new RegExp(
   `^` + // Start at the beginning.
-    `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
-    `\\s*` + // Also ignore any space if present.
-    `(?:` + // Match either just a multi-line comment or 1+ single-line comments.
-    `(?:\\/\\*` + // Multi-line comment it is.
-    `[\\s*_=-]*` + // Ignore any number of spacing or "decorative" characters.
-    `((?:\\(c\\)|©|copyright).*?)` + // Extract the copyright notice.
-    `[\\s*_=-]*` + // Again, ignore spacing or decorative characters.
-    `\\*\\/)` + // Until we reach end of comment: It's safe to split content here.
-    `|(?:\\/\\/[\\p{Zs}*_=-]*\\n)*` + // Or: Single-line comments its is.
-    `(?:\\/\\/\\p{Zs}*((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Extract notice.
+  `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
+  `\\s*` + // Also ignore any space if present.
+  `(?:` + // Match either just a multi-line comment or 1+ single-line comments.
+  `(?:\\/\\*` + // Multi-line comment it is.
+  `[\\s*_=-]*` + // Ignore any number of spacing or "decorative" characters.
+  `((?:\\(c\\)|©|copyright).*?)` + // Extract the copyright notice.
+  `[\\s*_=-]*` + // Again, ignore spacing or decorative characters.
+  `\\*\\/)` + // Until we reach end of comment: It's safe to split content here.
+  `|(?:\\/\\/[\\p{Zs}*_=-]*\\n)*` + // Or: Single-line comments its is.
+  `(?:\\/\\/\\p{Zs}*((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Extract notice.
   'iu' // Oh yeah, ignore case and embrace the Unicode.
 );
 
@@ -75,14 +75,13 @@ export function pipe(...steps) {
       if (signal?.aborted) throw new AbortError();
 
       let delta = step(diff, context);
-      if (delta && typeof delta.then === 'function') {
+      if (typeof delta?.then === 'function') {
         delta = await delta;
       }
       assign(diff, delta);
     }
 
     if (signal?.aborted) throw new AbortError();
-
     setPrototypeOf(diff, null);
     return diff;
   };

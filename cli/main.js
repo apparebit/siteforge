@@ -22,6 +22,7 @@ const BUILD_HTACCESS = resolve(
   '../../server-configs-apache/bin/build.sh'
 );
 const IGNORED_VALIDATIONS = [
+  `Attribute “media” not allowed on element “meta” at this point.`,
   `.*Cannot invoke "org.w3c.css.values.CssValue.get(Raw)?Type\\(\\)" because "this.val1" is null.`,
   `CSS: “backdrop-filter”: Property “backdrop-filter” doesn't exist.`,
   `CSS: “background-image”: “0%” is not a “color” value.`,

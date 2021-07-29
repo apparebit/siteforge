@@ -25,6 +25,7 @@ export default async function createContext(configure) {
     context.executor = new Executor();
     context.inventory = new Inventory({
       isStaticAsset: context.options.staticAssets,
+      justCopy: context.options.justCopy,
     });
 
     context.logger = new Rollcall({

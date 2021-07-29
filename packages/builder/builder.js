@@ -47,7 +47,7 @@ const preparePage = toBuilder(
 
 const finishPage = toBuilder(assemblePage, writeTarget);
 
-export function builderFor(kind) {
+function builderFor(kind) {
   return {
     [Kind.Config]: copyResource,
     [Kind.Font]: copyResource,
@@ -59,7 +59,7 @@ export function builderFor(kind) {
   }[kind];
 }
 
-export function contentBuilderFor(kind) {
+function contentBuilderFor(kind) {
   return {
     [Kind.Markup]: finishPage,
   }[kind];

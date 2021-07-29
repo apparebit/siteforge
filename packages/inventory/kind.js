@@ -73,8 +73,11 @@ const IsKnownConfigPath = freeze({
 export const isDefaultAssetPath = path => /^\/(assets?|static)\//iu.test(path);
 export const toCoolPath = path => path.replace(/(\/index.html|.html|\/)$/u, '');
 
-export const classify = (path, { isStaticAsset = isDefaultAssetPath } = {}) => {
-  if (IsKnownConfigPath[path]) {
+export const classify = (path, {
+  isStaticAsset = isDefaultAssetPath,
+  justCopy = () => false,
+} = {}) => {
+  if (IsKnownConfigPath[path] || justCopy(path)) {
     return { coolPath: path, kind: Kind.Config };
   }
 

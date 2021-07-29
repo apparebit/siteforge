@@ -176,9 +176,14 @@ export default class Inventory {
   #byKeyword = new Map();
   #versionedPaths = new Map();
   #isStaticAsset;
+  #justCopy;
 
-  constructor({ isStaticAsset = isDefaultAssetPath } = {}) {
+  constructor({
+    isStaticAsset = isDefaultAssetPath,
+    justCopy = () => false,
+  } = {}) {
     this.#isStaticAsset = isStaticAsset;
+    this.#justCopy = justCopy;
   }
 
   get size() {
@@ -212,10 +217,10 @@ export default class Inventory {
     }
 
     // ...with the right cool path and kind
-    const { coolPath, kind } = classify(
-      join(dir, name + ext),
-      this.#isStaticAsset
-    );
+    const { coolPath, kind } = classify(join(dir, name + ext), {
+      isStaticAsset: this.#isStaticAsset,
+      justCopy: this.#justCopy,
+    });
 
     const file = parent._add(LA_FLOR, base, { coolPath, kind, ...data });
     this.#size++;

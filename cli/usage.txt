@@ -35,7 +35,7 @@
   <i>Exclusions</i>
 
       --do-not-build <u>glob</u>       Exclude matching files from build and serve
-      --do-not-validate <u>glob</u>    Exclude matching files from validation
+      --just-copy <u>glob</u>          Copy, don't build or validate matching files
       --clean-run               Delete existing build directory before writing
                                 any files (disabled)
       --dry-run                 Run code but do not persist results (disabled)

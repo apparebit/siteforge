@@ -57,14 +57,14 @@ async function takeInventory(config) {
 
 function validateMarkup(config) {
   const { inventory, logger, options } = config;
-  const { doNotValidate } = options;
+  const { justCopy } = options;
 
   // Nu Validator's command line interface pretends to be useful but is not.
   // Anything beyond selecting all files of a given type is impossible. That
   // means traversing the file system before traversing the file system. Yay!
   const paths = [];
   for (const file of inventory.byKind(Kind.Markup)) {
-    if (doNotValidate(file.path)) continue;
+    if (justCopy(file.path)) continue;
     const path = join(options.buildDir, file.path);
     paths.push(path);
   }

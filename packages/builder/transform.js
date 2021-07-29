@@ -301,7 +301,10 @@ export async function assemblePage(file, context) {
 
 export function minifyScript(file) {
   return {
-    content: minify(file.content, {}, { comments: false }).code,
+    content: minify(file.content, {}, {
+      comments: false,
+      sourceType: 'module',
+    }).code,
   };
 }
 

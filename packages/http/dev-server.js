@@ -15,12 +15,13 @@ import Server from './server.js';
 // shutdown. It also tracks successive `error` events to terminate itself when
 // such an error trace becomes too long.
 
-const handler = origin => `
+const handler = (origin, debug = false) => `
+let DEBUG = ${Boolean(debug)};
 let source = new EventSource("${origin}/@@event");
 let errorCount = 0;
 
 source.addEventListener("open", () => {
-  console.log("@@event: open");
+  if (DEBUG) console.log("@@event: open");
   errorCount = 0;
 });
 
@@ -32,19 +33,19 @@ source.addEventListener("reload", evt => {
     // Nothing to do.
   }
 
-  console.log("@@event: reload", data);
+  if (DEBUG) console.log("@@event: reload", data);
   location.reload();
   errorCount = 0;
 });
 
 source.addEventListener("close", () => {
-  console.log("@@event: close");
+  if (DEBUG) console.log("@@event: close");
   source.close();
   errorCount = 0;
 });
 
 source.addEventListener("error", evt => {
-  console.error("@@event: error", evt);
+  if (DEBUG) console.error("@@event: error", evt);
   errorCount++;
   if (errorCount >= 5) source.close();
 });
@@ -77,7 +78,7 @@ const createDevServer = async config => {
       Middleware.transformMatchingBodyText(
         MediaType.HTML,
         Middleware.createAppendToBody(
-          `<script src="${server.origin}/@@handler"></script>`
+          `<script type="module" src="${server.origin}/@@handler"></script>`
         )
       )
     )
@@ -86,7 +87,7 @@ const createDevServer = async config => {
       '/@@handler',
       Middleware.content({
         type: MediaType.JavaScript,
-        body: handler(server.origin),
+        body: handler(server.origin, options.volume >= 1),
       })
     )
     .route(Middleware.satisfyFromFileSystem({ root: options.buildDir }));

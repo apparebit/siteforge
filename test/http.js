@@ -465,7 +465,7 @@ harness.test('@grr/http', t => {
       t.equal(response.get(ReferrerPolicy), 'strict-origin-when-cross-origin');
       t.equal(response.get(StrictTransportSecurity), 'max-age=86400');
       t.equal(response.get(ContentTypeOptions), 'nosniff');
-      t.equal(response.get(FrameOptions), 'DENY');
+      t.equal(response.get(FrameOptions), 'SAMEORIGIN');
       t.equal(response.get(PermittedCrossDomainPolicies), 'none');
       t.equal(response.get(XssProtection), '1; mode=block');
     };

@@ -76,13 +76,13 @@ function main() {
       t.equal(
         response(1),
         `export default ` +
-          `{"error":"Malformed XPC request \\"@grr/loader/invoke/billy\\""};`
+        `{"error":"Malformed XPC request \\"@grr/loader/invoke/billy\\""};`
       );
 
       t.equal(
         response(2),
         `export default ` +
-          `{"error":"XPC command \\"frilly\\" is not implemented"};`
+        `{"error":"XPC command \\"frilly\\" is not implemented"};`
       );
 
       t.equal(response(3), `export default ` + `{"value":{"data":665}};`);

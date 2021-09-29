@@ -11,7 +11,7 @@ import {
 } from '@grr/oddjob/string';
 import { COLOR_DEPTH, countColors, default as candy } from '@grr/oddjob/candy';
 import { count, duration } from '@grr/oddjob/format';
-import { debounce } from '@grr/oddjob/function';
+import { debounce, RETRY } from '@grr/oddjob/function';
 import harness from './harness.js';
 import {
   AbortError,
@@ -109,7 +109,7 @@ harness.test('@grr/oddjob', t => {
   // ===========================================================================
   t.test('error', t => {
     // -------------------------------------------------------------- isError()
-    function X() {}
+    function X() { }
     X.prototype = new Error();
 
     let x = new X();
@@ -351,6 +351,21 @@ harness.test('@grr/oddjob', t => {
         t.equal(counter, 1);
         t.end();
       }, 200);
+    });
+
+    t.test('retry debounce', t => {
+      let counter = 0;
+      const incr0 = () => {
+        counter++;
+        return counter < 3 ? RETRY : undefined;
+      };
+      const incr = debounce(incr0, 100);
+      incr();
+
+      setTimeout(() => {
+        t.equal(counter, 3);
+        t.end();
+      }, 400);
     });
 
     t.end();

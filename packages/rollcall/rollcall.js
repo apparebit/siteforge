@@ -15,6 +15,7 @@ import makeCandy from '@grr/oddjob/candy';
 import pickle from '@grr/oddjob/pickle';
 
 const { freeze, keys: keysOf } = Object;
+const { has } = Reflect;
 const { max } = Math;
 const { species } = Symbol;
 
@@ -296,6 +297,10 @@ export default class Rollcall {
   // ---------------------------------------------------------------------------
 
   log(level, ...args) {
+    if (!has(LEVEL, level)) {
+      args.unshift(level);
+      level = 'info';
+    }
     if (this.#volume < LEVEL[level].threshold) return undefined;
     this.#stats[level]++;
 
@@ -548,16 +553,16 @@ export default class Rollcall {
   }
 
   /** Signal start of an incomplete line. */
-  onLineStart() {}
+  onLineStart() { }
 
   /** Signal end of an incomplete line. */
-  onLineEnd() {}
+  onLineEnd() { }
 
   /** Signal start of a message. */
-  onMessageStart() {}
+  onMessageStart() { }
 
   /** Signal end of a message. */
-  onMessageEnd() {}
+  onMessageEnd() { }
 
   // ---------------------------------------------------------------------------
 

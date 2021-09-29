@@ -1,7 +1,7 @@
 /* © 2020 Robert Grimm */
 
 import Rollcall from '@grr/rollcall';
-import tap from 'tap';
+import tap from 'libtap';
 
 // Polyfill `strictSame()` to be the same as `same()`.
 if (!tap.Test.prototype.strictSame) {

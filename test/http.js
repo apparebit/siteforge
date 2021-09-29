@@ -660,7 +660,7 @@ harness.test('@grr/http', t => {
         );
       }
     } finally {
-      cleanupEndpoints(client, server);
+      await cleanupEndpoints(client, server);
     }
 
     t.end();
@@ -730,7 +730,7 @@ harness.test('@grr/http', t => {
         `-------------------------------------------------------------`
       );
     } finally {
-      cleanupEndpoints(client, server);
+      await cleanupEndpoints(client, server);
     }
 
     t.end();
@@ -811,7 +811,7 @@ harness.test('@grr/http', t => {
         if (test.content) t.ok(response.body, test.content);
       }
     } finally {
-      cleanupEndpoints(client, server);
+      await cleanupEndpoints(client, server);
     }
 
     t.end();
@@ -887,7 +887,7 @@ harness.test('@grr/http', t => {
       response = await client.request({ [Path]: '/string' });
       t.equal(response.body, BODY);
     } finally {
-      cleanupEndpoints(client, server);
+      await cleanupEndpoints(client, server);
     }
 
     t.end();

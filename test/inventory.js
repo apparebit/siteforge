@@ -67,7 +67,7 @@ harness.test('@grr/inventory', t => {
     t.equal(
       inventory.toString().replace(/\s+/gu, ' '),
       '{ "inventory": { "/": { ".htaccess": "File(config /.htaccess)", ' +
-        '"about": { "apparebit.html": "File(markup /about/apparebit.html)" } } } }'
+      '"about": { "apparebit.html": "File(markup /about/apparebit.html)" } } } }'
     );
 
     t.end();
@@ -200,6 +200,8 @@ harness.test('@grr/inventory', t => {
 
     // Check that directory entries cannot be looked up by kind anymore.
     checkPaths(t, inventory.byKind(Kind.Script), []);
+
+    t.end();
   });
 
   t.test('error conditions', t => {
@@ -268,7 +270,7 @@ harness.test('@grr/inventory', t => {
 
     t.same([...inventory.keywords()], ['key', 'word', 'appear']);
 
-    const paths = index => index.files.map(file => file.path);
+    const paths = index => index.files.keys();
 
     let index = inventory.byKeyword('key');
     t.equal(index.keyword, 'key');
@@ -286,9 +288,7 @@ harness.test('@grr/inventory', t => {
     t.same(paths(index), ['/about/apparebit.html']);
 
     index = inventory.byKeyword('boo!');
-    t.equal(index.keyword, 'boo');
-    t.same(index.display, ['boo!']);
-    t.same(index.files, []);
+    t.equal(index, undefined);
 
     t.end();
   });

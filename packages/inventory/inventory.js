@@ -279,20 +279,27 @@ export default class Inventory {
 
   /**
    * Handle a file system change event as produced by
-   * [chokidar](https://github.com/paulmillr/chokidar)
+   * [chokidar](https://github.com/paulmillr/chokidar). If the change event is
+   * for a file, return the corresponding file object from the inventory.
    */
   handleChange(event, path) {
-    // There is nothing to do for 'change' and 'addDir'. The latter can safely
-    // be ignored because the inventory implementation automatically creates
-    // directories as needed.
+    let entry;
     switch (event) {
       case 'add':
-        if (!this.byPath(path)) this.add(path);
-        break;
+        entry = this.byPath(path);
+        return entry ? entry : this.add(path);
+      case 'addDir':
+        // Nothing to do, since chokidar raises add events for all entries.
+        return null;
+      case 'change':
+        return this.byPath(path);
       case 'unlink':
+        return this.delete(path);
       case 'unlinkDir':
         this.delete(path);
-        break;
+        return null;
+      default:
+        return null;
     }
   }
 

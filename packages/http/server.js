@@ -226,9 +226,9 @@ export default class Server {
     });
 
     const { request } = context;
-    context.logger.trace(`Handle ${request.method} ${request.path}`);
+    context.logger.trace(`Received ${request.method} ${request.path}`);
     await this.#router.handle(context, () => { });
-    context.logger.trace(`Did handle ${request.method} ${request.path}`);
+    context.logger.trace(`Completed ${request.method} ${request.path}`);
   }
 
   onServerError(error) {

@@ -28,6 +28,7 @@ const IGNORED_VALIDATIONS = [
   `CSS: “background-image”: “0%” is not a “color” value.`,
   `CSS: “color-adjust”: Property “color-adjust” doesn't exist.`,
   `CSS: “font-stretch”: “\\d{1,3}\\%” is not a “font-stretch” value.`,
+  `CSS: “inset”: Property “inset” doesn't exist.`,
   `CSS: Parse Error.`,
   `CSS: Unknown pseudo-element or pseudo-class “:is”`,
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
@@ -46,7 +47,7 @@ async function takeInventory(config) {
     isExcluded: config.options.doNotBuild,
     onFile: (_, source, path) => {
       const { kind } = inventory.add(path, { source });
-      logger.info(`Adding ${kind} "${path}" to inventory`);
+      logger.info(`Added ${kind} "${path}" to inventory`);
     },
     run: (...args) => executor.submit(...args),
   }).done;

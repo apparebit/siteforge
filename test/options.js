@@ -136,7 +136,7 @@ harness.test('tooling/options', t => {
         ['---n'],
         configuration,
       ),
-    new RegExp(escapeRegex('Unknown command line option"--n"'), 'u')
+    new RegExp(escapeRegex('Unknown command line option "-n"'), 'u')
   );
 
   delete configuration._;

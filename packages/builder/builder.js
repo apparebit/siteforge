@@ -14,7 +14,7 @@ import {
   writeTarget,
 } from './transform.js';
 
-import { debounce } from '@grr/oddjob/function';
+import { debounce, RETRY } from '@grr/oddjob/function';
 import { Kind } from '@grr/inventory/kind';
 import { watch } from 'chokidar';
 
@@ -47,7 +47,7 @@ const preparePage = toBuilder(
 
 const finishPage = toBuilder(assemblePage, writeTarget);
 
-function builderFor(kind) {
+function phase1BuilderFor(kind) {
   return {
     [Kind.Config]: copyResource,
     [Kind.Font]: copyResource,
@@ -59,7 +59,7 @@ function builderFor(kind) {
   }[kind];
 }
 
-function contentBuilderFor(kind) {
+function phase2BuilderFor(kind) {
   return {
     [Kind.Markup]: finishPage,
   }[kind];
@@ -73,7 +73,7 @@ const doBuild = (builder, file, context) => {
   if (builder) {
     const label = builder.verb;
     const verb = label[0].toUpperCase() + label.slice(1);
-    logger.trace(` • ${verb} ${file.kind} "${file.path}"`);
+    logger.trace(`${verb} ${file.kind} "${file.path}"`);
     executor.run(builder, undefined, file, context).catch(reason => {
       logger.error(`Failed to ${label} "${file.path}"`, reason);
     });
@@ -90,16 +90,16 @@ export async function buildAll(context) {
   const { executor, inventory, logger } = context;
 
   for (const [phase, selector] of [
-    [1, builderFor],
-    [2, contentBuilderFor],
+    [1, phase1BuilderFor],
+    [2, phase2BuilderFor],
   ]) {
-    logger.trace(`Run async build tasks:`);
+    logger.trace(`Start building`);
     for (const file of inventory.byPhase(phase)) {
       doBuild(selector(file.kind), file, context);
     }
 
     // The poor man's version of structured concurrency or fork/join
-    logger.trace(`Awaiting outstanding build tasks`);
+    logger.trace(`Wait for building to complete`);
     await executor.onIdle();
     logger.trace(`Done building`);
   }
@@ -117,61 +117,103 @@ export async function buildAll(context) {
  * may be asynchronous).
  */
 export function rebuildOnDemand(context, { afterBuild = () => { } } = {}) {
-  const { inventory, logger, options } = context;
+  const { executor, inventory, logger, options } = context;
   const { contentDir } = options;
 
-  // Rebuild website, then run completion handler.
+  // Build added or changed files but ignore deleted files.
   let building = false;
-  const rebuild = async changes => {
-    if (building) return;
-    building = true;
+  let stopped = false;
+  let pendingChanges = [];
 
-    let error;
-    try {
-      await buildAll(context);
-    } catch (x) {
-      error = x;
+  const rebuild = async () => {
+    if (building) {
+      return RETRY;
+    } else if (stopped) {
+      return undefined;
+    }
+
+    building = true;
+    const changes = pendingChanges;
+    pendingChanges = [];
+
+    // Determine unique, changed files.
+    const files = new Map();
+    for (const { event, path } of changes) {
+      const file = inventory.handleChange(event, path);
+      if (event === 'add' || event === 'change') {
+        files.set(path, file);
+      } else if (event === 'unlink') {
+        files.delete(path);
+      }
+    }
+
+    // Phase 1
+    logger.trace(`start rebuild`);
+
+    const phase2 = [];
+    for (const file of files.values()) {
+      // Run phase 1 builder.
+      let builder = phase1BuilderFor(file.kind);
+      doBuild(builder, file, context);
+
+      // Check for phase 2 builder
+      builder = phase2BuilderFor(file.kind);
+      if (builder) phase2.push({ builder, file });
+    }
+    await executor.onIdle();
+    if (stopped) {
+      building = false;
+      return undefined;
+    }
+
+    // Phase 2
+    for (const { builder, file } of phase2) {
+      doBuild(builder, file, context);
+    }
+    await executor.onIdle();
+    if (stopped) {
+      building = false;
+      return undefined;
+    }
+
+    // Determine impacted paths, including cool versions.
+    const paths = [];
+    for (const file of files.values()) {
+      paths.push(file.path);
+      if (file.path !== file.coolPath) paths.push(file.coolPath);
     }
 
     try {
-      await afterBuild(error, changes);
+      await afterBuild(paths);
     } finally {
       building = false;
     }
+
+    logger.trace(`complete rebuild`);
+    return undefined;
   };
 
-  // Trigger rebuild, with trigger debounced and rebuild strictly consecutive.
-  let changes = [];
-  const triggerRebuild = debounce(async () => {
-    const includedChanges = changes;
-    changes = [];
-    await rebuild(includedChanges);
-  });
-
-  // Set up file system watcher.
-  // FIXME: What about componentDir, followSymlinks?
+  // Set up file system watcher. FIXME: componentDir?? followSymlinks??
+  const triggerRebuild = debounce(rebuild, 500);
   const watcher = watch([contentDir], {
     followSymlinks: false,
     ignored: options.doNotBuild,
-  });
-
-  const prefix = contentDir.length - 1;
-  watcher.on('all', (event, path) => {
-    // Record event and apply to inventory
-    path = path.slice(prefix);
-    logger.trace(`File system monitor: ${event} "${path}"`);
-
-    inventory.handleChange(event, path);
-    changes.push({ event, path });
-    if (!building) triggerRebuild();
+  }).on('all', (event, path) => {
+    path = path.slice(contentDir.length - 1);
+    logger.trace(`fsevent: ${event} "${path}"`);
+    pendingChanges.push({ event, path });
+    // Always trigger rebuild, so that rebuild function runs eventually.
+    triggerRebuild();
   });
 
   // Return function to tear down watcher.
-  let stopped = false;
   const stop = async () => {
     if (stopped) return;
     stopped = true;
-    await watcher.close();
+    await Promise.allSettled([
+      watcher.close(),
+      executor.stop()
+    ]);
   };
 
   return stop;

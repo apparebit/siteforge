@@ -64,4 +64,12 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./temple.js');
   await import('./walk.js');
   await import('./run.js');
+
+  harness.test('metatest', t => {
+    const { total } = harness.counts;
+    if (total < 1100) {
+      t.fail(`Only ran ${total} tests out of well over 1,100 tests!`, { stack: '' });
+    }
+    t.end();
+  });
 })();

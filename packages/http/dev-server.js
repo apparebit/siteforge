@@ -68,6 +68,7 @@ const createDevServer = async config => {
   });
 
   const eventSource = Middleware.eventSource({ logger });
+  const clientHandler = handler(server.origin, options.volume >= 1);
 
   server
     .route(Middleware.scaffold())
@@ -87,7 +88,7 @@ const createDevServer = async config => {
       '/@@handler',
       Middleware.content({
         type: MediaType.JavaScript,
-        body: handler(server.origin, options.volume >= 1),
+        body: clientHandler,
       })
     )
     .route(Middleware.satisfyFromFileSystem({ root: options.buildDir }));

@@ -1,4 +1,4 @@
-/* © 2019-2020 Robert Grimm */
+/* © 2019-2021 Robert Grimm */
 
 // Start measuring.
 import Metrics from '@grr/metrics';
@@ -54,7 +54,6 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
   await import('./html.js');
   await import('./http.js');
   await import('./inventory.js');
-  await import('./loader.js');
   await import('./metrics.js');
   await import('./oddjob.js');
   await import('./options.js');
@@ -67,9 +66,15 @@ const COVERAGE_DATA = join(ROOT, '.coverage');
 
   harness.test('metatest', t => {
     const { total } = harness.counts;
-    if (total < 1100) {
-      t.fail(`Only ran ${total} tests out of well over 1,100 tests!`, { stack: '' });
+    const baseline = 1000;
+    if (total < baseline) {
+      t.fail(
+        `Only ran ${total} tests out of well over `
+        + `${baseline} tests!`,
+        { stack: '' }
+      );
     }
+
     t.end();
   });
 })();

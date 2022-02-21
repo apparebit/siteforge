@@ -52,10 +52,11 @@ const BareType = {
   PlainText: MediaType.PlainText.unparameterized(),
 };
 
-const prepareSecrets = async () => {
+const prepareSecrets = async (port) => {
   const path = fileURLToPath(new URL('../tls/localhost', import.meta.url));
   const secrets = await readySelfSigned({ path });
-  secrets.authority = 'https://localhost:6651';
+  // https://github.com/nodejs/node/issues/40702
+  secrets.authority = `https://localhost:${port}`;
   return secrets;
 };
 
@@ -558,9 +559,9 @@ harness.test('@grr/http', t => {
 
           const location = response.get(Location);
           t.ok(
-            location === 'https://127.0.0.1:6651/some/page' ||
-            location === 'https://[::ffff:7f00:1]:6651/some/page' ||
-            location === 'https://localhost:6651/some/page'
+            location === `https://127.0.0.1:${port}/some/page` ||
+            location === `https://[::ffff:7f00:1]:${port}/some/page` ||
+            location === `https://localhost:${port}/some/page`
           );
           const contentLength = 130 + 2 * location.length;
           t.equal(response.length, contentLength);
@@ -633,7 +634,7 @@ harness.test('@grr/http', t => {
 
     let client, server;
     try {
-      const { authority, cert, key } = await prepareSecrets();
+      const { authority, cert, key } = await prepareSecrets(port);
       const options = { authority, port, cert, key, ca: cert, logger };
 
       let serverIndex = -1;
@@ -669,7 +670,7 @@ harness.test('@grr/http', t => {
   // ===========================================================================
 
   t.test('@grr/http/middleware/eventSource', async t => {
-    const EVENT_SOURCE_ORIGIN = 'https://localhost:6651';
+    const EVENT_SOURCE_ORIGIN = `https://localhost:${port + 1}`;
     const EVENT_SOURCE_PATH = '/.well-known/server-events';
 
     let client, server;
@@ -680,8 +681,8 @@ harness.test('@grr/http', t => {
       t.equal(typeof eventSource.emit, 'function');
       t.equal(typeof eventSource.close, 'function');
 
-      const { authority, cert, key } = await prepareSecrets();
-      const options = { authority, port, cert, key, ca: cert, logger };
+      const { authority, cert, key } = await prepareSecrets(port + 1);
+      const options = { authority, port: port + 1, cert, key, ca: cert, logger };
       server = new Server(options)
         .route(Middleware.scaffold())
         .route(EVENT_SOURCE_PATH, eventSource);
@@ -781,8 +782,8 @@ harness.test('@grr/http', t => {
 
     let client, server;
     try {
-      const { authority, cert, key } = await prepareSecrets();
-      const options = { authority, port, cert, key, ca: cert, logger };
+      const { authority, cert, key } = await prepareSecrets(port + 2);
+      const options = { authority, port: port + 2, cert, key, ca: cert, logger };
 
       server = new Server(options)
         .route(Middleware.scaffold())
@@ -835,8 +836,8 @@ harness.test('@grr/http', t => {
   });
 
   t.test('@grr/http/middleware/transformMatchingBodyText', async t => {
-    const { authority, cert, key } = await prepareSecrets();
-    const options = { authority, port, cert, key, ca: cert, logger };
+    const { authority, cert, key } = await prepareSecrets(port + 3);
+    const options = { authority, port: port + 3, cert, key, ca: cert, logger };
     const root = fileURLToPath(new URL('fixtures/content', import.meta.url));
     const laFlor = join(root, 'la-flor.html');
     const BODY =

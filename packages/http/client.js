@@ -31,11 +31,11 @@ const FrameError = (type, code, id) =>
 const AggregateError = globalThis.AggregateError
   ? globalThis.AggregateError
   : class AggregateError extends Error {
-      constructor(errors, message) {
-        super(message);
-        this.errors = errors;
-      }
-    };
+    constructor(errors, message) {
+      super(message);
+      this.errors = errors;
+    }
+  };
 
 const checkSubscription = (path, response) => {
   const { status, type } = response;
@@ -326,6 +326,10 @@ export default class Client {
       try {
         yielding = false;
         for await (const line of lines) {
+          // TODO: Figure out exception semantics. The Node.js team seems to
+          // believe that throwing inside this loop won't throw() only return().
+          // If that's the case for JavaScript, for await pretty much becomes
+          // unusable.
           if (line === '') {
             const event = prepareEvent();
             if (event) {

@@ -102,10 +102,10 @@ class Directory {
     let cursor = this;
     for (let index = 0; index < segments.length; index++) {
       const name = segments[index];
+      const last = index === segments.length - 1;
 
       if (cursor.#entries.has(name)) {
         const entry = cursor.#entries.get(name);
-        const last = index === segments.length - 1;
 
         if (last && deleteLastSegment) {
           cursor.#entries.delete(name);
@@ -122,6 +122,8 @@ class Directory {
         }
       } else if (fillInMissingSegments) {
         cursor = new Directory(cursor, name);
+      } else if (last) {
+        cursor = null;
       } else {
         throw new Error(
           `entry "${name}" in directory "${cursor.#path}" does not exist`
@@ -286,6 +288,7 @@ export default class Inventory {
     let entry;
     switch (event) {
       case 'add':
+        // We either have hasPath() or return null here.
         entry = this.byPath(path);
         return entry ? entry : this.add(path);
       case 'addDir':

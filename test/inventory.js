@@ -176,10 +176,7 @@ harness.test('@grr/inventory', t => {
     t.same(file.path, '/asset/logo.svg');
 
     // Check that file cannot be looked up by name anymore.
-    t.throws(
-      () => inventory.byPath('/asset/logo.svg'),
-      /entry "logo.svg" in directory "\/asset" does not exist/u
-    );
+    t.same(inventory.byPath('/asset/logo.svg'), null);
 
     // Check that file cannot be looked up by kind anymore.
     checkPaths(t, inventory.byKind(Kind.Graphic), []);
@@ -193,10 +190,7 @@ harness.test('@grr/inventory', t => {
     t.same(dir.path, '/asset');
 
     // Check that directory cannot be looked up by name anymore.
-    t.throws(
-      () => inventory.byPath('/asset'),
-      /entry "asset" in directory "\/" does not exist/u
-    );
+    t.same(inventory.byPath('/asset'), null);
 
     // Check that directory entries cannot be looked up by kind anymore.
     checkPaths(t, inventory.byKind(Kind.Script), []);

@@ -8,7 +8,6 @@ import createContext from '@grr/builder/context';
 import { createDevServer } from '@grr/http';
 import { join, resolve } from 'path';
 import { Kind } from '@grr/inventory/kind';
-import launch from '@grr/loader/launch';
 import { networkInterfaces } from 'os';
 import open from 'open';
 import { readFile, rm, toDirectory } from '@grr/fs';
@@ -27,11 +26,14 @@ const IGNORED_VALIDATIONS = [
   `CSS: “backdrop-filter”: Property “backdrop-filter” doesn't exist.`,
   `CSS: “background-image”: “0%” is not a “color” value.`,
   `CSS: “color-adjust”: Property “color-adjust” doesn't exist.`,
+  `CSS: “font-size”: Invalid type`, //: “.*”`,
+  `CSS: “font-size”: The types are incompatible.`,
   `CSS: “font-stretch”: “\\d{1,3}\\%” is not a “font-stretch” value.`,
   `CSS: “inset”: Property “inset” doesn't exist.`,
   `CSS: Parse Error.`,
   `CSS: Unknown pseudo-element or pseudo-class “:is”`,
   `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
+  `Possible misuse of “aria-label”`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];
 const { keys: keysOf } = Object;
@@ -79,6 +81,7 @@ function validateMarkup(config) {
   return run('java', [
     '-jar', vnuPath,
     '--skip-non-html',
+    '--errors-only', // VNU ignores filter pattern on "possible misuse of aria-label".
     '--filterpattern', IGNORED_VALIDATIONS.join('|'),
     ...(options.volume >= 2 ? ['--verbose'] : []),
     ...paths,
@@ -311,4 +314,4 @@ async function main() {
   });
 }
 
-launch({ fn: main });
+main();

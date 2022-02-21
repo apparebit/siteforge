@@ -40,7 +40,7 @@
   },
   "scripts": {
     "coverage": "c8 report && open coverage/index.html",
-    "test": "NODE_ENV=test NODE_V8_COVERAGE=.coverage node test/index.js"
+    "test": "NODE_ENV=test NODE_V8_COVERAGE=.coverage node --trace-deprecation test/index.js"
   },
   "workspaces": [
     "cli",

@@ -21,6 +21,7 @@
     "chokidar": "3.5.3",
     "cssnano": "5.1.11",
     "postcss": "8.4.14",
+    "prismjs": "1.28.0",
     "terser": "5.14.0"
   }
 }

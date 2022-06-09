@@ -10,8 +10,9 @@ import {
 
 import { AbortError, ErrorMessage } from '@grr/oddjob/error';
 import cssnano from 'cssnano';
+import { EOL } from 'os';
 import { join } from 'path';
-import minify from 'babel-minify';
+import { minify } from 'terser';
 import { pathToFileURL } from 'url';
 import postcss from 'postcss';
 import { runInNewContext } from 'vm';
@@ -26,21 +27,9 @@ const { has } = Reflect;
 const FRONT_OPEN = /^\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
 const FRONT_CLOSE = '</script>';
 
-// Regex for extracting copyright notice at top of source file.
-const NOTICE = new RegExp(
-  `^` + // Start at the beginning.
-  `(?:#![^\\r?\\n]*\\r?\\n)?` + // Ignore the hashbang if present.
-  `\\s*` + // Also ignore any space if present.
-  `(?:` + // Match either just a multi-line comment or 1+ single-line comments.
-  `(?:\\/\\*` + // Multi-line comment it is.
-  `[\\s*_=-]*` + // Ignore any number of spacing or "decorative" characters.
-  `((?:\\(c\\)|©|copyright).*?)` + // Extract the copyright notice.
-  `[\\s*_=-]*` + // Again, ignore spacing or decorative characters.
-  `\\*\\/)` + // Until we reach end of comment: It's safe to split content here.
-  `|(?:\\/\\/[\\p{Zs}*_=-]*\\n)*` + // Or: Single-line comments its is.
-  `(?:\\/\\/\\p{Zs}*((?:\\(c\\)|©|copyright).*?)(\\n|$)))`, // Extract notice.
-  'iu' // Oh yeah, ignore case and embrace the Unicode.
-);
+// Regex for extracting initial C-like comment from source file.
+// Notice the 's' modifier so that '.' matches newlines.
+const NOTICE = /^\s*\/\*(.*?)\*\/\s*/isu;
 
 // -----------------------------------------------------------------------------
 
@@ -150,20 +139,20 @@ export async function copyAsset(file, context) {
 
 // -----------------------------------------------------------------------------
 
-export function extractCopyrightNotice(file, context) {
+export function extractProvenanceNotice(file, context) {
   const { content } = file;
-  const [prefix, copy1, copy2] = content.match(NOTICE) || [];
+  const [prefix, notice] = content.match(NOTICE) || [];
 
   if (prefix) {
-    // If available, preserve copyright notice from source code.
+    // If available, preserve provenance notice from source code.
     return {
-      copyright: (copy1 || copy2).trim(),
+      provenance: notice.trim(),
       content: content.slice(prefix.length),
     };
   } else if (context?.options?.copyright) {
     // Otherwise, if configured, use that copyright notice.
     return {
-      copyright: context.options.copyright,
+      provenance: context.options.copyright,
     };
   } else {
     // Otherwise, there is none.
@@ -171,13 +160,13 @@ export function extractCopyrightNotice(file, context) {
   }
 }
 
-export function prefixCopyrightNotice(file) {
-  let { copyright, content } = file;
-  if (!copyright) return undefined;
+export function prefixProvenanceNotice(file) {
+  let { provenance, content } = file;
+  if (!provenance) return undefined;
 
   return {
-    copyright: undefined,
-    content: `/* ${copyright} */ ${content}`,
+    provenance: undefined,
+    content: `/* ${provenance} */${EOL}${content}`,
   };
 }
 
@@ -299,13 +288,14 @@ export async function assemblePage(file, context) {
 
 // -----------------------------------------------------------------------------
 
-export function minifyScript(file) {
-  return {
-    content: minify(file.content, {}, {
+export async function minifyScript(file) {
+  const minified = await minify(file.content, {
+    ecma: 2015,
+    format: {
       comments: false,
-      sourceType: 'module',
-    }).code,
-  };
+    }
+  });
+  return { content: minified.code }
 }
 
 const css = postcss([cssnano({ preset: 'default' })]);

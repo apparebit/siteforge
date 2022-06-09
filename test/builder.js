@@ -5,8 +5,8 @@ import {
   extractFrontMatter,
   minifyScript,
   minifyStyle,
-  extractCopyrightNotice,
-  prefixCopyrightNotice,
+  extractProvenanceNotice,
+  prefixProvenanceNotice,
   readSource,
   toBuilder,
   writeTarget,
@@ -96,23 +96,23 @@ harness.test('@grr/builder', async t => {
     await rm(buildDir, { recursive: true });
   }
 
-  // Extract and Prefix Copyright Notice.
-  let { copyright, content } = extractCopyrightNotice({
-    content: '// (C) Copyright 2020 Robert Grimm\n<html>Faux Page</html>',
+  // Extract and Prefix Provenance Notice.
+  let { provenance, content } = extractProvenanceNotice({
+    content: '/*  (C) Copyright 2020 Robert Grimm  */\n<html>Faux Page</html>',
   });
-  t.equal(copyright, '(C) Copyright 2020 Robert Grimm');
+  t.equal(provenance, '(C) Copyright 2020 Robert Grimm');
   t.equal(content, '<html>Faux Page</html>');
 
-  t.equal(extractCopyrightNotice({ content: 'Boo!' }), undefined);
+  t.equal(extractProvenanceNotice({ content: 'Boo!' }), undefined);
 
-  ({ copyright, content } = prefixCopyrightNotice({ copyright, content }));
-  t.equal(copyright, undefined);
+  ({ provenance, content } = prefixProvenanceNotice({ provenance, content }));
+  t.equal(provenance, undefined);
   t.equal(
     content,
-    '/* (C) Copyright 2020 Robert Grimm */ <html>Faux Page</html>'
+    '/* (C) Copyright 2020 Robert Grimm */\n<html>Faux Page</html>'
   );
 
-  t.equal(prefixCopyrightNotice({ content: 'Boo!' }), undefined);
+  t.equal(prefixProvenanceNotice({ content: 'Boo!' }), undefined);
 
   // Extract Front Matter.
   let file = {
@@ -160,7 +160,7 @@ harness.test('@grr/builder', async t => {
   // });
 
   // Minify Script.
-  ({ content } = minifyScript(
+  ({ content } = await minifyScript(
     {
       content: `function hallo() {
   console.log("Yo!");

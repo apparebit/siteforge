@@ -3,12 +3,12 @@
 import {
   assemblePage,
   copyAsset,
-  extractCopyrightNotice,
+  extractProvenanceNotice,
   extractFrontMatter,
   indexByKeywords,
   minifyScript,
   minifyStyle,
-  prefixCopyrightNotice,
+  prefixProvenanceNotice,
   readSource,
   toBuilder,
   writeTarget,
@@ -24,17 +24,17 @@ const copyResource = toBuilder('copy', copyAsset);
 
 const buildClientScript = toBuilder(
   readSource,
-  extractCopyrightNotice,
+  extractProvenanceNotice,
   minifyScript,
-  prefixCopyrightNotice,
+  prefixProvenanceNotice,
   writeTarget
 );
 
 const buildStyle = toBuilder(
   readSource,
-  extractCopyrightNotice,
+  extractProvenanceNotice,
   minifyStyle,
-  prefixCopyrightNotice,
+  prefixProvenanceNotice,
   writeTarget
 );
 

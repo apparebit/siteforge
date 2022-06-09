@@ -15,21 +15,13 @@ import { join } from 'path';
 import { minify } from 'terser';
 import { pathToFileURL } from 'url';
 import postcss from 'postcss';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-python.js';
 import { runInNewContext } from 'vm';
 
-const { assign, create, defineProperty, setPrototypeOf } = Object;
+const { assign, create, defineProperty, freeze, hasOwn, setPrototypeOf } = Object;
 const configurable = true;
 const { has } = Reflect;
-
-// -----------------------------------------------------------------------------
-// Regular expression madness
-
-const FRONT_OPEN = /^\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
-const FRONT_CLOSE = '</script>';
-
-// Regex for extracting initial C-like comment from source file.
-// Notice the 's' modifier so that '.' matches newlines.
-const NOTICE = /^\s*\/\*(.*?)\*\/\s*/isu;
 
 // -----------------------------------------------------------------------------
 
@@ -139,6 +131,10 @@ export async function copyAsset(file, context) {
 
 // -----------------------------------------------------------------------------
 
+// Regex for extracting initial C-like comment from source file.
+// Notice the 's' modifier so that '.' matches newlines.
+const NOTICE = /^\s*\/\*(.*?)\*\/\s*/isu;
+
 export function extractProvenanceNotice(file, context) {
   const { content } = file;
   const [prefix, notice] = content.match(NOTICE) || [];
@@ -171,6 +167,9 @@ export function prefixProvenanceNotice(file) {
 }
 
 // -----------------------------------------------------------------------------
+
+const FRONT_OPEN = /^\s*(<!--.*?--!>\s*)?<script[^>]*>/u;
+const FRONT_CLOSE = '</script>';
 
 export function extractFrontMatter(file) {
   const { content } = file;
@@ -217,6 +216,44 @@ export function extractFrontMatter(file) {
 export function indexByKeywords(file, context) {
   context.inventory.indexByKeywords(file);
   return undefined;
+}
+
+// -----------------------------------------------------------------------------
+
+// Rename Prism's default class for comments because Safari Reader hides content
+// with that class.
+Prism.hooks.add('wrap', function (env) {
+  env.classes = env.classes.map(function (c) {
+    return c == "comment" ? "prism-comment" : c;
+  });
+});
+
+// IS_INVALID includes all properties of Object.prototype. Their values are
+// functions and not languages, so their truthiness is just what's needed.
+const IS_INVALID = freeze({
+  "DFS": true,
+  "extend": true,
+  "insertBefore": true,
+});
+
+function highlight(block, language, code) {
+  if (!language || IS_INVALID[language]) return block;
+
+  const grammar = Prism.languages[language];
+  if (!grammar) return block;
+
+  code = Prism.highlight(code, grammar, language);
+  console.log(`@@@ ${code}`)
+  return `<pre><code class=language-${language}>${code}</code></pre>`
+}
+
+const PRE_CODE = /<pre><code class="?language-([a-z]+)"?>(.*?)<\/code><\/pre>/gisu
+
+export function highlightSyntax(file) {
+  const { content } = file;
+  return {
+    content: content.replaceAll(PRE_CODE, highlight),
+  }
 }
 
 // -----------------------------------------------------------------------------

@@ -12,6 +12,7 @@ import {
   readSource,
   toBuilder,
   writeTarget,
+  highlightSyntax,
 } from './transform.js';
 
 import { debounce, RETRY } from '@grr/oddjob/function';
@@ -42,7 +43,8 @@ const preparePage = toBuilder(
   'prepare',
   readSource,
   extractFrontMatter,
-  indexByKeywords
+  indexByKeywords,
+  highlightSyntax,
 );
 
 const finishPage = toBuilder(assemblePage, writeTarget);

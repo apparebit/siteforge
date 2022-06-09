@@ -5,6 +5,7 @@ import {
   copyAsset,
   extractProvenanceNotice,
   extractFrontMatter,
+  highlightSyntax,
   indexByKeywords,
   minifyScript,
   minifyStyle,
@@ -12,7 +13,6 @@ import {
   readSource,
   toBuilder,
   writeTarget,
-  highlightSyntax,
 } from './transform.js';
 
 import { debounce, RETRY } from '@grr/oddjob/function';

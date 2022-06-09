@@ -3,6 +3,7 @@
 import {
   copyAsset,
   extractFrontMatter,
+  highlightSyntax,
   minifyScript,
   minifyStyle,
   extractProvenanceNotice,
@@ -145,6 +146,22 @@ harness.test('@grr/builder', async t => {
   t.throws(
     () => extractFrontMatter(file, context),
     /front matter for "\/some\/content" is not an object/u
+  );
+
+  // Highlight Syntax.
+  const wrapCode = (code, language, quote = `"`) => {
+    const klass = language ? ` class=${quote}language-${language}${quote}` : '';
+    return `<div> with <pre><code${klass}>${code}</code></pre> inside </div>`;
+  };
+
+  t.equal(
+    highlightSyntax({ content: wrapCode('boo()') }).content,
+    wrapCode('boo()')
+  )
+
+  t.equal(
+    highlightSyntax({ content: wrapCode('pass', 'python') }).content,
+    wrapCode('<span class="token keyword">pass</span>', 'python', '')
   );
 
   // // Parse HTML.

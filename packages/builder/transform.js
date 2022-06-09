@@ -243,7 +243,6 @@ function highlight(block, language, code) {
   if (!grammar) return block;
 
   code = Prism.highlight(code, grammar, language);
-  console.log(`@@@ ${code}`)
   return `<pre><code class=language-${language}>${code}</code></pre>`
 }
 

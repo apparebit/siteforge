@@ -10,6 +10,7 @@ import { join, resolve } from 'path';
 import { Kind } from '@grr/inventory/kind';
 import { networkInterfaces } from 'os';
 import open from 'open';
+import process from 'process';
 import { readFile, rm, toDirectory } from '@grr/fs';
 import run from '@grr/run';
 import vnuPath from 'vnu-jar';
@@ -26,13 +27,13 @@ const IGNORED_VALIDATIONS = [
   `CSS: “backdrop-filter”: Property “backdrop-filter” doesn't exist.`,
   `CSS: “background-image”: “0%” is not a “color” value.`,
   `CSS: “color-adjust”: Property “color-adjust” doesn't exist.`,
-  `CSS: “font-size”: Invalid type`, //: “.*”`,
+  `“font-size”`,
   `CSS: “font-size”: The types are incompatible.`,
   `CSS: “font-stretch”: “\\d{1,3}\\%” is not a “font-stretch” value.`,
   `CSS: “inset”: Property “inset” doesn't exist.`,
   `CSS: Parse Error.`,
   `CSS: Unknown pseudo-element or pseudo-class “:is”`,
-  `File was not checked. Files must have .html, .xhtml, .htm, or .xht extensions.`,
+  `File was not checked. Files must have \\.html, \\.xhtml, \\.htm, or \\.xht extensions.`,
   `Possible misuse of “aria-label”`,
   `The “contentinfo” role is unnecessary for element “footer”.`,
 ];
@@ -82,7 +83,7 @@ function validateMarkup(config) {
     '-jar', vnuPath,
     '--skip-non-html',
     '--errors-only', // VNU ignores filter pattern on "possible misuse of aria-label".
-    '--filterpattern', IGNORED_VALIDATIONS.join('|'),
+    '--filterpattern', `(${IGNORED_VALIDATIONS.join('|')})`,
     ...(options.volume >= 2 ? ['--verbose'] : []),
     ...paths,
   ]);
@@ -161,7 +162,7 @@ async function main() {
     !options.dryRun
   ) {
     logger.section(1, `Clean previous build in "${options.buildDir}"`, config);
-    await rm(options.buildDir, { recursive: true });
+    await rm(options.buildDir, { force: true, recursive: true });
   }
 
   // ---------------------------------------------------------------------------
@@ -198,13 +199,23 @@ async function main() {
   // ---------------------------------------------------------------------------
   // Build and Serve Content
 
-  if (options.build) {
+  if (options.build || options.develop) {
     logger.section(3.2, `Build website in "${options.buildDir}"`, config);
     await buildAll(config);
   }
 
   if (options.develop) {
     logger.section(3.3, `Serve website in "${options.buildDir}"`, config);
+
+    const { stdout } = await run('ps', ['-o', 'pid,comm'], { stdio: 'buffer' });
+    const match = / *(?<pid>\d+) site:forge/.exec(stdout)
+    if (match) {
+      const pid = Number(match[1]);
+      if (pid != process.pid) {
+        logger.note(`Killing previously launched site:forge with PID ${pid}`);
+        process.kill(pid, 'SIGTERM');
+      }
+    }
 
     let eventSource, server, stopBuilding;
 

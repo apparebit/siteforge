@@ -52,6 +52,7 @@ const finishPage = toBuilder(assemblePage, writeTarget);
 function phase1BuilderFor(kind) {
   return {
     [Kind.Config]: copyResource,
+    [Kind.Document]: copyResource,
     [Kind.Font]: copyResource,
     [Kind.Graphic]: copyResource,
     [Kind.Image]: copyResource,

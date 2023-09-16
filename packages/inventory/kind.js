@@ -12,6 +12,7 @@ export const Kind = freeze(
     'ComputedData',
     'ComputedMarkup',
     'ComputedStyle',
+    'Document',
     'Font',
     'Graphic',
     'Image',
@@ -54,6 +55,7 @@ const Extension2Kind = freeze(
     '.html': Kind.Markup,
     '.jpg': Kind.Image,
     '.md': Kind.Markdown,
+    '.pdf': Kind.Document,
     '.png': Kind.Image,
     '.svg': Kind.Graphic,
     '.txt': Kind.Text,
@@ -66,6 +68,7 @@ const Extension2Kind = freeze(
 
 const IsKnownConfigPath = freeze({
   '/.htaccess': true,
+  '/feed.rss': true,
   '/robots.txt': true,
   '/sitemap.xml': true,
 });

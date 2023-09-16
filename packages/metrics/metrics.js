@@ -125,7 +125,7 @@ class Counter extends Metric {
 class Timer extends Metric {
   #clock;
 
-  constructor(name, { clock = nowMillis } = {}) {
+  constructor(name, { clock = () => performance.now() } = {}) {
     super(name, { isBigInt: typeof clock() === 'bigint' });
     this.#clock = clock;
   }

@@ -161,7 +161,9 @@ export const parseValidity = async ({
   openssl = 'openssl',
 } = {}) => {
   const text = await doParseCert({ cert, path, openssl, info: '-dates' });
-  const lines = text.split(/\r?\n/u);
+  // OpenSSL has no option to disable warning, five months after its introduction.
+  const lines = text.split(/\r?\n/u)
+    .filter(l => !l.startsWith('Warning: Reading certificate from stdin'));
 
   const [label1, date1] = lines[0].split('=');
   assert(label1 === 'notBefore');

@@ -31,12 +31,12 @@
     "@grr/temple": "0.1.0",
     "@grr/walk": "0.1.0",
     "babel-eslint": "10.1.0",
-    "c8": "8.0.1",
+    "c8": "9.1.0",
     "eslint": "8.49.0",
     "eslint-config-prettier": "9.0.0",
     "libtap": "1.4.1",
-    "open": "9.1.0",
-    "prettier": "3.0.3"
+    "open": "10.1.0",
+    "prettier": "3.2.5"
   },
   "scripts": {
     "coverage": "c8 report && open coverage/index.html",
@@ -53,6 +53,67 @@
     ],
     "temp-directory": "./.coverage",
     "reporter": "html"
+  },
+  "eslintConfig": {
+    "parserOptions": {
+      "ecmaVersion": 2021,
+      "sourceType": "module"
+    },
+    "env": {
+      "es2020": true,
+      "node": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "prettier"
+    ],
+    "rules": {
+      "consistent-return": "error",
+      "eqeqeq": [
+        "error",
+        "always",
+        {
+          "null": "ignore"
+        }
+      ],
+      "no-alert": "error",
+      "no-constant-condition": "off",
+      "no-buffer-constructor": "error",
+      "no-caller": "error",
+      "no-duplicate-imports": [
+        "error",
+        {
+          "includeExports": true
+        }
+      ],
+      "no-extra-bind": "error",
+      "no-extra-label": "error",
+      "no-label-var": "error",
+      "no-new-func": "error",
+      "no-new-wrappers": "error",
+      "no-octal-escape": "error",
+      "no-return-await": "error",
+      "no-sync": "error",
+      "no-unused-expressions": "error",
+      "no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_+$",
+          "varsIgnorePattern": "^_+$"
+        }
+      ],
+      "no-useless-call": "error",
+      "no-useless-computed-key": "error",
+      "no-useless-constructor": "error",
+      "no-useless-rename": "error",
+      "no-useless-return": "error",
+      "no-var": "error",
+      "prefer-promise-reject-errors": "error",
+      "prefer-rest-params": "error",
+      "require-await": "error",
+      "require-unicode-regexp": "error",
+      "semi": "error"
+    }
   },
   "prettier": {
     "printWidth": 80,

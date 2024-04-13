@@ -28,7 +28,7 @@
     "@grr/rollcall": "0.1.0",
     "@grr/run": "0.1.0",
     "@grr/walk": "0.1.0",
-    "open": "9.1.0",
-    "vnu-jar": "23.4.11"
+    "html-validate": "8.18.1",
+    "open": "10.1.0"
   }
 }

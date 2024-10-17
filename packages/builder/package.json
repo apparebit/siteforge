@@ -18,9 +18,9 @@
     "@grr/inventory": "0.1.0",
     "@grr/oddjob": "0.1.0",
     "@grr/proact": "0.1.0",
-    "chokidar": "3.5.3",
-    "cssnano": "6.0.1",
-    "postcss": "8.4.29",
+    "chokidar": "4.0.1",
+    "cssnano": "7.0.6",
+    "postcss": "8.4.31",
     "prismjs": "1.29.0",
     "terser": "5.19.4"
   }
